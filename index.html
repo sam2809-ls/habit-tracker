@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Our Road to Ready</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2f0f8; --card:#ffffff; --ink:#24203b; --muted:#6f6a8a; --line:#e2dff0;
+    --me:#e0457b; --me-soft:#fde4ed; --you:#1f9d8f; --you-soft:#d9f2ee;
+    --road:#24203b; --gold:#f2b134;
+    --head:'Bricolage Grotesque','Trebuchet MS',sans-serif;
+    --body:'DM Sans','Segoe UI',system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#16132a; --card:#201c3a; --ink:#f1eefc; --muted:#a29dc4; --line:#33304f;
+      --me-soft:#4a2338; --you-soft:#1b3b3b; --road:#f1eefc; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+  h1,h2,h3{font-family:var(--head);margin:0;line-height:1.15}
+  button{font:inherit;cursor:pointer}
+  input,select{font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+  :focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+  .wrap{max-width:980px;margin:0 auto;padding:20px 16px 90px}
+  .hidden{display:none!important}
+  .card{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:18px}
+  .btn{background:var(--ink);color:var(--bg);border:0;border-radius:10px;padding:10px 16px;font-weight:700}
+  .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+  .btn.small{padding:6px 10px;font-size:14px}
+  .muted{color:var(--muted)}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:700px){.grid2{grid-template-columns:1fr}}
+
+  /* auth */
+  .auth{max-width:400px;margin:8vh auto;display:grid;gap:12px}
+  .auth h1{font-size:34px}
+
+  /* header */
+  header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}
+  header h1{font-size:22px}
+  .tabs{display:flex;gap:6px;margin:0 0 16px}
+  .tab{background:transparent;border:1.5px solid var(--line);color:var(--ink);border-radius:999px;padding:8px 16px;font-weight:700}
+  .tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+  /* readiness road */
+  .road{padding:22px 18px 18px}
+  .road h2{font-size:clamp(26px,5vw,38px);font-weight:800}
+  .road .pct{font-family:var(--head);font-weight:800;font-size:clamp(40px,9vw,64px);line-height:1}
+  .track{position:relative;height:26px;border-radius:999px;background:var(--bg);border:1.5px solid var(--line);margin:22px 0 34px}
+  .fill{position:absolute;inset:0 auto 0 0;border-radius:999px;background:linear-gradient(90deg,var(--me),var(--you));transition:width .9s cubic-bezier(.2,.8,.2,1)}
+  .heart{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:30px;transition:left .9s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+  .mile{position:absolute;top:0;bottom:0;width:2px;background:var(--line)}
+  .mile span{position:absolute;top:34px;left:50%;transform:translateX(-50%);font-size:12px;color:var(--muted);white-space:nowrap}
+  .mile.hit span{color:var(--ink);font-weight:700}
+
+  /* person panels */
+  .person h3{font-size:20px;display:flex;align-items:center;gap:8px}
+  .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+  .big{font-family:var(--head);font-weight:800;font-size:40px;line-height:1}
+  .delta{font-weight:700;font-size:14px;padding:3px 9px;border-radius:999px}
+  .up{background:#d8f3dc;color:#1b6b34}.down{background:#fde1e1;color:#9b2226}.flat{background:var(--bg);color:var(--muted)}
+  .stats{display:flex;gap:18px;margin:12px 0}
+  .stats div small{display:block;color:var(--muted)}
+  .heat{display:grid;grid-template-columns:repeat(14,1fr);gap:4px;margin-top:8px}
+  .heat i{aspect-ratio:1;border-radius:4px;background:var(--bg);border:1px solid var(--line)}
+  .bars{display:grid;gap:8px;margin-top:6px}
+  .bar{display:grid;grid-template-columns:90px 1fr 1fr;gap:8px;align-items:center;font-size:14px}
+  .bar .b{height:10px;border-radius:99px;background:var(--bg);overflow:hidden}
+  .bar .b i{display:block;height:100%;border-radius:99px}
+  .weeks{display:flex;align-items:flex-end;gap:10px;height:120px;margin-top:10px}
+  .wk{flex:1;display:flex;align-items:flex-end;gap:3px;height:100%}
+  .wk i{flex:1;border-radius:5px 5px 0 0;min-height:3px}
+  .wl{display:flex;gap:10px;font-size:12px;color:var(--muted)}.wl span{flex:1;text-align:center}
+
+  /* checklist */
+  .item{display:flex;align-items:center;gap:12px;padding:12px;border:1.5px solid var(--line);border-radius:12px;margin-top:8px;background:var(--card);width:100%;text-align:left;color:var(--ink)}
+  .item .box{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;flex:none;font-weight:800;color:#fff}
+  .item.done{background:var(--bg)}
+  .item.done .box{background:var(--c);border-color:var(--c)}
+  .item.done .t{text-decoration:line-through;color:var(--muted)}
+  .item.ro{cursor:default}
+  .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);padding:1px 8px;border-radius:99px}
+  .form{display:grid;grid-template-columns:2fr 1.2fr 1.2fr 1.2fr auto;gap:8px;margin-top:10px}
+  @media(max-width:700px){.form{grid-template-columns:1fr 1fr}}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chip{background:var(--bg);border:1.5px dashed var(--line);color:var(--ink);border-radius:99px;padding:6px 12px}
+  .gbar{height:10px;border-radius:99px;background:var(--bg);overflow:hidden;margin-top:8px}
+  .gbar i{display:block;height:100%;background:linear-gradient(90deg,var(--me),var(--you));border-radius:99px}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:9}
+  @media (prefers-reduced-motion: reduce){.fill,.heart{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- SIGN IN -->
+  <section id="auth" class="auth hidden">
+    <h1>Our road to ready</h1>
+    <p class="muted">Sign in to see you and your partner’s habits, goals and progress in one place.</p>
+    <input id="name" placeholder="Your first name (only for new accounts)" autocomplete="given-name">
+    <input id="email" type="email" placeholder="Email" autocomplete="email">
+    <input id="pass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">
+    <div class="row">
+      <button class="btn" id="signin">Sign in</button>
+      <button class="btn ghost" id="signup">Create account</button>
+    </div>
+    <p id="autherr" class="muted" role="alert"></p>
+  </section>
+
+  <!-- PAIR -->
+  <section id="pair" class="auth hidden">
+    <h1>Connect with your partner</h1>
+    <p class="muted">One of you creates the shared space. The other joins with the code.</p>
+    <button class="btn" id="create">Create our space</button>
+    <p class="muted" style="margin:6px 0 0">Already have a code?</p>
+    <input id="code" placeholder="Enter code" style="text-transform:uppercase">
+    <button class="btn ghost" id="join">Join with code</button>
+    <p id="pairerr" class="muted" role="alert"></p>
+    <button class="btn ghost small" id="signout2">Sign out</button>
+  </section>
+
+  <!-- APP -->
+  <main id="app" class="hidden">
+    <header>
+      <h1 id="title">Our road to ready</h1>
+      <div class="row">
+        <span class="muted" id="codeInfo"></span>
+        <button class="btn ghost small" id="signout">Sign out</button>
+      </div>
+    </header>
+
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="dash" aria-selected="true">Dashboard</button>
+      <button class="tab" role="tab" data-tab="habits" aria-selected="false">Habits</button>
+      <button class="tab" role="tab" data-tab="goals" aria-selected="false">Goals</button>
+    </div>
+
+    <div id="v-dash"></div>
+    <div id="v-habits" class="hidden"></div>
+    <div id="v-goals" class="hidden"></div>
+  </main>
+</div>
+
+<script type="module">
+/* =========================================================
+   1) PASTE YOUR FIREBASE CONFIG HERE (Project settings → Your apps → Web app)
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "PASTE_HERE",
+  authDomain: "PASTE_HERE",
+  projectId: "PASTE_HERE",
+  storageBucket: "PASTE_HERE",
+  messagingSenderId: "PASTE_HERE",
+  appId: "PASTE_HERE"
+};
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
+  onSnapshot, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const CATS = ['Health','Fitness','Sleep','Food','Mind','Money','Us','Growth'];
+const SUGGEST = [
+  ['Sleep by 11 pm','Sleep',3],['Wake up on time','Sleep',2],['Workout','Fitness',3],['Take supplements','Health',2],
+  ['Eat a healthy meal','Food',2],['Drink enough water','Health',1],['Walk 20 minutes','Fitness',1],
+  ['10 minutes of calm / prayer / journaling','Mind',2],['Save money today','Money',1],['Quality time together','Us',3]
+];
+const MILESTONES = [[25,'Getting stronger'],[50,'Halfway there'],[75,'Almost ready'],[100,'Ready']];
+
+let me=null, profile=null, couple=null, habits=[], goals=[], logs=new Map();
+let unsubs=[], tab='dash';
+
+/* ---------- dates ---------- */
+const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const todayStr = () => fmt(new Date());
+const lastDays = (n, offset=0) => { const out=[]; for(let i=n-1+offset;i>=offset;i--){ const d=new Date(); d.setDate(d.getDate()-i); out.push(fmt(d)); } return out; };
+
+/* ---------- scoring ---------- */
+const partnerId = () => couple.members.find(u => u !== me.uid) || null;
+const nameOf = uid => (couple.names && couple.names[uid]) || 'Partner';
+const hOf = uid => habits.filter(h => h.owner === uid || h.owner === 'both');
+const logKey = (hid, uid, d) => `${hid}_${uid}_${d}`;
+
+function dayScore(uid, d){
+  let poss=0, done=0;
+  for(const h of hOf(uid)){
+    if(h.start > d) continue;
+    poss += h.weight;
+    if(logs.has(logKey(h.id, uid, d))) done += h.weight;
+  }
+  return poss ? done/poss : null;
+}
+function avg(arr){ const v=arr.filter(x=>x!==null); return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null; }
+const rangeScore = (uid, ds) => avg(ds.map(d => dayScore(uid,d)));
+function catScore(uid, cat, ds){
+  const hs = hOf(uid).filter(h => h.cat===cat);
+  let poss=0, done=0;
+  for(const d of ds) for(const h of hs){ if(h.start>d) continue; poss+=h.weight; if(logs.has(logKey(h.id,uid,d))) done+=h.weight; }
+  return poss ? done/poss : null;
+}
+function streak(uid){
+  let s=0;
+  const days = lastDays(60).reverse();
+  for(let i=0;i<days.length;i++){
+    const v = dayScore(uid, days[i]);
+    if(v===null){ if(i===0) continue; break; }
+    if(v>=0.6) s++; else if(i===0) continue; else break;
+  }
+  return s;
+}
+const goalProgress = g => Math.min(1, (g.current||0) / Math.max(1, g.target||1));
+function readiness(){
+  const ids = couple.members;
+  const hs = avg(ids.map(u => rangeScore(u, lastDays(30)))) ?? 0;
+  const gp = goals.length ? goals.reduce((a,g)=>a+goalProgress(g),0)/goals.length : null;
+  const total = gp===null ? hs : hs*0.6 + gp*0.4;
+  return Math.round(total*100);
+}
+const pct = v => v===null ? '–' : Math.round(v*100)+'%';
+
+/* ---------- auth ---------- */
+function show(which){ ['auth','pair','app'].forEach(k => $(k).classList.toggle('hidden', k!==which)); }
+function toast(t){ const el=document.createElement('div'); el.className='toast'; el.textContent=t; document.body.appendChild(el); setTimeout(()=>el.remove(),2200); }
+
+$('signin').onclick = async () => {
+  $('autherr').textContent='';
+  try{ await signInWithEmailAndPassword(auth, $('email').value.trim(), $('pass').value); }
+  catch(e){ $('autherr').textContent = 'Could not sign in: ' + e.code.replace('auth/',''); }
+};
+$('signup').onclick = async () => {
+  $('autherr').textContent='';
+  const name = $('name').value.trim();
+  if(!name){ $('autherr').textContent='Type your first name above to create an account.'; return; }
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, $('email').value.trim(), $('pass').value);
+    await setDoc(doc(db,'users',cred.user.uid), { name, coupleId:null });
+  }catch(e){ $('autherr').textContent = 'Could not create account: ' + e.code.replace('auth/',''); }
+};
+const doSignOut = () => signOut(auth);
+$('signout').onclick = doSignOut; $('signout2').onclick = doSignOut;
+
+const randCode = () => { const a='ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<8;i++) s+=a[Math.floor(Math.random()*a.length)]; return s; };
+
+$('create').onclick = async () => {
+  const code = randCode();
+  await setDoc(doc(db,'couples',code), { members:[me.uid], names:{[me.uid]:profile.name}, createdAt:serverTimestamp() });
+  await updateDoc(doc(db,'users',me.uid), { coupleId: code });
+  profile.coupleId = code; start();
+};
+$('join').onclick = async () => {
+  $('pairerr').textContent='';
+  const code = $('code').value.trim().toUpperCase();
+  if(!code) return;
+  try{
+    const snap = await getDoc(doc(db,'couples',code));
+    if(!snap.exists()){ $('pairerr').textContent='That code was not found. Check it and try again.'; return; }
+    const data = snap.data();
+    if(data.members.length>=2 && !data.members.includes(me.uid)){ $('pairerr').textContent='That space already has two people.'; return; }
+    await updateDoc(doc(db,'couples',code), { members: arrayUnion(me.uid), [`names.${me.uid}`]: profile.name });
+    await updateDoc(doc(db,'users',me.uid), { coupleId: code });
+    profile.coupleId = code; start();
+  }catch(e){ $('pairerr').textContent='Could not join: ' + e.code; }
+};
+
+onAuthStateChanged(auth, async user => {
+  unsubs.forEach(u=>u()); unsubs=[];
+  if(!user){ me=null; show('auth'); return; }
+  me = user;
+  let snap = await getDoc(doc(db,'users',user.uid));
+  if(!snap.exists()){
+    await setDoc(doc(db,'users',user.uid), { name:($('name').value.trim()||'Me'), coupleId:null });
+    snap = await getDoc(doc(db,'users',user.uid));
+  }
+  profile = snap.data();
+  if(profile.coupleId) start(); else show('pair');
+});
+
+/* ---------- live data ---------- */
+function start(){
+  show('app');
+  const cid = profile.coupleId;
+  const base = doc(db,'couples',cid);
+  const cutoff = lastDays(70)[0];
+  unsubs.push(onSnapshot(base, s => { couple = s.data(); couple && couple.id===undefined && (couple.id=cid); render(); }));
+  unsubs.push(onSnapshot(collection(base,'habits'), s => { habits = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
+  unsubs.push(onSnapshot(collection(base,'goals'), s => { goals = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
+  unsubs.push(onSnapshot(query(collection(base,'logs'), where('date','>=',cutoff)), s => {
+    logs = new Map(s.docs.map(d=>[d.id, d.data()])); render();
+  }));
+  $('codeInfo').textContent = 'Partner code: ' + cid;
+}
+const cref = () => doc(db,'couples',profile.coupleId);
+
+async function toggle(hid){
+  const d = todayStr(), key = logKey(hid, me.uid, d);
+  const ref = doc(db,'couples',profile.coupleId,'logs',key);
+  if(logs.has(key)) await deleteDoc(ref);
+  else await setDoc(ref, { habitId:hid, uid:me.uid, date:d });
+}
+async function addHabit(name, cat, weight, owner){
+  if(!name.trim()) return;
+  await addDoc(collection(cref(),'habits'), { name:name.trim(), cat, weight:Number(weight), owner, start:todayStr() });
+}
+async function removeHabit(id){ if(confirm('Delete this habit? Past progress for it will stop counting.')) await deleteDoc(doc(cref(),'habits',id)); }
+async function addGoal(title, cat, target){
+  if(!title.trim()) return;
+  await addDoc(collection(cref(),'goals'), { title:title.trim(), cat, target:Math.max(1,Number(target)||1), current:0 });
+}
+async function bumpGoal(g, by){
+  const cur = Math.max(0, Math.min(g.target, (g.current||0)+by));
+  await updateDoc(doc(cref(),'goals',g.id), { current:cur });
+}
+async function removeGoal(id){ if(confirm('Delete this goal?')) await deleteDoc(doc(cref(),'goals',id)); }
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => { tab=b.dataset.tab; render(); });
+
+/* ---------- render ---------- */
+function render(){
+  if(!couple || !me) return;
+  document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab===tab));
+  ['dash','habits','goals'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
+  const pid = partnerId();
+  $('title').textContent = pid ? `${nameOf(me.uid)} & ${nameOf(pid)}` : 'Our road to ready';
+  if(tab==='dash') renderDash(pid);
+  if(tab==='habits') renderHabits(pid);
+  if(tab==='goals') renderGoals();
+}
+
+function deltaBadge(uid){
+  const a = rangeScore(uid, lastDays(7)), b = rangeScore(uid, lastDays(7,7));
+  if(a===null || b===null) return '<span class="delta flat">New</span>';
+  const d = Math.round((a-b)*100);
+  if(d>0) return `<span class="delta up">▲ ${d} pts vs last week</span>`;
+  if(d<0) return `<span class="delta down">▼ ${-d} pts vs last week</span>`;
+  return '<span class="delta flat">Same as last week</span>';
+}
+function heat(uid, color){
+  return `<div class="heat" aria-label="Last 14 days">` + lastDays(14).map(d => {
+    const v = dayScore(uid,d);
+    const style = v===null ? '' : `background:${color};opacity:${(0.2+0.8*v).toFixed(2)};border-color:transparent`;
+    return `<i title="${d}: ${pct(v)}" style="${style}"></i>`;
+  }).join('') + `</div>`;
+}
+function personPanel(uid, color, soft){
+  const s30 = rangeScore(uid, lastDays(30));
+  return `<div class="card person">
+    <h3><span class="dot" style="background:${color}"></span>${esc(nameOf(uid))}${uid===me.uid?' <span class="tag">you</span>':''}</h3>
+    <div class="stats">
+      <div><span class="big" style="color:${color}">${pct(s30)}</span><small>last 30 days</small></div>
+      <div><span class="big">${streak(uid)}</span><small>day streak</small></div>
+    </div>
+    ${deltaBadge(uid)}
+    <p class="muted" style="margin:14px 0 0;font-size:14px">Last 14 days</p>
+    ${heat(uid,color)}
+  </div>`;
+}
+
+function renderDash(pid){
+  const r = readiness();
+  const marks = MILESTONES.map(([p,l]) => `<div class="mile ${r>=p?'hit':''}" style="left:${p===100?99.5:p}%"><span style="${p===100?'transform:translateX(-90%)':''}">${l}</span></div>`).join('');
+  const uids = pid ? [me.uid, pid] : [me.uid];
+  const cats = CATS.filter(c => uids.some(u => catScore(u,c,lastDays(30))!==null));
+  const catRows = cats.map(c => `<div class="bar"><span>${c}</span>` + [me.uid,pid].map((u,i) => {
+    if(!u) return '<span class="b"></span>';
+    const v = catScore(u,c,lastDays(30)); const col = i===0?'var(--me)':'var(--you)';
+    return `<span class="b" title="${esc(nameOf(u))}: ${pct(v)}"><i style="width:${v===null?0:Math.round(v*100)}%;background:${col}"></i></span>`;
+  }).join('') + `</div>`).join('');
+
+  // weekly chart: 8 weeks
+  let weeks='', labels='';
+  for(let w=7; w>=0; w--){
+    const ds = lastDays(7, w*7);
+    const bars = uids.map((u,i) => { const v=rangeScore(u,ds); const h=v===null?0:Math.max(3,Math.round(v*100));
+      return `<i title="${esc(nameOf(u))}: ${pct(v)}" style="height:${h}%;background:${i===0?'var(--me)':'var(--you)'}"></i>`; }).join('');
+    weeks += `<div class="wk">${bars}</div>`;
+    labels += `<span>${w===0?'now':'-'+w+'w'}</span>`;
+  }
+
+  const waiting = pid ? '' : `<div class="card" style="margin-bottom:14px">Share your code <b>${esc(profile.coupleId)}</b> with your partner so they can join.</div>`;
+
+  $('v-dash').innerHTML = `
+    ${waiting}
+    <section class="card road" aria-label="Getting ready for marriage progress">
+      <div class="row" style="justify-content:space-between;align-items:flex-end">
+        <h2>Getting ready for marriage</h2>
+        <div class="pct">${r}%</div>
+      </div>
+      <p class="muted" style="margin:6px 0 0">Built from how consistent you both are on your habits (60%) and how far along your shared goals are (40%).</p>
+      <div class="track" role="progressbar" aria-valuenow="${r}" aria-valuemin="0" aria-valuemax="100">
+        <div class="fill" style="width:${r}%"></div>
+        ${marks}
+        <div class="heart" style="left:${Math.max(2,Math.min(98,r))}%">💞</div>
+      </div>
+    </section>
+    <div class="grid2" style="margin-top:14px">
+      ${personPanel(me.uid,'var(--me)')}
+      ${pid ? personPanel(pid,'var(--you)') : '<div class="card muted">Your partner’s dashboard will show up here once they join.</div>'}
+    </div>
+    <div class="grid2" style="margin-top:14px">
+      <div class="card"><h3>Growth by area</h3><p class="muted" style="margin:4px 0 8px;font-size:14px">Last 30 days · ${esc(nameOf(me.uid))} on top, ${pid?esc(nameOf(pid)):'partner'} below</p>
+        <div class="bars">${catRows || '<p class="muted">Add habits to see your areas.</p>'}</div></div>
+      <div class="card"><h3>Weekly progress</h3><p class="muted" style="margin:4px 0 0;font-size:14px">Last 8 weeks · taller bars mean more habits done</p>
+        <div class="weeks">${weeks}</div><div class="wl">${labels}</div></div>
+    </div>`;
+}
+
+function itemHTML(h, uid, readonly, color){
+  const done = logs.has(logKey(h.id, uid, todayStr()));
+  const tag = h.owner==='both' ? 'both' : h.cat;
+  return `<button class="item ${done?'done':''} ${readonly?'ro':''}" style="--c:${color}" ${readonly?'disabled':`data-t="${h.id}"`}>
+    <span class="box">${done?'✓':''}</span><span class="t" style="flex:1">${esc(h.name)}</span><span class="tag">${esc(tag)}</span></button>`;
+}
+
+function renderHabits(pid){
+  const mine = hOf(me.uid), theirs = pid ? hOf(pid) : [];
+  const starter = habits.length===0 ? `<p class="muted" style="margin:10px 0 0">Tap to add a starter habit:</p><div class="chips">` +
+    SUGGEST.map((s,i)=>`<button class="chip" data-s="${i}">${esc(s[0])}</button>`).join('') + `</div>` : '';
+  $('v-habits').innerHTML = `
+    <div class="card">
+      <h3>Add a habit</h3>
+      <div class="form">
+        <input id="hn" placeholder="e.g. Workout">
+        <select id="hc">${CATS.map(c=>`<option>${c}</option>`).join('')}</select>
+        <select id="hw"><option value="1">Nice to have</option><option value="2" selected>Important</option><option value="3">Core</option></select>
+        <select id="ho"><option value="${me.uid}">Just me</option>${pid?'<option value="both">Both of us</option>':''}</select>
+        <button class="btn" id="ha">Add</button>
+      </div>
+      ${starter}
+    </div>
+    <div class="grid2" style="margin-top:14px">
+      <div class="card"><h3>Today · ${esc(nameOf(me.uid))}</h3>
+        ${mine.map(h=>itemHTML(h,me.uid,false,'var(--me)')).join('') || '<p class="muted">No habits yet.</p>'}</div>
+      <div class="card"><h3>Today · ${pid?esc(nameOf(pid)):'Partner'}</h3>
+        ${theirs.map(h=>itemHTML(h,pid,true,'var(--you)')).join('') || '<p class="muted">Nothing to show yet.</p>'}</div>
+    </div>
+    <div class="card" style="margin-top:14px"><h3>Manage habits</h3>
+      ${habits.map(h=>`<div class="row" style="justify-content:space-between;margin-top:8px"><span>${esc(h.name)} <span class="tag">${h.owner==='both'?'both':esc(nameOf(h.owner))}</span></span>
+        <button class="btn ghost small" data-del="${h.id}">Delete</button></div>`).join('') || '<p class="muted">Nothing here yet.</p>'}
+    </div>`;
+  $('ha').onclick = async () => { await addHabit($('hn').value,$('hc').value,$('hw').value,$('ho').value); };
+  $('hn').onkeydown = e => { if(e.key==='Enter') $('ha').click(); };
+  $('v-habits').querySelectorAll('[data-t]').forEach(b => b.onclick = () => toggle(b.dataset.t));
+  $('v-habits').querySelectorAll('[data-del]').forEach(b => b.onclick = () => removeHabit(b.dataset.del));
+  $('v-habits').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { const s=SUGGEST[b.dataset.s]; addHabit(s[0],s[1],s[2],me.uid); });
+}
+
+function renderGoals(){
+  $('v-goals').innerHTML = `
+    <div class="card"><h3>Add a goal for us</h3>
+      <p class="muted" style="margin:4px 0 0">Give it a number so you can see it fill up (e.g. “Save ₹50,000” → 50, count in thousands, or “Attend 12 counselling or planning chats” → 12).</p>
+      <div class="form" style="grid-template-columns:2fr 1.2fr 1fr auto">
+        <input id="gt" placeholder="e.g. Plan 12 money talks">
+        <select id="gc">${CATS.map(c=>`<option ${c==='Us'?'selected':''}>${c}</option>`).join('')}</select>
+        <input id="gn" type="number" min="1" value="10" aria-label="Target number">
+        <button class="btn" id="ga">Add</button>
+      </div>
+    </div>
+    <div style="margin-top:14px;display:grid;gap:12px">
+      ${goals.map(g => { const p=Math.round(goalProgress(g)*100); return `
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <div><b>${esc(g.title)}</b> <span class="tag">${esc(g.cat)}</span></div>
+            <div class="row"><button class="btn ghost small" data-g="${g.id}" data-by="-1" aria-label="Minus one">−1</button>
+              <b>${g.current||0} / ${g.target}</b>
+              <button class="btn small" data-g="${g.id}" data-by="1" aria-label="Plus one">+1</button>
+              <button class="btn ghost small" data-gd="${g.id}">Delete</button></div>
+          </div>
+          <div class="gbar" role="progressbar" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100"><i style="width:${p}%"></i></div>
+        </div>`; }).join('') || '<div class="card muted">No goals yet. Add your first one above.</div>'}
+    </div>`;
+  $('ga').onclick = () => addGoal($('gt').value,$('gc').value,$('gn').value);
+  $('v-goals').querySelectorAll('[data-g]').forEach(b => b.onclick = () => bumpGoal(goals.find(g=>g.id===b.dataset.g), Number(b.dataset.by)));
+  $('v-goals').querySelectorAll('[data-gd]').forEach(b => b.onclick = () => removeGoal(b.dataset.gd));
+}
+
+show('auth');
+</script>
+</body>
+</html>
