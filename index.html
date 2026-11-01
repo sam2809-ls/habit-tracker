@@ -130,6 +130,7 @@
       <h1 id="title">Our road to ready</h1>
       <div class="row">
         <span class="muted" id="codeInfo"></span>
+        <button class="btn ghost small" id="editname">Edit my name</button>
         <button class="btn ghost small" id="signout">Sign out</button>
       </div>
     </header>
@@ -247,6 +248,19 @@ $('signup').onclick = async () => {
     const cred = await createUserWithEmailAndPassword(auth, $('email').value.trim(), $('pass').value);
     await setDoc(doc(db,'users',cred.user.uid), { name, coupleId:null });
   }catch(e){ $('autherr').textContent = 'Could not create account: ' + e.code.replace('auth/',''); }
+};
+$('editname').onclick = async () => {
+  const current = (couple && couple.names && couple.names[me.uid]) || profile.name || '';
+  const input = prompt('Type your name as you want it to show:', current);
+  if(input === null) return;
+  const name = input.trim();
+  if(!name) return;
+  try{
+    await updateDoc(doc(db,'users',me.uid), { name });
+    await updateDoc(doc(db,'couples',profile.coupleId), { [`names.${me.uid}`]: name });
+    profile.name = name;
+    toast('Name updated');
+  }catch(e){ toast('Could not update the name. Try again.'); }
 };
 const doSignOut = () => signOut(auth);
 $('signout').onclick = doSignOut; $('signout2').onclick = doSignOut;
