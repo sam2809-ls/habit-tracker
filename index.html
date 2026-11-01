@@ -81,7 +81,7 @@
   .item{display:flex;align-items:center;gap:12px;padding:12px;border:1.5px solid var(--line);border-radius:12px;margin-top:8px;background:var(--card);width:100%;text-align:left;color:var(--ink)}
   .item .box{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;flex:none;font-weight:800;color:#fff}
   .item.done{background:var(--bg)}
-  .item.done .box{background:var(--c);border-color:var(--c)}
+  .item.done .box{background:var(--bg);border-color:var(--c);font-size:16px}
   .item.done .t{text-decoration:line-through;color:var(--muted)}
   .item.ro{cursor:default}
   .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);padding:1px 8px;border-radius:99px}
@@ -92,7 +92,32 @@
   .gbar{height:10px;border-radius:99px;background:var(--bg);overflow:hidden;margin-top:8px}
   .gbar i{display:block;height:100%;background:linear-gradient(90deg,var(--me),var(--you));border-radius:99px}
   .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:9}
-  @media (prefers-reduced-motion: reduce){.fill,.heart{transition:none}}
+  .tabs{flex-wrap:wrap}
+  textarea{font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-height:80px;resize:vertical}
+  .trow{display:grid;grid-template-columns:1fr 64px 64px 44px;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+  .thead{font-size:13px;color:var(--muted);border-top:0;text-align:center}
+  .thead span:first-child{text-align:left}
+  .thead span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tick{width:34px;height:34px;border-radius:10px;border:2px solid var(--line);background:transparent;margin:auto;display:grid;place-items:center;color:#fff;font-weight:800;padding:0}
+  .tick.on{background:var(--bg);border-color:var(--c);font-size:18px}
+  .tick.ro{cursor:default}
+  .st{font-size:24px;text-align:center}
+  .bubble{max-width:620px;padding:12px 16px;border-radius:20px;background:var(--bg);border:2px solid var(--c);margin-top:10px}
+  .bubble p{margin:4px 0 0;white-space:pre-wrap;font-size:17px}
+  .bubble.out{margin-left:auto;border-bottom-right-radius:5px}
+  .bubble.in{border-bottom-left-radius:5px}
+  .bubble small{color:var(--muted)}
+  .sbars{display:flex;align-items:flex-end;gap:6px;height:70px;margin-top:8px}
+  .sbars i{flex:1;border-radius:5px 5px 0 0;min-height:3px}
+  .dua{padding:12px;border-radius:12px;background:var(--bg);margin-top:10px}
+  .dua p{margin:6px 0;white-space:pre-wrap}
+  .swatch{width:64px;height:64px;border-radius:50%;border:3px solid var(--line);flex:none}
+  .find{padding:10px 12px;border-radius:12px;background:var(--bg);margin-top:8px}
+  .together{margin-top:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .together .big{font-size:44px}
+  .conf{position:fixed;top:-12px;width:10px;height:14px;border-radius:2px;z-index:20;pointer-events:none;animation:fall 1.9s ease-in forwards}
+  @keyframes fall{to{transform:translateY(105vh) rotate(720deg);opacity:.9}}
+  @media (prefers-reduced-motion: reduce){.fill,.heart{transition:none}.conf{display:none}}
 </style>
 </head>
 <body>
@@ -131,6 +156,7 @@
       <div class="row">
         <span class="muted" id="codeInfo"></span>
         <button class="btn ghost small" id="editname">Edit my name</button>
+        <button class="btn ghost small" id="editnick">My nickname</button>
         <button class="btn ghost small" id="signout">Sign out</button>
       </div>
     </header>
@@ -139,11 +165,21 @@
       <button class="tab" role="tab" data-tab="dash" aria-selected="true">Dashboard</button>
       <button class="tab" role="tab" data-tab="habits" aria-selected="false">Habits</button>
       <button class="tab" role="tab" data-tab="goals" aria-selected="false">Goals</button>
+      <button class="tab" role="tab" data-tab="pray" aria-selected="false">Prayers</button>
+      <button class="tab" role="tab" data-tab="meals" aria-selected="false">Meals</button>
+      <button class="tab" role="tab" data-tab="sleep" aria-selected="false">Sleep</button>
+      <button class="tab" role="tab" data-tab="quran" aria-selected="false">Quran &amp; duas</button>
+      <button class="tab" role="tab" data-tab="fun" aria-selected="false">Fun together</button>
     </div>
 
     <div id="v-dash"></div>
     <div id="v-habits" class="hidden"></div>
     <div id="v-goals" class="hidden"></div>
+    <div id="v-pray" class="hidden"></div>
+    <div id="v-meals" class="hidden"></div>
+    <div id="v-sleep" class="hidden"></div>
+    <div id="v-quran" class="hidden"></div>
+    <div id="v-fun" class="hidden"></div>
   </main>
 </div>
 
@@ -180,7 +216,7 @@ const SUGGEST = [
 ];
 const MILESTONES = [[25,'Getting stronger'],[50,'Halfway there'],[75,'Almost ready'],[100,'Ready']];
 
-let me=null, profile=null, couple=null, habits=[], goals=[], logs=new Map();
+let me=null, profile=null, couple=null, habits=[], goals=[], fun=[], logs=new Map();
 let unsubs=[], tab='dash';
 
 /* ---------- dates ---------- */
@@ -190,6 +226,7 @@ const lastDays = (n, offset=0) => { const out=[]; for(let i=n-1+offset;i>=offset
 
 /* ---------- scoring ---------- */
 const partnerId = () => couple.members.find(u => u !== me.uid) || null;
+const nickOf = uid => (couple.nicks && couple.nicks[uid]) || nameOf(uid);
 const nameOf = uid => (couple.names && couple.names[uid]) || 'Partner';
 const hOf = uid => habits.filter(h => h.owner === uid || h.owner === 'both');
 const logKey = (hid, uid, d) => `${hid}_${uid}_${d}`;
@@ -222,12 +259,33 @@ function streak(uid){
   return s;
 }
 const goalProgress = g => Math.min(1, (g.current||0) / Math.max(1, g.target||1));
+const D30 = () => lastDays(30);
+const earliestLog=(uid,test)=>{ let m=null; for(const v of logs.values()){ if(v.uid===uid && test(v.habitId) && (!m||v.date<m)) m=v.date; } return m; };
+const earliestFun=(uid,kind)=>{ let m=null; for(const f of fun){ if(f.kind===kind && f.uid===uid && (!m||f.date<m)) m=f.date; } return m; };
+function trackScore(uid,starts,dayFn){
+  const st=starts.filter(Boolean).sort()[0]; if(!st) return null;
+  return avg(D30().filter(d=>d>=st).map(dayFn));
+}
+const spiritDay=(uid,d)=>Math.min(1, cnt('prayer_',PRAYERS,uid,d)/5*0.7 + (quranDoc(uid,d)?0.3:0) + (has('prayer_','tahajjud',uid,d)?0.1:0));
+const foodDay=(uid,d)=>0.8*cnt('meal_',MEALS,uid,d)/3 + 0.2*cnt('tea_',TEA,uid,d)/2;
+const sleepDay=(uid,d)=>{ const x=sleepDoc(uid,d); return x?Math.min(1,x.hours/SLEEP_TARGET):0; };
+const COMPS=[['habits','Habits',25],['spirit','Prayers and Quran',25],['food','Meals and tea',15],['sleep','Sleep',15]];
+function compScore(uid,key){
+  if(key==='habits') return rangeScore(uid,D30());
+  if(key==='spirit') return trackScore(uid,[earliestLog(uid,id=>id.startsWith('prayer_')),earliestFun(uid,'quran')],d=>spiritDay(uid,d));
+  if(key==='food')   return trackScore(uid,[earliestLog(uid,id=>id.startsWith('meal_')||id.startsWith('tea_'))],d=>foodDay(uid,d));
+  if(key==='sleep')  return trackScore(uid,[earliestFun(uid,'sleep')],d=>sleepDay(uid,d));
+  return null;
+}
+const goalsScore=()=>goals.length ? goals.reduce((a,g)=>a+goalProgress(g),0)/goals.length : null;
 function readiness(){
-  const ids = couple.members;
-  const hs = avg(ids.map(u => rangeScore(u, lastDays(30)))) ?? 0;
-  const gp = goals.length ? goals.reduce((a,g)=>a+goalProgress(g),0)/goals.length : null;
-  const total = gp===null ? hs : hs*0.6 + gp*0.4;
-  return Math.round(total*100);
+  let sum=0, wsum=0;
+  for(const [key,,w] of COMPS){
+    const v=avg(couple.members.map(u=>compScore(u,key)));
+    if(v!==null){ sum+=v*w; wsum+=w; }
+  }
+  const g=goalsScore(); if(g!==null){ sum+=g*20; wsum+=20; }
+  return wsum? Math.round(sum/wsum*100) : 0;
 }
 const pct = v => v===null ? '–' : Math.round(v*100)+'%';
 
@@ -261,6 +319,15 @@ $('editname').onclick = async () => {
     profile.name = name;
     toast('Name updated');
   }catch(e){ toast('Could not update the name. Try again.'); }
+};
+$('editnick').onclick = async () => {
+  const current = (couple && couple.nicks && couple.nicks[me.uid]) || '';
+  const input = prompt('What does your partner call you? This is used in the nudge messages.', current);
+  if(input === null) return;
+  const nick = input.trim();
+  if(!nick) return;
+  try{ await updateDoc(doc(db,'couples',profile.coupleId), { [`nicks.${me.uid}`]: nick }); toast('Nickname saved'); }
+  catch(e){ toast('Could not save the nickname. Try again.'); }
 };
 const doSignOut = () => signOut(auth);
 $('signout').onclick = doSignOut; $('signout2').onclick = doSignOut;
@@ -309,6 +376,7 @@ function start(){
   const cutoff = lastDays(70)[0];
   unsubs.push(onSnapshot(base, s => { couple = s.data(); couple && couple.id===undefined && (couple.id=cid); render(); }));
   unsubs.push(onSnapshot(collection(base,'habits'), s => { habits = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
+  unsubs.push(onSnapshot(collection(base,'fun'), s => { fun = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
   unsubs.push(onSnapshot(collection(base,'goals'), s => { goals = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
   unsubs.push(onSnapshot(query(collection(base,'logs'), where('date','>=',cutoff)), s => {
     logs = new Map(s.docs.map(d=>[d.id, d.data()])); render();
@@ -317,11 +385,35 @@ function start(){
 }
 const cref = () => doc(db,'couples',profile.coupleId);
 
+function confetti(){
+  const cols=['#e0457b','#1f9d8f','#f2b134','#7a5cff'];
+  for(let i=0;i<70;i++){
+    const c=document.createElement('i'); c.className='conf';
+    c.style.left=Math.random()*100+'vw'; c.style.background=cols[i%cols.length];
+    c.style.animationDelay=(Math.random()*0.5)+'s'; c.style.animationDuration=(1.4+Math.random()*1.2)+'s';
+    document.body.appendChild(c); setTimeout(()=>c.remove(),3500);
+  }
+}
+function togetherStreak(){
+  const pid = partnerId(); if(!pid) return 0;
+  const days = lastDays(60).reverse(); let s=0;
+  for(let i=0;i<days.length;i++){
+    const a=dayScore(me.uid,days[i]), b=dayScore(pid,days[i]);
+    const ok = a!==null && b!==null && a>=0.6 && b>=0.6;
+    if(ok) s++; else if(i===0) continue; else break;
+  }
+  return s;
+}
 async function toggle(hid){
   const d = todayStr(), key = logKey(hid, me.uid, d);
   const ref = doc(db,'couples',profile.coupleId,'logs',key);
   if(logs.has(key)) await deleteDoc(ref);
-  else await setDoc(ref, { habitId:hid, uid:me.uid, date:d });
+  else{
+    const left = hOf(me.uid).filter(h => h.start<=d && !logs.has(logKey(h.id,me.uid,d)));
+    const finishing = left.length===1 && left[0].id===hid;
+    await setDoc(ref, { habitId:hid, uid:me.uid, date:d });
+    if(finishing){ confetti(); toast('All done for today. Well done! 🎉'); }
+  }
 }
 async function addHabit(name, cat, weight, owner){
   if(!name.trim()) return;
@@ -338,19 +430,364 @@ async function bumpGoal(g, by){
 }
 async function removeGoal(id){ if(confirm('Delete this goal?')) await deleteDoc(doc(cref(),'goals',id)); }
 
+
+/* ---------- prayers & meals ---------- */
+const PRAYERS=[['fajr','Fajr'],['dhuhr','Dhuhr'],['asr','Asr'],['maghrib','Maghrib'],['isha','Isha']];
+const NAFL=[['tahajjud','Tahajjud (night prayer)']];
+const MEALS=[['breakfast','Breakfast'],['lunch','Lunch'],['dinner','Dinner']];
+const TEA=[['morning','Morning tea'],['evening','Evening tea']];
+const lk=(pre,id,uid,d)=>logKey(pre+id,uid,d);
+const has=(pre,id,uid,d)=>logs.has(lk(pre,id,uid,d));
+const cnt=(pre,list,uid,d)=>list.filter(([id])=>has(pre,id,uid,d)).length;
+function fullStreak(pre,list,uid){
+  const days=lastDays(60).reverse(); let n=0;
+  for(let i=0;i<days.length;i++){ if(cnt(pre,list,uid,days[i])===list.length) n++; else if(i===0) continue; else break; }
+  return n;
+}
+function listFor(pre,id){ return pre==='meal_'?MEALS:((pre==='tea_'||id==='tahajjud')?null:PRAYERS); }
+async function toggleLog(pre,id){
+  const d=todayStr(), key=lk(pre,id,me.uid,d), list=listFor(pre,id);
+  const ref=doc(db,'couples',profile.coupleId,'logs',key);
+  if(logs.has(key)){ await deleteDoc(ref); return; }
+  const before = list ? cnt(pre,list,me.uid,d) : -1;
+  await setDoc(ref,{habitId:pre+id,uid:me.uid,date:d});
+  if(list && before===list.length-1) toast(pre==='meal_' ? 'All three meals done. Well done! 🍽️' : 'Alhamdulillah, all five done today 🤲');
+}
+function togetherRows(pre,list,pid,okIcon){
+  const d=todayStr();
+  return list.map(([id,label])=>{
+    const a=has(pre,id,me.uid,d), b=pid?has(pre,id,pid,d):false;
+    let st='<span class="st muted" title="Not yet">○</span>';
+    if(pid){
+      if(a&&b) st=`<span class="st" title="You both did it">${okIcon}</span>`;
+      else if(a||b) st='<span class="st" title="Only one of you so far">😢</span>';
+    }else if(a) st=`<span class="st">${okIcon}</span>`;
+    return `<div class="trow"><span>${label}</span>
+      <button class="tick ${a?'on':''}" style="--c:var(--me)" data-l="${pre}|${id}" aria-label="${label}: ${a?'done, tap to undo':'tap when done'}">${a?'💗':''}</button>
+      <span class="tick ro ${b?'on':''}" style="--c:var(--you)" aria-label="${pid?esc(nameOf(pid)):'Partner'}: ${b?'done':'not yet'}">${b?'💗':''}</span>${st}</div>`;
+  }).join('');
+}
+function theadRow(pid){
+  return `<div class="trow thead"><span></span><span>${esc(nameOf(me.uid))}</span><span>${pid?esc(nameOf(pid)):'Partner'}</span><span></span></div>`;
+}
+function statsCard(uid,color,pre,list,extra){
+  const total=list.length*7;
+  const week=lastDays(7).reduce((a,x)=>a+cnt(pre,list,uid,x),0);
+  const strip=lastDays(7).map(x=>{ const c=cnt(pre,list,uid,x);
+    return `<i title="${x}: ${c}/${list.length}" style="${c?`background:${color};opacity:${(0.25+0.75*c/list.length).toFixed(2)};border-color:transparent`:''}"></i>`; }).join('');
+  return `<div class="card person"><h3><span class="dot" style="background:${color}"></span>${esc(nameOf(uid))}${uid===me.uid?' <span class="tag">you</span>':''}</h3>
+    <div class="stats"><div><span class="big" style="color:${color}">${week}/${total}</span><small>this week</small></div>
+    <div><span class="big">${fullStreak(pre,list,uid)}</span><small>days with all ${list.length}</small></div>${extra||''}</div>
+    <p class="muted" style="margin:0;font-size:14px">Last 7 days</p>
+    <div class="heat" style="grid-template-columns:repeat(7,1fr)">${strip}</div></div>`;
+}
+function bindTicks(el){ el.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{ const [pre,id]=b.dataset.l.split('|'); toggleLog(pre,id); }); }
+const waitingCard='<div class="card muted">Your partner’s stats will show here once they join.</div>';
+
+function renderPray(pid){
+  const taha=uid=>`<div><span class="big">${lastDays(7).filter(x=>has('prayer_','tahajjud',uid,x)).length}/7</span><small>tahajjud nights</small></div>`;
+  $('v-pray').innerHTML=`
+    <div class="card"><h3>Today’s prayers</h3>
+      <p class="muted" style="margin:4px 0 8px">Tap your circle when you have prayed. 🥰 means you both prayed, 😢 means only one of you has.</p>
+      ${theadRow(pid)}${togetherRows('prayer_',PRAYERS,pid,'🥰')}
+      <p class="muted" style="margin:14px 0 0">Extra</p>
+      ${togetherRows('prayer_',NAFL,pid,'🥰')}
+    </div>
+    <div class="grid2" style="margin-top:14px">${statsCard(me.uid,'var(--me)','prayer_',PRAYERS,taha(me.uid))}
+      ${pid?statsCard(pid,'var(--you)','prayer_',PRAYERS,taha(pid)):waitingCard}</div>
+    <p class="muted" style="margin-top:12px">Prayers don’t change the readiness bar. This is just for you two to cheer each other on.</p>`;
+  bindTicks($('v-pray'));
+}
+const teaStat=uid=>`<div><span class="big">${lastDays(7).reduce((a,x)=>a+cnt('tea_',TEA,uid,x),0)}/14</span><small>teas this week</small></div>`;
+function renderMeals(pid){
+  $('v-meals').innerHTML=`
+    <div class="card"><h3>Today’s meals</h3>
+      <p class="muted" style="margin:4px 0 8px">Tap your circle when you have eaten. 😊 means you both ate, 😢 means only one of you has.</p>
+      ${theadRow(pid)}${togetherRows('meal_',MEALS,pid,'😊')}
+      <p class="muted" style="margin:14px 0 0">Tea</p>
+      ${togetherRows('tea_',TEA,pid,'😊')}
+    </div>
+    <div class="grid2" style="margin-top:14px">${statsCard(me.uid,'var(--me)','meal_',MEALS,teaStat(me.uid))}
+      ${pid?statsCard(pid,'var(--you)','meal_',MEALS,teaStat(pid)):waitingCard}</div>`;
+  bindTicks($('v-meals'));
+}
+
+/* ---------- sleep ---------- */
+const SLEEP_TARGET=7;
+const sleepDoc=(uid,d)=>fun.find(f=>f.id===`sleep_${d}_${uid}`);
+function sleepHours(bed,wake){
+  const [bh,bm]=bed.split(':').map(Number),[wh,wm]=wake.split(':').map(Number);
+  let b=bh*60+bm, w=wh*60+wm; if(w<=b) w+=1440;
+  return Math.round((w-b)/6)/10;
+}
+async function saveSleep(bed,wake){
+  if(!bed||!wake){ toast('Pick both times first'); return; }
+  const d=todayStr();
+  await setDoc(doc(cref(),'fun',`sleep_${d}_${me.uid}`),{kind:'sleep',date:d,uid:me.uid,bed,wake,hours:sleepHours(bed,wake)});
+  toast('Saved');
+}
+async function clearSleep(){ await deleteDoc(doc(cref(),'fun',`sleep_${todayStr()}_${me.uid}`)); }
+const bedMin=x=>{ const [h,m]=x.bed.split(':').map(Number); let t=h*60+m; if(t<12*60) t+=1440; return t; };
+function sleepAvg(uid,ds){ const v=ds.map(d=>sleepDoc(uid,d)).filter(Boolean); return v.length? v.reduce((a,x)=>a+x.hours,0)/v.length : null; }
+function sleepCard(uid,color){
+  const wk=lastDays(7), docs=wk.map(d=>sleepDoc(uid,d)).filter(Boolean);
+  const a=sleepAvg(uid,wk), b=sleepAvg(uid,lastDays(7,7));
+  let steady='–';
+  if(docs.length>=3){ const ms=docs.map(bedMin), mean=ms.reduce((x,y)=>x+y,0)/ms.length;
+    const dev=ms.reduce((x,y)=>x+Math.abs(y-mean),0)/ms.length; steady = dev<=30?'very steady':(dev<=60?'fairly steady':'varies a lot'); }
+  let delta='<span class="delta flat">New</span>';
+  if(a!==null&&b!==null){ const d=Math.round((a-b)*10)/10; delta = d>0?`<span class="delta up">▲ ${d}h vs last week</span>`:(d<0?`<span class="delta down">▼ ${-d}h vs last week</span>`:'<span class="delta flat">Same as last week</span>'); }
+  const bars=wk.map(d=>{ const x=sleepDoc(uid,d); const h=x?Math.max(4,Math.round(Math.min(10,x.hours)/10*100)):0;
+    return `<i title="${d}: ${x?x.hours+'h':'no log'}" style="height:${h}%;background:${color};${x?'':'opacity:.15'}"></i>`; }).join('');
+  return `<div class="card person"><h3><span class="dot" style="background:${color}"></span>${esc(nameOf(uid))}${uid===me.uid?' <span class="tag">you</span>':''}</h3>
+    <div class="stats"><div><span class="big" style="color:${color}">${a===null?'–':a.toFixed(1)+'h'}</span><small>average this week</small></div>
+      <div><span class="big">${docs.length}/7</span><small>nights logged</small></div></div>
+    ${delta}
+    <p class="muted" style="margin:12px 0 0">Bedtime: <b>${steady}</b></p>
+    <div class="sbars" aria-label="Hours slept, last 7 days">${bars}</div></div>`;
+}
+function renderSleep(pid){
+  const d=todayStr(), mine=sleepDoc(me.uid,d), theirs=pid?sleepDoc(pid,d):null;
+  const last=[...fun].filter(f=>f.kind==='sleep'&&f.uid===me.uid).sort((x,y)=>y.date.localeCompare(x.date))[0];
+  const bed=(mine||last||{}).bed||'23:00', wake=(mine||last||{}).wake||'06:00';
+  const ok=x=>x&&x.hours>=SLEEP_TARGET;
+  let face='<span class="st muted">○</span>';
+  if(pid){ if(ok(mine)&&ok(theirs)) face='<span class="st">😊</span>'; else if(ok(mine)||ok(theirs)) face='<span class="st">😢</span>'; }
+  $('v-sleep').innerHTML=`
+    <div class="card"><h3>Last night’s sleep</h3>
+      <p class="muted" style="margin:4px 0 0">Log it in the morning. ${SLEEP_TARGET} hours or more counts as a full night. 😊 means you both got enough, 😢 means only one of you did.</p>
+      <div class="row" style="margin-top:12px">
+        <label>Went to bed <input type="time" id="sb" value="${bed}" style="width:140px"></label>
+        <label>Woke up <input type="time" id="sw" value="${wake}" style="width:140px"></label>
+        <button class="btn" id="ss">Save</button>${mine?'<button class="btn ghost" id="sc">Remove</button>':''}
+      </div>
+      <div class="trow" style="margin-top:14px;grid-template-columns:1fr 90px 90px 44px"><span class="muted">Today</span>
+        <span style="text-align:center;color:var(--me)"><b>${mine?mine.hours+'h':'–'}</b></span>
+        <span style="text-align:center;color:var(--you)"><b>${theirs?theirs.hours+'h':'–'}</b></span>${face}</div>
+      <div class="trow thead" style="grid-template-columns:1fr 90px 90px 44px;border-top:0"><span></span><span>${esc(nameOf(me.uid))}</span><span>${pid?esc(nameOf(pid)):'Partner'}</span><span></span></div>
+    </div>
+    <div class="grid2" style="margin-top:14px">${sleepCard(me.uid,'var(--me)')}${pid?sleepCard(pid,'var(--you)'):waitingCard}</div>`;
+  $('ss').onclick=()=>saveSleep($('sb').value,$('sw').value);
+  if($('sc')) $('sc').onclick=clearSleep;
+}
+
+/* ---------- nudges ---------- */
+let nudgeSeed=Math.floor(Math.random()*100), nudgeCustom=false, nudgeText='';
+const MEAL_DUE={breakfast:10,lunch:15,dinner:21}, PRAYER_DUE={fajr:7,dhuhr:14,asr:17,maghrib:19.5,isha:21};
+const NUDGE_MEAL=[
+  "{nick} you didn’t eat {miss}… pleaseee 🥺 babyyy I’m worried",
+  "{nick}!! {miss} is still waiting for you. Eat something for me, okay? 💗",
+  "Hey {nick}, my heart can’t relax when I know you haven’t had {miss}. Go eat, then tell me what you had 🥹",
+  "{nick}… {miss}. Now. Please. I’ll wait right here, I promise 🫶",
+  "Skipping {miss} is not allowed, {nick} 😤💗 Eat first, then we talk.",
+  "Baby {nick}, take care of my favourite person. Go eat {miss} 🥺"];
+const NUDGE_PRAY=[
+  "{nick} you haven’t prayed {miss} yet… pleaseee 🤲 babyyy I’m worried",
+  "{nick}, {miss} is waiting for you. Pray, and make a dua for us too 🤍",
+  "A little reminder from me, {nick}: {miss} 💗 Allah first, then everything else. Love you.",
+  "{nick}… {miss}. Go now, I’ll be right here when you’re back 🥹",
+  "My heart feels lighter when we both pray, {nick}. Please pray {miss} 🤲",
+  "Don’t make me worry, {nick} 🥺 {miss} is still left."];
+const NUDGE_BOTH=[
+  "{nick}, you haven’t eaten {meal} and haven’t prayed {pray}… babyyy I’m worried 🥺 please look after yourself",
+  "{nick}!! {meal} and {pray} are both still left today. Please do them for me 💗",
+  "Hey {nick}, my heart is worried: no {meal} and no {pray} yet. Go, I’ll be waiting 🥹",
+  "{nick}… food and prayer, both missing today 🥺 Please, my love. {meal}, then {pray}."];
+const nowH=()=>{ const t=new Date(); return t.getHours()+t.getMinutes()/60; };
+const joinAnd=a=>a.length<2?a.join(''):a.slice(0,-1).join(', ')+' and '+a[a.length-1];
+function missedFor(uid){
+  const d=todayStr(), h=nowH();
+  return { meals:MEALS.filter(([id])=>h>=MEAL_DUE[id]&&!has('meal_',id,uid,d)).map(([,l])=>l.toLowerCase()),
+           prayers:PRAYERS.filter(([id])=>h>=PRAYER_DUE[id]&&!has('prayer_',id,uid,d)).map(([,l])=>l) };
+}
+function autoNudge(pid){
+  const m=missedFor(pid); const vars={nick:nickOf(pid)}; let pool;
+  if(m.meals.length&&m.prayers.length){ pool=NUDGE_BOTH; vars.meal=joinAnd(m.meals); vars.pray=joinAnd(m.prayers); }
+  else if(m.meals.length){ pool=NUDGE_MEAL; vars.miss=joinAnd(m.meals); }
+  else if(m.prayers.length){ pool=NUDGE_PRAY; vars.miss=joinAnd(m.prayers); }
+  else return null;
+  return pool[nudgeSeed%pool.length].replace(/\{(\w+)\}/g,(_,k)=>vars[k]);
+}
+async function sendNudge(pid,text){
+  if(!text.trim()) return;
+  await addDoc(collection(cref(),'fun'),{kind:'nudge',from:me.uid,to:pid,text:text.trim(),at:Date.now(),seen:false});
+  nudgeCustom=false; nudgeText=''; nudgeSeed++;
+  toast('Sent 💌');
+}
+function nudgeHTML(pid){
+  if(!pid) return '';
+  const inc=fun.filter(f=>f.kind==='nudge'&&f.to===me.uid&&!f.seen).sort((a,b)=>b.at-a.at).slice(0,3);
+  const incoming=inc.map(f=>`<div class="bubble in" style="--c:var(--you)"><small>${esc(nickOf(f.from))} says</small><p>${esc(f.text)}</p>
+    <div style="margin-top:8px"><button class="btn ghost small" data-seen="${f.id}">Okay, on it 💗</button></div></div>`).join('');
+  const sent=fun.filter(f=>f.kind==='nudge'&&f.from===me.uid).sort((a,b)=>b.at-a.at)[0];
+  const sentLine=sent?`<p class="muted" style="margin:10px 0 0;font-size:14px">Your last message: “${esc(sent.text.length>60?sent.text.slice(0,60)+'…':sent.text)}” · ${sent.seen?'seen 💗':'not seen yet'}</p>`:'';
+  const auto=autoNudge(pid);
+  const bubble = nudgeCustom
+    ? `<div class="bubble out" style="--c:var(--me)"><textarea id="nt" placeholder="Write something sweet for ${esc(nickOf(pid))}">${esc(nudgeText)}</textarea></div>`
+    : `<div class="bubble out" style="--c:var(--me)"><small>You to ${esc(nickOf(pid))}</small><p>${auto?esc(auto):`${esc(nickOf(pid))} is all caught up for now 🥰 You can still send a little message.`}</p></div>`;
+  return `${inc.length?`<div class="card" style="margin-bottom:14px"><h3>From ${esc(nickOf(partnerId()))}</h3>${incoming}</div>`:''}
+    <div class="card" style="margin-bottom:14px"><h3>A little nudge for ${esc(nickOf(pid))}</h3>
+      ${bubble}
+      <div class="row" style="margin-top:12px;justify-content:flex-end">
+        ${(!nudgeCustom&&auto)?'<button class="btn ghost small" id="nn">Another one</button>':''}
+        <button class="btn ghost small" id="nc">${nudgeCustom?(auto?'Use a suggested message':'Cancel'):'Write my own'}</button>
+        ${(nudgeCustom||auto)?'<button class="btn small" id="ns">Send 💌</button>':''}
+      </div>${sentLine}</div>`;
+}
+function bindNudges(){
+  const pid=partnerId(); if(!pid) return;
+  document.querySelectorAll('[data-seen]').forEach(b=>b.onclick=()=>updateDoc(doc(cref(),'fun',b.dataset.seen),{seen:true}));
+  if($('nn')) $('nn').onclick=()=>{ nudgeSeed++; render(); };
+  if($('nc')) $('nc').onclick=()=>{ nudgeCustom=!nudgeCustom; render(); if(nudgeCustom) setTimeout(()=>$('nt')&&$('nt').focus(),50); };
+  if($('nt')) $('nt').oninput=e=>{ nudgeText=e.target.value; };
+  if($('ns')) $('ns').onclick=()=>sendNudge(pid, nudgeCustom ? ($('nt')?$('nt').value:nudgeText) : autoNudge(pid)||'');
+}
+
+/* ---------- quran & duas ---------- */
+const quranDoc=(uid,d)=>fun.find(f=>f.id===`quran_${d}_${uid}`);
+async function saveQuran(what,pages){
+  const d=todayStr(); if(!what.trim()) return;
+  await setDoc(doc(cref(),'fun',`quran_${d}_${me.uid}`),{kind:'quran',date:d,uid:me.uid,what:what.trim(),pages:Math.max(0,Number(pages)||0)});
+  toast('Saved');
+}
+async function clearQuran(){ await deleteDoc(doc(cref(),'fun',`quran_${todayStr()}_${me.uid}`)); }
+function quranStreak(uid){
+  const days=lastDays(60).reverse(); let n=0;
+  for(let i=0;i<days.length;i++){ if(quranDoc(uid,days[i])) n++; else if(i===0) continue; else break; }
+  return n;
+}
+async function addDua(title,text){
+  if(!title.trim()&&!text.trim()) return;
+  await addDoc(collection(cref(),'fun'),{kind:'dua',title:(title.trim()||'Dua'),text:text.trim(),by:me.uid});
+}
+async function deleteDua(id){ if(confirm('Delete this dua?')) await deleteDoc(doc(cref(),'fun',id)); }
+
+function quranCard(uid,color){
+  const week=lastDays(7).filter(x=>quranDoc(uid,x)).length;
+  const pages=lastDays(30).reduce((a,x)=>a+((quranDoc(uid,x)||{}).pages||0),0);
+  const recent=lastDays(7).reverse().map(x=>{ const q=quranDoc(uid,x);
+    return q?`<div class="find" style="border-left:4px solid ${color}"><small class="muted">${x}</small><br>${esc(q.what)}${q.pages?` <span class="tag">${q.pages} pages</span>`:''}</div>`:''; }).join('');
+  return `<div class="card person"><h3><span class="dot" style="background:${color}"></span>${esc(nameOf(uid))}${uid===me.uid?' <span class="tag">you</span>':''}</h3>
+    <div class="stats"><div><span class="big" style="color:${color}">${week}/7</span><small>days read this week</small></div>
+    <div><span class="big">${quranStreak(uid)}</span><small>day streak</small></div>
+    <div><span class="big">${pages}</span><small>pages, 30 days</small></div></div>
+    ${recent||'<p class="muted">Nothing logged in the last 7 days.</p>'}</div>`;
+}
+function renderQuran(pid){
+  const d=todayStr(); const mine=quranDoc(me.uid,d), theirs=pid?quranDoc(pid,d):null;
+  const bothToday = pid && mine && theirs;
+  const duas=fun.filter(f=>f.kind==='dua');
+  $('v-quran').innerHTML=`
+    <div class="card"><h3>Quran today</h3>
+      <p class="muted" style="margin:4px 0 0">${bothToday?'You both read today 🤍':(mine||theirs?'One of you has read today. 😢':'Write what you read today, like “Surah Al-Kahf, ayah 1 to 10”.')}</p>
+      <div class="row" style="margin-top:12px"><input id="qw" style="flex:1;min-width:200px" placeholder="What did you read?" value="${mine?esc(mine.what):''}">
+        <input id="qp" type="number" min="0" style="width:110px" placeholder="Pages" aria-label="Pages read" value="${mine&&mine.pages?mine.pages:''}">
+        <button class="btn" id="qs">Save</button>${mine?'<button class="btn ghost" id="qc">Remove</button>':''}</div>
+      ${pid?`<div class="find" style="border-left:4px solid var(--you)"><b>${esc(nameOf(pid))}</b> ${theirs?`read: ${esc(theirs.what)}${theirs.pages?` <span class="tag">${theirs.pages} pages</span>`:''}`:'<span class="muted">hasn’t logged yet</span>'}</div>`:''}
+    </div>
+    <div class="grid2" style="margin-top:14px">${quranCard(me.uid,'var(--me)')}${pid?quranCard(pid,'var(--you)'):waitingCard}</div>
+    <div class="card" style="margin-top:14px"><h3>Our duas</h3>
+      <p class="muted" style="margin:4px 0 0">Save duas you want to make for each other and for your future together.</p>
+      <div style="display:grid;gap:8px;margin-top:10px">
+        <input id="dt" placeholder="Title, e.g. For our marriage">
+        <textarea id="dx" placeholder="Write the dua here"></textarea>
+        <div><button class="btn" id="da">Add dua</button></div>
+      </div>
+      ${duas.map(f=>`<div class="dua"><b>${esc(f.title)}</b>${f.text?`<p>${esc(f.text)}</p>`:''}
+        <div class="row" style="justify-content:space-between"><small class="muted">added by ${esc(nameOf(f.by))}</small>
+        <button class="btn ghost small" data-dx="${f.id}">Delete</button></div></div>`).join('')||'<p class="muted" style="margin-top:10px">No duas yet. Add your first one above.</p>'}
+    </div>`;
+  $('qs').onclick=()=>saveQuran($('qw').value,$('qp').value);
+  if($('qc')) $('qc').onclick=clearQuran;
+  $('da').onclick=async()=>{ await addDua($('dt').value,$('dx').value); };
+  $('v-quran').querySelectorAll('[data-dx]').forEach(b=>b.onclick=()=>deleteDua(b.dataset.dx));
+}
+
+/* ---------- fun together ---------- */
+const COLOURS=[['Red','#d62839'],['Orange','#f77f00'],['Yellow','#f2b134'],['Green','#2a9d4a'],['Blue','#2563eb'],['Purple','#7a5cff'],
+  ['Pink','#e0457b'],['White','#f5f5f5'],['Black','#1a1a1a'],['Brown','#8b5a2b'],['Teal','#1f9d8f'],['Gold','#d4a017']];
+const IDEAS=['Colour hunt and send photos','Watch a movie together on a call','Cook the same recipe and compare','Send a voice note story of your day',
+  'Play an online game together','Write each other a letter','Make a shared playlist','Quiz each other: 20 questions',
+  'Look at the moon at the same time','Virtual walk on a video call'];
+function colourOfDay(){
+  const t=new Date(); const n=Math.floor(Date.UTC(t.getFullYear(),t.getMonth(),t.getDate())/86400000);
+  return COLOURS[n%COLOURS.length];
+}
+const colourDoc=(uid,d)=>fun.find(f=>f.id===`colour_${d}_${uid}`);
+async function saveFind(name,note){
+  const d=todayStr(); if(!note.trim()) return;
+  await setDoc(doc(cref(),'fun',`colour_${d}_${me.uid}`),{kind:'colour',date:d,uid:me.uid,colour:name,note:note.trim()});
+  toast('Saved');
+}
+async function addIdea(title){ if(!title.trim()) return;
+  await addDoc(collection(cref(),'fun'),{kind:'idea',title:title.trim(),by:me.uid,done:false,doneOn:null}); }
+async function toggleIdea(f){ await updateDoc(doc(cref(),'fun',f.id), f.done?{done:false,doneOn:null}:{done:true,doneOn:todayStr()}); }
+async function deleteIdea(id){ if(confirm('Delete this idea?')) await deleteDoc(doc(cref(),'fun',id)); }
+
+function renderFun(pid){
+  const d=todayStr(); const [cname,chex]=colourOfDay();
+  const mine=colourDoc(me.uid,d), theirs=pid?colourDoc(pid,d):null;
+  const bothDays=new Set(fun.filter(f=>f.kind==='colour').map(f=>f.date)).size
+    ? [...new Set(fun.filter(f=>f.kind==='colour').map(f=>f.date))].filter(x=>pid && colourDoc(me.uid,x) && colourDoc(pid,x)).length : 0;
+  const find=(uid,x,color)=> x ? `<div class="find" style="border-left:4px solid ${color}"><b>${esc(nameOf(uid))}</b> found: ${esc(x.note)}</div>`
+    : `<div class="find muted">${esc(nameOf(uid))} hasn’t found one yet</div>`;
+  const ideas=fun.filter(f=>f.kind==='idea');
+  const todo=ideas.filter(f=>!f.done), done=ideas.filter(f=>f.done);
+  const row=f=>`<div class="item ${f.done?'done':''}" style="--c:var(--you);cursor:default">
+      <button class="box" style="background:${f.done?'var(--bg)':'transparent'};border-color:${f.done?'var(--you)':'var(--line)'};font-size:16px;cursor:pointer" data-id="${f.id}" aria-label="Mark ${f.done?'not done':'done'}">${f.done?'💗':''}</button>
+      <span class="t" style="flex:1">${esc(f.title)}${f.done&&f.doneOn?` <span class="tag">${esc(f.doneOn)}</span>`:''}</span>
+      <button class="btn ghost small" data-x="${f.id}">Delete</button></div>`;
+  const starters=ideas.length===0?`<p class="muted" style="margin:10px 0 0">Tap to add a starter idea:</p><div class="chips">`+
+    IDEAS.map((t,i)=>`<button class="chip" data-s="${i}">${esc(t)}</button>`).join('')+`</div>`:'';
+  $('v-fun').innerHTML=`
+    <div class="card">
+      <div class="row" style="gap:16px"><span class="swatch" style="background:${chex}"></span>
+        <div><h3>Colour hunt: ${cname}</h3>
+        <p class="muted" style="margin:4px 0 0">Find something ${cname.toLowerCase()} near you today and write what it is.</p></div></div>
+      <div class="row" style="margin-top:12px"><input id="cf" style="flex:1;min-width:200px" placeholder="e.g. a teal door on my street" value="${mine?esc(mine.note):''}">
+        <button class="btn" id="cs">Save</button></div>
+      ${find(me.uid,mine,'var(--me)')}
+      ${pid?find(pid,theirs,'var(--you)'):''}
+      ${pid?`<p class="muted" style="margin:12px 0 0">Days you both found a colour: <b>${bothDays}</b></p>`:''}
+    </div>
+    <div class="card" style="margin-top:14px"><h3>Things to do together</h3>
+      <p class="muted" style="margin:4px 0 0">Tick one off when you’ve done it together.</p>
+      <div class="row" style="margin-top:10px"><input id="ii" style="flex:1;min-width:200px" placeholder="Add an idea"><button class="btn" id="ia">Add</button></div>
+      ${starters}
+      <div style="margin-top:8px">${todo.map(row).join('')}</div>
+      ${done.length?`<p class="muted" style="margin:16px 0 0">Done together: <b>${done.length}</b></p><div>${done.map(row).join('')}</div>`:''}
+    </div>`;
+  $('cs').onclick=()=>saveFind(cname,$('cf').value);
+  $('cf').onkeydown=e=>{ if(e.key==='Enter') $('cs').click(); };
+  $('ia').onclick=()=>addIdea($('ii').value);
+  $('ii').onkeydown=e=>{ if(e.key==='Enter') $('ia').click(); };
+  $('v-fun').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>addIdea(IDEAS[b.dataset.s]));
+  $('v-fun').querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>toggleIdea(ideas.find(f=>f.id===b.dataset.id)));
+  $('v-fun').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>deleteIdea(b.dataset.x));
+}
+
 /* ---------- tabs ---------- */
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => { tab=b.dataset.tab; render(); });
 
 /* ---------- render ---------- */
+let pendingRender=false;
+document.addEventListener('focusout',()=>{ if(pendingRender){ pendingRender=false; setTimeout(render,400); } });
 function render(){
   if(!couple || !me) return;
+  const ae=document.activeElement;
+  if(ae && (ae.tagName==='TEXTAREA'||ae.tagName==='INPUT') && $('app').contains(ae)){ pendingRender=true; return; }
   document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab===tab));
-  ['dash','habits','goals'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
+  ['dash','habits','goals','pray','meals','sleep','quran','fun'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
   const pid = partnerId();
   $('title').textContent = pid ? `${nameOf(me.uid)} & ${nameOf(pid)}` : 'Our road to ready';
   if(tab==='dash') renderDash(pid);
   if(tab==='habits') renderHabits(pid);
   if(tab==='goals') renderGoals();
+  if(tab==='pray') renderPray(pid);
+  if(tab==='meals') renderMeals(pid);
+  if(tab==='sleep') renderSleep(pid);
+  if(tab==='quran') renderQuran(pid);
+  if(tab==='fun') renderFun(pid);
 }
 
 function deltaBadge(uid){
@@ -407,21 +844,34 @@ function renderDash(pid){
 
   $('v-dash').innerHTML = `
     ${waiting}
+    ${nudgeHTML(pid)}
     <section class="card road" aria-label="Getting ready for marriage progress">
       <div class="row" style="justify-content:space-between;align-items:flex-end">
         <h2>Getting ready for marriage</h2>
         <div class="pct">${r}%</div>
       </div>
-      <p class="muted" style="margin:6px 0 0">Built from how consistent you both are on your habits (60%) and how far along your shared goals are (40%).</p>
+      <p class="muted" style="margin:6px 0 0">Built from your habits, prayers and Quran, meals and tea, sleep, and your shared goals. Every steady day adds a little.</p>
       <div class="track" role="progressbar" aria-valuenow="${r}" aria-valuemin="0" aria-valuemax="100">
         <div class="fill" style="width:${r}%"></div>
         ${marks}
         <div class="heart" style="left:${Math.max(2,Math.min(98,r))}%">💞</div>
       </div>
     </section>
+    ${pid ? `<div class="card together"><span class="big">${togetherStreak()}</span>
+      <div><b>days in a row doing it together</b><div class="muted" style="font-size:14px">${
+        (dayScore(me.uid,todayStr())===1 && dayScore(pid,todayStr())===1) ? 'You both finished everything today 💞' : 'Counts days when you both finish at least 60% of your habits'}</div></div></div>` : ''}
     <div class="grid2" style="margin-top:14px">
       ${personPanel(me.uid,'var(--me)')}
       ${pid ? personPanel(pid,'var(--you)') : '<div class="card muted">Your partner’s dashboard will show up here once they join.</div>'}
+    </div>
+    <div class="card" style="margin-top:14px"><h3>What counts toward ready</h3>
+      <p class="muted" style="margin:4px 0 8px;font-size:14px">Last 30 days · ${esc(nameOf(me.uid))} on top, ${pid?esc(nameOf(pid)):'partner'} below</p>
+      <div class="bars">${[...COMPS.map(([k,l,w])=>[k,l,w]),['goals','Shared goals',20]].map(([k,l,w])=>{
+        const bar=(u,col)=>{ if(!u) return '<span class="b"></span>';
+          const v = k==='goals' ? goalsScore() : compScore(u,k);
+          return `<span class="b" title="${esc(nameOf(u))}: ${pct(v)}"><i style="width:${v===null?0:Math.round(v*100)}%;background:${col}"></i></span>`; };
+        return `<div class="bar" style="grid-template-columns:130px 1fr 1fr"><span>${l} <small class="muted">${w}%</small></span>${bar(me.uid,'var(--me)')}${k==='goals'?'<span class="b"></span>':bar(pid,'var(--you)')}</div>`;
+      }).join('')}</div>
     </div>
     <div class="grid2" style="margin-top:14px">
       <div class="card"><h3>Growth by area</h3><p class="muted" style="margin:4px 0 8px;font-size:14px">Last 30 days · ${esc(nameOf(me.uid))} on top, ${pid?esc(nameOf(pid)):'partner'} below</p>
@@ -429,13 +879,14 @@ function renderDash(pid){
       <div class="card"><h3>Weekly progress</h3><p class="muted" style="margin:4px 0 0;font-size:14px">Last 8 weeks · taller bars mean more habits done</p>
         <div class="weeks">${weeks}</div><div class="wl">${labels}</div></div>
     </div>`;
+  bindNudges();
 }
 
 function itemHTML(h, uid, readonly, color){
   const done = logs.has(logKey(h.id, uid, todayStr()));
   const tag = h.owner==='both' ? 'both' : h.cat;
   return `<button class="item ${done?'done':''} ${readonly?'ro':''}" style="--c:${color}" ${readonly?'disabled':`data-t="${h.id}"`}>
-    <span class="box">${done?'✓':''}</span><span class="t" style="flex:1">${esc(h.name)}</span><span class="tag">${esc(tag)}</span></button>`;
+    <span class="box">${done?'💗':''}</span><span class="t" style="flex:1">${esc(h.name)}</span><span class="tag">${esc(tag)}</span></button>`;
 }
 
 function renderHabits(pid){
