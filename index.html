@@ -109,6 +109,8 @@
   .bubble small{color:var(--muted)}
   .sbars{display:flex;align-items:flex-end;gap:6px;height:70px;margin-top:8px}
   .sbars i{flex:1;border-radius:5px 5px 0 0;min-height:3px}
+  .sol{padding:10px 12px;border-radius:12px;background:var(--bg);margin-top:8px;border-left:4px solid var(--c)}
+  .trial{margin-top:10px;padding:10px 12px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card)}
   .dua{padding:12px;border-radius:12px;background:var(--bg);margin-top:10px}
   .dua p{margin:6px 0;white-space:pre-wrap}
   .swatch{width:64px;height:64px;border-radius:50%;border:3px solid var(--line);flex:none}
@@ -165,6 +167,7 @@
       <button class="tab" role="tab" data-tab="dash" aria-selected="true">Dashboard</button>
       <button class="tab" role="tab" data-tab="habits" aria-selected="false">Habits</button>
       <button class="tab" role="tab" data-tab="goals" aria-selected="false">Goals</button>
+      <button class="tab" role="tab" data-tab="problems" aria-selected="false">Problems</button>
       <button class="tab" role="tab" data-tab="pray" aria-selected="false">Prayers</button>
       <button class="tab" role="tab" data-tab="meals" aria-selected="false">Meals</button>
       <button class="tab" role="tab" data-tab="sleep" aria-selected="false">Sleep</button>
@@ -175,6 +178,7 @@
     <div id="v-dash"></div>
     <div id="v-habits" class="hidden"></div>
     <div id="v-goals" class="hidden"></div>
+    <div id="v-problems" class="hidden"></div>
     <div id="v-pray" class="hidden"></div>
     <div id="v-meals" class="hidden"></div>
     <div id="v-sleep" class="hidden"></div>
@@ -571,6 +575,153 @@ function renderSleep(pid){
   if($('sc')) $('sc').onclick=clearSleep;
 }
 
+/* ---------- when we meet wishlist ---------- */
+const WISHES=['Pray side by side','Eat biryani together','Go for a long walk','Cook a meal together','Take a photo together','Watch the sunset together'];
+async function addWish(t){ if(!t.trim()) return;
+  await addDoc(collection(cref(),'fun'),{kind:'wish',title:t.trim(),by:me.uid,done:false,doneOn:null}); }
+async function toggleWish(f){ await updateDoc(doc(cref(),'fun',f.id), f.done?{done:false,doneOn:null}:{done:true,doneOn:todayStr()}); }
+async function deleteWish(id){ if(confirm('Delete this one?')) await deleteDoc(doc(cref(),'fun',id)); }
+function wishCard(){
+  const w=fun.filter(f=>f.kind==='wish');
+  const row=f=>`<div class="item ${f.done?'done':''}" style="--c:var(--me);cursor:default">
+      <button class="box" style="background:${f.done?'var(--bg)':'transparent'};border-color:${f.done?'var(--me)':'var(--line)'};font-size:16px;cursor:pointer" data-w="${f.id}" aria-label="Mark ${f.done?'not done':'done'}">${f.done?'💗':''}</button>
+      <span class="t" style="flex:1">${esc(f.title)}${f.done&&f.doneOn?` <span class="tag">${esc(f.doneOn)}</span>`:''}</span>
+      <button class="btn ghost small" data-wx="${f.id}">Delete</button></div>`;
+  const starters=w.length===0?`<p class="muted" style="margin:10px 0 0">Tap to add a starter:</p><div class="chips">`+
+    WISHES.map((t,i)=>`<button class="chip" data-ws="${i}">${esc(t)}</button>`).join('')+`</div>`:'';
+  return `<div class="card" style="margin-top:14px"><h3>When we meet</h3>
+    <p class="muted" style="margin:4px 0 0">Things we want to do together once we’re in the same place. Tap the circle on the day you do it.</p>
+    <div class="row" style="margin-top:10px"><input id="wi" style="flex:1;min-width:200px" placeholder="Add something"><button class="btn" id="wa">Add</button></div>
+    ${starters}
+    <div style="margin-top:8px">${w.filter(f=>!f.done).map(row).join('')}</div>
+    ${w.some(f=>f.done)?`<p class="muted" style="margin:16px 0 0">Done together: <b>${w.filter(f=>f.done).length}</b></p><div>${w.filter(f=>f.done).map(row).join('')}</div>`:''}</div>`;
+}
+function bindWishes(){
+  const el=$('v-fun'); if(!$('wa')) return;
+  $('wa').onclick=()=>addWish($('wi').value);
+  $('wi').onkeydown=e=>{ if(e.key==='Enter') $('wa').click(); };
+  el.querySelectorAll('[data-ws]').forEach(b=>b.onclick=()=>addWish(WISHES[b.dataset.ws]));
+  el.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>toggleWish(fun.find(f=>f.id===b.dataset.w)));
+  el.querySelectorAll('[data-wx]').forEach(b=>b.onclick=()=>deleteWish(b.dataset.wx));
+}
+
+/* ---------- problems and solutions ---------- */
+const dd=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
+const solsOf=pid=>fun.filter(f=>f.kind==='solution'&&f.problemId===pid).sort((a,b)=>a.at-b.at);
+const trialDoc=(sid,uid,d)=>fun.find(f=>f.id===`trial_${sid}_${uid}_${d}`);
+const RESULT={worked:'💗 It worked',partly:'🙂 Partly worked',failed:'😢 It didn’t work'};
+async function addProblem(title,details){
+  if(!title.trim()) return;
+  await addDoc(collection(cref(),'fun'),{kind:'problem',title:title.trim(),details:details.trim(),by:me.uid,status:'open',at:Date.now()});
+  toast('Added');
+}
+async function addSolution(problemId,text){
+  if(!text.trim()) return;
+  await addDoc(collection(cref(),'fun'),{kind:'solution',problemId,text:text.trim(),by:me.uid,at:Date.now(),state:'idea'});
+}
+async function acceptSolution(s,days){
+  await updateDoc(doc(cref(),'fun',s.id),{state:'trying',startedOn:todayStr(),days:Number(days)});
+  await updateDoc(doc(cref(),'fun',s.problemId),{status:'trying'});
+  toast('Accepted. The trial has started 💞');
+}
+async function toggleTrial(s){
+  const d=todayStr(), ref=doc(cref(),'fun',`trial_${s.id}_${me.uid}_${d}`);
+  if(trialDoc(s.id,me.uid,d)) await deleteDoc(ref);
+  else await setDoc(ref,{kind:'trial',solutionId:s.id,uid:me.uid,date:d});
+}
+async function finishTrial(s,result,note){
+  await updateDoc(doc(cref(),'fun',s.id),{state:result,outcomeNote:note.trim(),outcomeOn:todayStr()});
+  await updateDoc(doc(cref(),'fun',s.problemId),{status:result==='worked'?'solved':'open'});
+  toast('Saved');
+}
+async function removeSolution(s){
+  if(!confirm('Delete this solution?')) return;
+  for(const t of fun.filter(f=>f.kind==='trial'&&f.solutionId===s.id)) await deleteDoc(doc(cref(),'fun',t.id));
+  await deleteDoc(doc(cref(),'fun',s.id));
+  if(s.state==='trying') await updateDoc(doc(cref(),'fun',s.problemId),{status:'open'});
+}
+async function removeProblem(p){
+  if(!confirm('Delete this problem and everything saved under it?')) return;
+  for(const s of solsOf(p.id)){
+    for(const t of fun.filter(f=>f.kind==='trial'&&f.solutionId===s.id)) await deleteDoc(doc(cref(),'fun',t.id));
+    await deleteDoc(doc(cref(),'fun',s.id));
+  }
+  await deleteDoc(doc(cref(),'fun',p.id));
+}
+const setStatus=(p,status)=>updateDoc(doc(cref(),'fun',p.id),{status});
+
+function solutionHTML(s,pid){
+  const d=todayStr(), col=s.by===me.uid?'var(--me)':'var(--you)';
+  const head=`<div class="sol" style="--c:${col}"><b>${esc(s.text)}</b> <small class="muted">· ${esc(nameOf(s.by))}</small>`;
+  if(s.state==='idea'){
+    return `${head}<div class="row" style="margin-top:8px">
+      <select data-days style="width:auto"><option value="7">Try for 7 days</option><option value="14">Try for 14 days</option><option value="30">Try for 30 days</option></select>
+      <button class="btn small" data-acc="${s.id}">Accept and try it</button>
+      <button class="btn ghost small" data-sx="${s.id}">Delete</button></div></div>`;
+  }
+  const ct=uid=>fun.filter(f=>f.kind==='trial'&&f.solutionId===s.id&&f.uid===uid).length;
+  if(s.state==='trying'){
+    const passed=dd(s.startedOn,d)+1, day=Math.min(s.days,passed), over=passed>=s.days;
+    const a=!!trialDoc(s.id,me.uid,d), b=pid?!!trialDoc(s.id,pid,d):false;
+    let st='<span class="st muted">○</span>';
+    if(pid){ if(a&&b) st='<span class="st">🥰</span>'; else if(a||b) st='<span class="st">😢</span>'; } else if(a) st='<span class="st">🥰</span>';
+    return `${head} <span class="tag">trying</span>
+      <div class="trial"><b>Day ${day} of ${s.days}</b>${over?' <span class="tag">time’s up, write how it went</span>':''}
+        ${theadRow(pid)}
+        <div class="trow"><span>Did it today</span>
+          <button class="tick ${a?'on':''}" style="--c:var(--me)" data-tr="${s.id}" aria-label="${a?'done, tap to undo':'tap when done'}">${a?'💗':''}</button>
+          <span class="tick ro ${b?'on':''}" style="--c:var(--you)">${b?'💗':''}</span>${st}</div>
+        <p class="muted" style="margin:6px 0 10px;font-size:14px">Days done: ${esc(nameOf(me.uid))} ${ct(me.uid)}${pid?`, ${esc(nameOf(pid))} ${ct(pid)}`:''}</p>
+        <div style="display:grid;gap:8px" data-fin-box>
+          <select data-res><option value="worked">${RESULT.worked}</option><option value="partly">${RESULT.partly}</option><option value="failed">${RESULT.failed}</option></select>
+          <textarea data-note placeholder="How did it go? What did you notice?"></textarea>
+          <div class="row"><button class="btn small" data-fin="${s.id}">Save result</button><button class="btn ghost small" data-sx="${s.id}">Delete</button></div>
+        </div></div></div>`;
+  }
+  return `${head} <span class="tag">${RESULT[s.state]||esc(s.state)}</span>
+    <p class="muted" style="margin:6px 0 0;font-size:14px">Tried ${s.startedOn} for ${s.days} days · days done: ${esc(nameOf(me.uid))} ${ct(me.uid)}${pid?`, ${esc(nameOf(pid))} ${ct(pid)}`:''}</p>
+    ${s.outcomeNote?`<p style="margin:6px 0 0">${esc(s.outcomeNote)}</p>`:''}
+    <div style="margin-top:8px"><button class="btn ghost small" data-sx="${s.id}">Delete</button></div></div>`;
+}
+function problemHTML(p,pid){
+  const sols=solsOf(p.id);
+  const tagText={open:'Open',trying:'Trying a solution',solved:'Solved 💗'}[p.status]||'Open';
+  return `<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div><h3>${esc(p.title)}</h3><small class="muted">raised by ${esc(nameOf(p.by))}</small></div><span class="tag">${tagText}</span></div>
+    ${p.details?`<p style="margin:8px 0 0;white-space:pre-wrap">${esc(p.details)}</p>`:''}
+    <div style="margin-top:10px">${sols.map(s=>solutionHTML(s,pid)).join('')||'<p class="muted" style="margin:0">No solutions yet. Both of you can add ideas.</p>'}</div>
+    <div class="row" style="margin-top:10px"><input class="solin" data-p="${p.id}" style="flex:1;min-width:200px" placeholder="Suggest a solution">
+      <button class="btn small" data-addsol="${p.id}">Add</button></div>
+    <div class="row" style="margin-top:10px">
+      ${p.status==='solved'?`<button class="btn ghost small" data-pstat="${p.id}|open">Reopen</button>`:`<button class="btn ghost small" data-pstat="${p.id}|solved">Mark as solved</button>`}
+      <button class="btn ghost small" data-pdel="${p.id}">Delete problem</button></div></div>`;
+}
+function renderProblems(pid){
+  const ps=fun.filter(f=>f.kind==='problem');
+  const order={trying:0,open:1,solved:2};
+  ps.sort((a,b)=>(order[a.status]??1)-(order[b.status]??1)||b.at-a.at);
+  $('v-problems').innerHTML=`
+    <div class="card"><h3>Add a problem</h3>
+      <p class="muted" style="margin:4px 0 8px">Something bothering you, or something you are both facing. Then you both suggest solutions, accept one, try it for a while, and write down if it worked.</p>
+      <div style="display:grid;gap:8px"><input id="pt" placeholder="What is the problem?">
+        <textarea id="pd" placeholder="Tell more if you want (optional)"></textarea>
+        <div><button class="btn" id="pa">Add problem</button></div></div></div>
+    <div style="display:grid;gap:14px;margin-top:14px">${ps.map(p=>problemHTML(p,pid)).join('')||'<div class="card muted">No problems yet. That’s fine too 🤍</div>'}</div>`;
+  const el=$('v-problems');
+  $('pa').onclick=async()=>{ await addProblem($('pt').value,$('pd').value); };
+  el.querySelectorAll('[data-addsol]').forEach(b=>b.onclick=async()=>{
+    const inp=el.querySelector(`.solin[data-p="${b.dataset.addsol}"]`); await addSolution(b.dataset.addsol,inp.value); });
+  el.querySelectorAll('.solin').forEach(i=>i.onkeydown=e=>{ if(e.key==='Enter') el.querySelector(`[data-addsol="${i.dataset.p}"]`).click(); });
+  el.querySelectorAll('[data-acc]').forEach(b=>b.onclick=()=>{
+    const s=fun.find(f=>f.id===b.dataset.acc); acceptSolution(s,b.parentElement.querySelector('[data-days]').value); });
+  el.querySelectorAll('[data-tr]').forEach(b=>b.onclick=()=>toggleTrial(fun.find(f=>f.id===b.dataset.tr)));
+  el.querySelectorAll('[data-fin]').forEach(b=>b.onclick=()=>{
+    const box=b.closest('[data-fin-box]'); finishTrial(fun.find(f=>f.id===b.dataset.fin),box.querySelector('[data-res]').value,box.querySelector('[data-note]').value); });
+  el.querySelectorAll('[data-sx]').forEach(b=>b.onclick=()=>removeSolution(fun.find(f=>f.id===b.dataset.sx)));
+  el.querySelectorAll('[data-pstat]').forEach(b=>b.onclick=()=>{ const [id,st]=b.dataset.pstat.split('|'); setStatus(fun.find(f=>f.id===id),st); });
+  el.querySelectorAll('[data-pdel]').forEach(b=>b.onclick=()=>removeProblem(fun.find(f=>f.id===b.dataset.pdel)));
+}
+
 /* ---------- nudges ---------- */
 let nudgeSeed=Math.floor(Math.random()*100), nudgeCustom=false, nudgeText='';
 const MEAL_DUE={breakfast:10,lunch:15,dinner:21}, PRAYER_DUE={fajr:7,dhuhr:14,asr:17,maghrib:19.5,isha:21};
@@ -756,7 +907,7 @@ function renderFun(pid){
       ${starters}
       <div style="margin-top:8px">${todo.map(row).join('')}</div>
       ${done.length?`<p class="muted" style="margin:16px 0 0">Done together: <b>${done.length}</b></p><div>${done.map(row).join('')}</div>`:''}
-    </div>`;
+    </div>${wishCard()}`;
   $('cs').onclick=()=>saveFind(cname,$('cf').value);
   $('cf').onkeydown=e=>{ if(e.key==='Enter') $('cs').click(); };
   $('ia').onclick=()=>addIdea($('ii').value);
@@ -764,6 +915,7 @@ function renderFun(pid){
   $('v-fun').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>addIdea(IDEAS[b.dataset.s]));
   $('v-fun').querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>toggleIdea(ideas.find(f=>f.id===b.dataset.id)));
   $('v-fun').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>deleteIdea(b.dataset.x));
+  bindWishes();
 }
 
 /* ---------- tabs ---------- */
@@ -777,12 +929,13 @@ function render(){
   const ae=document.activeElement;
   if(ae && (ae.tagName==='TEXTAREA'||ae.tagName==='INPUT') && $('app').contains(ae)){ pendingRender=true; return; }
   document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab===tab));
-  ['dash','habits','goals','pray','meals','sleep','quran','fun'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
+  ['dash','habits','goals','problems','pray','meals','sleep','quran','fun'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
   const pid = partnerId();
   $('title').textContent = pid ? `${nameOf(me.uid)} & ${nameOf(pid)}` : 'Our road to ready';
   if(tab==='dash') renderDash(pid);
   if(tab==='habits') renderHabits(pid);
   if(tab==='goals') renderGoals();
+  if(tab==='problems') renderProblems(pid);
   if(tab==='pray') renderPray(pid);
   if(tab==='meals') renderMeals(pid);
   if(tab==='sleep') renderSleep(pid);
