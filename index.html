@@ -173,6 +173,7 @@
       <button class="tab" role="tab" data-tab="sleep" aria-selected="false">Sleep</button>
       <button class="tab" role="tab" data-tab="quran" aria-selected="false">Quran &amp; duas</button>
       <button class="tab" role="tab" data-tab="fun" aria-selected="false">Fun together</button>
+      <button class="tab" role="tab" data-tab="jar" aria-selected="false">Love jar</button>
     </div>
 
     <div id="v-dash"></div>
@@ -184,6 +185,7 @@
     <div id="v-sleep" class="hidden"></div>
     <div id="v-quran" class="hidden"></div>
     <div id="v-fun" class="hidden"></div>
+    <div id="v-jar" class="hidden"></div>
   </main>
 </div>
 
@@ -734,6 +736,51 @@ function renderProblems(pid){
   el.querySelectorAll('[data-pdel]').forEach(b=>b.onclick=()=>removeProblem(fun.find(f=>f.id===b.dataset.pdel)));
 }
 
+/* ---------- love jar ---------- */
+const JAR_WHEN=[['any','Anytime'],['miss','Open when you miss me'],['sad','Open when you’re sad'],['happy','Open when you’re happy']];
+const whenLabel=k=>(JAR_WHEN.find(x=>x[0]===k)||JAR_WHEN[0])[1];
+let justOpened=null;
+async function writeNote(text,when,to){
+  if(!text.trim()) return;
+  await addDoc(collection(cref(),'fun'),{kind:'jarnote',text:text.trim(),when,by:me.uid,to,at:Date.now(),opened:false});
+  toast('Into the jar it goes 🫙');
+}
+async function pullNote(when){
+  const pool=fun.filter(f=>f.kind==='jarnote'&&f.to===me.uid&&!f.opened&&(when==='any'||f.when===when||f.when==='any'));
+  if(!pool.length){ toast('No notes waiting for that yet 🥺'); return; }
+  const n=pool[Math.floor(Math.random()*pool.length)];
+  justOpened=n.id;
+  await updateDoc(doc(cref(),'fun',n.id),{opened:true,openedOn:todayStr()});
+}
+function renderJar(pid){
+  if(!pid){ $('v-jar').innerHTML='<div class="card muted">The love jar opens once your partner has joined.</div>'; return; }
+  const waiting=fun.filter(f=>f.kind==='jarnote'&&f.to===me.uid&&!f.opened).length;
+  const written=fun.filter(f=>f.kind==='jarnote'&&f.by===me.uid).length;
+  const opened=fun.filter(f=>f.kind==='jarnote'&&f.to===me.uid&&f.opened).sort((a,b)=>(b.openedOn||'').localeCompare(a.openedOn||'')||b.at-a.at);
+  const just=justOpened&&opened.find(f=>f.id===justOpened);
+  $('v-jar').innerHTML=`
+    <div class="card" style="text-align:center">
+      <div style="font-size:64px;line-height:1.1">🫙</div>
+      <h3 style="margin-top:6px">${waiting?`${waiting} note${waiting>1?'s':''} waiting for you`:'No new notes right now'}</h3>
+      <p class="muted" style="margin:4px 0 12px">You’ve written ${written} for ${esc(nickOf(pid))}</p>
+      <div class="row" style="justify-content:center">
+        <select id="jw" style="width:auto">${JAR_WHEN.map(([k,l])=>`<option value="${k}">${k==='any'?'Any note':l}</option>`).join('')}</select>
+        <button class="btn" id="jp">Pull a note 💌</button>
+      </div>
+      ${just?`<div class="bubble in" style="--c:var(--you);margin:14px auto 0;text-align:left"><small>${esc(whenLabel(just.when))} · from ${esc(nickOf(just.by))}</small><p>${esc(just.text)}</p></div>`:''}
+    </div>
+    <div class="card" style="margin-top:14px"><h3>Write a note for ${esc(nickOf(pid))}</h3>
+      <p class="muted" style="margin:4px 0 8px">Small, sweet, or silly. ${esc(nickOf(pid))} can only read it when they pull it from the jar.</p>
+      <div style="display:grid;gap:8px"><textarea id="jt" placeholder="Write something for later…"></textarea>
+        <select id="jl">${JAR_WHEN.map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select>
+        <div><button class="btn" id="jn">Put it in the jar 🫙</button></div></div></div>
+    <div class="card" style="margin-top:14px"><h3>Notes you’ve opened</h3>
+      ${opened.map(f=>`<div class="find" style="border-left:4px solid var(--you)"><small class="muted">${esc(whenLabel(f.when))} · from ${esc(nickOf(f.by))}${f.openedOn?` · opened ${esc(f.openedOn)}`:''}</small><br>${esc(f.text)}</div>`).join('')||'<p class="muted">Nothing opened yet.</p>'}
+    </div>`;
+  $('jp').onclick=()=>pullNote($('jw').value);
+  $('jn').onclick=async()=>{ await writeNote($('jt').value,$('jl').value,pid); $('jt').value=''; };
+}
+
 /* ---------- nudges ---------- */
 let nudgeSeed=Math.floor(Math.random()*100), nudgeCustom=false, nudgeText='';
 const MEAL_DUE={breakfast:10,lunch:15,dinner:21}, PRAYER_DUE={fajr:7,dhuhr:14,asr:17,maghrib:19.5,isha:21};
@@ -941,7 +988,7 @@ function render(){
   const ae=document.activeElement;
   if(ae && (ae.tagName==='TEXTAREA'||ae.tagName==='INPUT') && $('app').contains(ae)){ pendingRender=true; return; }
   document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab===tab));
-  ['dash','habits','goals','problems','pray','meals','sleep','quran','fun'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
+  ['dash','habits','goals','problems','pray','meals','sleep','quran','fun','jar'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
   const pid = partnerId();
   $('title').textContent = pid ? `${nameOf(me.uid)} & ${nameOf(pid)}` : 'Our road to ready';
   if(tab==='dash') renderDash(pid);
@@ -953,6 +1000,7 @@ function render(){
   if(tab==='sleep') renderSleep(pid);
   if(tab==='quran') renderQuran(pid);
   if(tab==='fun') renderFun(pid);
+  if(tab==='jar') renderJar(pid);
 }
 
 function deltaBadge(uid){
