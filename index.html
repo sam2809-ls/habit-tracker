@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Our Road to Ready</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#e0457b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Road to Ready">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -111,6 +119,10 @@
   .sbars i{flex:1;border-radius:5px 5px 0 0;min-height:3px}
   .sol{padding:10px 12px;border-radius:12px;background:var(--bg);margin-top:8px;border-left:4px solid var(--c)}
   .trial{margin-top:10px;padding:10px 12px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card)}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;z-index:30;padding:16px}
+  .modal .card{width:min(420px,100%)}
+  .quick{display:inline-flex;align-items:center;gap:4px}
+  .quick .x{background:transparent;border:0;color:var(--muted);padding:2px 6px}
   .dua{padding:12px;border-radius:12px;background:var(--bg);margin-top:10px}
   .dua p{margin:6px 0;white-space:pre-wrap}
   .swatch{width:64px;height:64px;border-radius:50%;border:3px solid var(--line);flex:none}
@@ -154,11 +166,11 @@
   <!-- APP -->
   <main id="app" class="hidden">
     <header>
-      <h1 id="title">Our road to ready</h1>
+      <div><h1 id="title">Our road to ready</h1><div class="muted" id="today" style="font-size:14px"></div></div>
       <div class="row">
         <span class="muted" id="codeInfo"></span>
         <button class="btn ghost small" id="editname">Edit my name</button>
-        <button class="btn ghost small" id="editnick">My nickname</button>
+        <button class="btn ghost small" id="editnick">Nicknames</button>
         <button class="btn ghost small" id="signout">Sign out</button>
       </div>
     </header>
@@ -189,6 +201,15 @@
   </main>
 </div>
 
+<div id="nickmodal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="nickh">
+  <div class="card">
+    <h3 id="nickh">Nicknames</h3>
+    <p class="muted" id="nickdesc" style="margin:4px 0 8px"></p>
+    <div id="nicklist"></div>
+    <div class="row" style="margin-top:8px"><input id="nickin" placeholder="Add a nickname" style="flex:1;min-width:160px"><button class="btn small" id="nickadd">Add</button></div>
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost small" id="nickclose">Done</button></div>
+  </div>
+</div>
 <script type="module">
 /* =========================================================
    1) PASTE YOUR FIREBASE CONFIG HERE (Project settings → Your apps → Web app)
@@ -223,7 +244,7 @@ const SUGGEST = [
 const MILESTONES = [[25,'Getting stronger'],[50,'Halfway there'],[75,'Almost ready'],[100,'Ready']];
 
 let me=null, profile=null, couple=null, habits=[], goals=[], fun=[], logs=new Map();
-let unsubs=[], tab='dash';
+let unsubs=[], tab='dash', editHabit=null, editGoal=null, duaIdx=0;
 
 /* ---------- dates ---------- */
 const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -232,7 +253,9 @@ const lastDays = (n, offset=0) => { const out=[]; for(let i=n-1+offset;i>=offset
 
 /* ---------- scoring ---------- */
 const partnerId = () => couple.members.find(u => u !== me.uid) || null;
-const nickOf = uid => (couple.nicks && couple.nicks[uid]) || nameOf(uid);
+const storedNicks = uid => { const a=couple.nicksFor&&couple.nicksFor[uid]; if(Array.isArray(a)) return a; const o=couple.nicks&&couple.nicks[uid]; return o?[o]:[]; };
+const nickList = uid => { const a=storedNicks(uid); return a.length?a:[nameOf(uid)]; };
+const nickOf = (uid,i=0) => { const l=nickList(uid); return l[((i%l.length)+l.length)%l.length]; };
 const nameOf = uid => (couple.names && couple.names[uid]) || 'Partner';
 const hOf = uid => habits.filter(h => h.owner === uid || h.owner === 'both');
 const logKey = (hid, uid, d) => `${hid}_${uid}_${d}`;
@@ -333,15 +356,31 @@ $('editname').onclick = async () => {
     toast('Name updated');
   }catch(e){ toast('Could not update the name. Try again.'); }
 };
-$('editnick').onclick = async () => {
-  const current = (couple && couple.nicks && couple.nicks[me.uid]) || '';
-  const input = prompt('What does your partner call you? This is used in the nudge messages.', current);
-  if(input === null) return;
-  const nick = input.trim();
-  if(!nick) return;
-  try{ await updateDoc(doc(db,'couples',profile.coupleId), { [`nicks.${me.uid}`]: nick }); toast('Nickname saved'); }
-  catch(e){ toast('Could not save the nickname. Try again.'); }
+function renderNicks(){
+  const pid=partnerId(); if(!pid) return;
+  $('nickh').textContent=`Nicknames for ${nameOf(pid)}`;
+  $('nickdesc').textContent='What do you call them? Add as many as you like. Your messages will use them.';
+  const list=storedNicks(pid);
+  $('nicklist').innerHTML = list.map((n,i)=>`<div class="row" style="justify-content:space-between;margin:6px 0"><span>${esc(n)}</span><button class="btn ghost small" data-nr="${i}">Remove</button></div>`).join('') || '<p class="muted">No nicknames yet.</p>';
+  $('nicklist').querySelectorAll('[data-nr]').forEach(b=>b.onclick=async()=>{
+    const next=storedNicks(pid).filter((_,i)=>i!==Number(b.dataset.nr));
+    await updateDoc(doc(db,'couples',profile.coupleId),{[`nicksFor.${pid}`]:next});
+  });
+}
+$('editnick').onclick = () => {
+  if(!partnerId()){ toast('Nicknames unlock once your partner joins'); return; }
+  renderNicks(); $('nickmodal').classList.remove('hidden'); $('nickin').focus();
 };
+$('nickclose').onclick = () => $('nickmodal').classList.add('hidden');
+$('nickmodal').onclick = e => { if(e.target===$('nickmodal')) $('nickmodal').classList.add('hidden'); };
+const addNick = async () => {
+  const pid=partnerId(), n=$('nickin').value.trim(); if(!pid||!n) return;
+  const next=[...new Set([...storedNicks(pid), n])];
+  await updateDoc(doc(db,'couples',profile.coupleId),{[`nicksFor.${pid}`]:next});
+  $('nickin').value='';
+};
+$('nickadd').onclick = addNick;
+$('nickin').onkeydown = e => { if(e.key==='Enter') addNick(); };
 const doSignOut = () => signOut(auth);
 $('signout').onclick = doSignOut; $('signout2').onclick = doSignOut;
 
@@ -387,7 +426,7 @@ function start(){
   const cid = profile.coupleId;
   const base = doc(db,'couples',cid);
   const cutoff = lastDays(70)[0];
-  unsubs.push(onSnapshot(base, s => { couple = s.data(); couple && couple.id===undefined && (couple.id=cid); render(); }));
+  unsubs.push(onSnapshot(base, s => { couple = s.data(); couple && couple.id===undefined && (couple.id=cid); render(); if(!$('nickmodal').classList.contains('hidden')) renderNicks(); }));
   unsubs.push(onSnapshot(collection(base,'habits'), s => { habits = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
   unsubs.push(onSnapshot(collection(base,'fun'), s => { fun = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
   unsubs.push(onSnapshot(collection(base,'goals'), s => { goals = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
@@ -781,6 +820,76 @@ function renderJar(pid){
   $('jn').onclick=async()=>{ await writeNote($('jt').value,$('jl').value,pid); $('jt').value=''; };
 }
 
+/* ---------- dashboard extras: status, dua, prayer and Quran charts ---------- */
+const STATUS_PRESETS=[['📖','Reading'],['✏️','Studying'],['🏫','In class'],['👯','Out with friends'],['🍽️','Eating'],['🕌','Praying'],['🚶','Out and about'],['😴','Sleeping']];
+const statusOf=uid=>fun.find(f=>f.id===`status_${uid}`);
+function ago(t){
+  const m=Math.round((Date.now()-t)/60000);
+  if(m<1) return 'just now'; if(m<60) return m+' min ago';
+  const h=Math.round(m/60); if(h<24) return h+' h ago';
+  return Math.round(h/24)+' d ago';
+}
+async function setNow(emoji,text){
+  if(!text.trim()) return;
+  await setDoc(doc(cref(),'fun',`status_${me.uid}`),{kind:'status',uid:me.uid,emoji:(emoji||'').trim()||'💭',text:text.trim(),at:Date.now()});
+  toast('Status updated');
+}
+async function clearNow(){ await deleteDoc(doc(cref(),'fun',`status_${me.uid}`)); }
+async function saveQuick(emoji,text){
+  if(!text.trim()) return;
+  await addDoc(collection(cref(),'fun'),{kind:'quick',uid:me.uid,emoji:(emoji||'').trim()||'💭',text:text.trim()});
+  toast('Saved as a quick option');
+}
+function statusHTML(pid){
+  const mine=statusOf(me.uid), theirs=pid?statusOf(pid):null;
+  const quick=fun.filter(f=>f.kind==='quick'&&f.uid===me.uid);
+  const bub=(u,x,cls,col)=>`<div class="bubble ${cls}" style="--c:${col}"><small>${esc(nickOf(u))} is</small>
+    <p>${x?`${esc(x.emoji)} ${esc(x.text)} <small>· ${ago(x.at)}</small>`:'<span class="muted">not sharing right now</span>'}</p></div>`;
+  return `<div class="card" style="margin-bottom:14px"><h3>What we’re up to</h3>
+    ${pid?bub(pid,theirs,'in','var(--you)'):''}
+    ${bub(me.uid,mine,'out','var(--me)')}
+    <p class="muted" style="margin:14px 0 0;font-size:14px">Tell ${pid?esc(nickOf(pid)):'your partner'} what you’re doing now:</p>
+    <div class="chips">${STATUS_PRESETS.map(([e,t])=>`<button class="chip" data-ne="${e}" data-nt="${esc(t)}">${e} ${esc(t)}</button>`).join('')}
+      ${quick.map(q=>`<span class="quick"><button class="chip" data-ne="${esc(q.emoji)}" data-nt="${esc(q.text)}">${esc(q.emoji)} ${esc(q.text)}</button><button class="x" data-qx="${q.id}" aria-label="Remove quick option">×</button></span>`).join('')}</div>
+    <div class="row" style="margin-top:10px"><input id="ne" style="width:64px;text-align:center" placeholder="😊" aria-label="Emoji" maxlength="8">
+      <input id="nw" style="flex:1;min-width:160px" placeholder="Something else, e.g. making biryani">
+      <button class="btn small" id="nset">Set</button><button class="btn ghost small" id="nsave">Save as quick option</button>${mine?'<button class="btn ghost small" id="nclr">Clear</button>':''}</div></div>`;
+}
+function bindStatus(){
+  const el=$('v-dash'); if(!$('nset')) return;
+  el.querySelectorAll('[data-ne]').forEach(b=>b.onclick=()=>setNow(b.dataset.ne,b.dataset.nt));
+  el.querySelectorAll('[data-qx]').forEach(b=>b.onclick=()=>deleteDoc(doc(cref(),'fun',b.dataset.qx)));
+  $('nset').onclick=async()=>{ await setNow($('ne').value,$('nw').value); };
+  $('nw').onkeydown=e=>{ if(e.key==='Enter') $('nset').click(); };
+  $('nsave').onclick=async()=>{ await saveQuick($('ne').value,$('nw').value); };
+  if($('nclr')) $('nclr').onclick=clearNow;
+}
+function duaBubbleHTML(){
+  const duas=fun.filter(f=>f.kind==='dua').sort((a,b)=>a.id.localeCompare(b.id));
+  if(!duas.length) return `<div class="bubble in" style="--c:var(--gold);max-width:none;margin:0 0 14px"><small>🤲 Dua</small><p>No duas saved yet. Add one in the Quran &amp; duas tab 🤍</p></div>`;
+  const n=Math.floor(Date.now()/864e5), d=duas[(n+duaIdx)%duas.length];
+  return `<div class="bubble in" style="--c:var(--gold);max-width:none;margin:0 0 14px"><small>🤲 Dua · ${esc(d.title)} · added by ${esc(nameOf(d.by))}</small>
+    <p>${esc(d.text||d.title)}</p>${duas.length>1?'<div style="margin-top:8px"><button class="btn ghost small" id="dnext">Next dua</button></div>':''}</div>`;
+}
+function bindDua(){ if($('dnext')) $('dnext').onclick=()=>{ duaIdx++; render(); }; }
+function spiritChartHTML(pid){
+  const ds=lastDays(14), uids=pid?[me.uid,pid]:[me.uid], cols=['var(--me)','var(--you)'];
+  const lab=ds.map(d=>`<span>${d.slice(8)}</span>`).join('');
+  const maxPages=Math.max(10,...ds.flatMap(d=>uids.map(u=>(quranDoc(u,d)||{}).pages||0)));
+  const pray=ds.map(d=>`<div class="wk">${uids.map((u,i)=>{ const c=cnt('prayer_',PRAYERS,u,d);
+    return `<i title="${esc(nameOf(u))}, ${d}: ${c}/5" style="height:${c?c*20:3}%;background:${cols[i]};${c?'':'opacity:.25'}"></i>`; }).join('')}</div>`).join('');
+  const qur=ds.map(d=>`<div class="wk">${uids.map((u,i)=>{ const q=quranDoc(u,d);
+    const h=q?(q.pages?Math.max(12,Math.round(q.pages/maxPages*100)):35):3;
+    return `<i title="${esc(nameOf(u))}, ${d}: ${q?(q.pages?q.pages+' pages':'read'):'not read'}" style="height:${h}%;background:${cols[i]};${q?'':'opacity:.25'}"></i>`; }).join('')}</div>`).join('');
+  const sum=u=>`${esc(nameOf(u))}: ${lastDays(7).reduce((a,x)=>a+cnt('prayer_',PRAYERS,u,x),0)}/35 prayers, ${lastDays(7).filter(x=>quranDoc(u,x)).length} days of Quran this week`;
+  return `<div class="grid2" style="margin-top:14px">
+    <div class="card"><h3>Prayers</h3><p class="muted" style="margin:4px 0 0;font-size:14px">Last 14 days · taller means more of the five</p>
+      <div class="weeks">${pray}</div><div class="wl">${lab}</div></div>
+    <div class="card"><h3>Quran</h3><p class="muted" style="margin:4px 0 0;font-size:14px">Last 14 days · taller means more pages</p>
+      <div class="weeks">${qur}</div><div class="wl">${lab}</div></div></div>
+    <p class="muted" style="margin:8px 2px 0;font-size:14px">${uids.map(sum).join(' · ')}</p>`;
+}
+
 /* ---------- nudges ---------- */
 let nudgeSeed=Math.floor(Math.random()*100), nudgeCustom=false, nudgeText='';
 const MEAL_DUE={breakfast:10,lunch:15,dinner:21}, PRAYER_DUE={fajr:7,dhuhr:14,asr:17,maghrib:19.5,isha:21};
@@ -811,7 +920,7 @@ function missedFor(uid){
            prayers:PRAYERS.filter(([id])=>h>=PRAYER_DUE[id]&&!has('prayer_',id,uid,d)).map(([,l])=>l) };
 }
 function autoNudge(pid){
-  const m=missedFor(pid); const vars={nick:nickOf(pid)}; let pool;
+  const m=missedFor(pid); const vars={nick:nickOf(pid,nudgeSeed)}; let pool;
   if(m.meals.length&&m.prayers.length){ pool=NUDGE_BOTH; vars.meal=joinAnd(m.meals); vars.pray=joinAnd(m.prayers); }
   else if(m.meals.length){ pool=NUDGE_MEAL; vars.miss=joinAnd(m.meals); }
   else if(m.prayers.length){ pool=NUDGE_PRAY; vars.miss=joinAnd(m.prayers); }
@@ -990,6 +1099,7 @@ function render(){
   document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab===tab));
   ['dash','habits','goals','problems','pray','meals','sleep','quran','fun','jar'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
   const pid = partnerId();
+  $('today').textContent = new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   $('title').textContent = pid ? `${nameOf(me.uid)} & ${nameOf(pid)}` : 'Our road to ready';
   if(tab==='dash') renderDash(pid);
   if(tab==='habits') renderHabits(pid);
@@ -1058,6 +1168,8 @@ function renderDash(pid){
   $('v-dash').innerHTML = `
     ${waiting}
     ${nudgeHTML(pid)}
+    ${statusHTML(pid)}
+    ${duaBubbleHTML()}
     <section class="card road" aria-label="Getting ready for marriage progress">
       <div class="row" style="justify-content:space-between;align-items:flex-end">
         <h2>Getting ready for marriage</h2>
@@ -1086,13 +1198,14 @@ function renderDash(pid){
         return `<div class="bar" style="grid-template-columns:130px 1fr 1fr"><span>${l} <small class="muted">${w}%</small></span>${bar(me.uid,'var(--me)')}${k==='goals'?'<span class="b"></span>':bar(pid,'var(--you)')}</div>`;
       }).join('')}</div>
     </div>
+    ${spiritChartHTML(pid)}
     <div class="grid2" style="margin-top:14px">
       <div class="card"><h3>Growth by area</h3><p class="muted" style="margin:4px 0 8px;font-size:14px">Last 30 days · ${esc(nameOf(me.uid))} on top, ${pid?esc(nameOf(pid)):'partner'} below</p>
         <div class="bars">${catRows || '<p class="muted">Add habits to see your areas.</p>'}</div></div>
       <div class="card"><h3>Weekly progress</h3><p class="muted" style="margin:4px 0 0;font-size:14px">Last 8 weeks · taller bars mean more habits done</p>
         <div class="weeks">${weeks}</div><div class="wl">${labels}</div></div>
     </div>`;
-  bindNudges();
+  bindNudges(); bindStatus(); bindDua();
 }
 
 function itemHTML(h, uid, readonly, color){
@@ -1125,19 +1238,36 @@ function renderHabits(pid){
         ${theirs.map(h=>itemHTML(h,pid,true,'var(--you)')).join('') || '<p class="muted">Nothing to show yet.</p>'}</div>
     </div>
     <div class="card" style="margin-top:14px"><h3>Manage habits</h3>
-      ${habits.map(h=>`<div class="row" style="justify-content:space-between;margin-top:8px"><span>${esc(h.name)} <span class="tag">${h.owner==='both'?'both':esc(nameOf(h.owner))}</span></span>
-        <button class="btn ghost small" data-del="${h.id}">Delete</button></div>`).join('') || '<p class="muted">Nothing here yet.</p>'}
+      ${habits.map(h=> editHabit===h.id ? `<div class="form" style="grid-template-columns:2fr 1.2fr 1.2fr auto auto" data-hform="${h.id}">
+          <input data-hn value="${esc(h.name)}" aria-label="Habit name">
+          <select data-hc>${CATS.map(c=>`<option ${c===h.cat?'selected':''}>${c}</option>`).join('')}</select>
+          <select data-hw><option value="1" ${h.weight==1?'selected':''}>Nice to have</option><option value="2" ${h.weight==2?'selected':''}>Important</option><option value="3" ${h.weight==3?'selected':''}>Core</option></select>
+          <button class="btn small" data-hsave="${h.id}">Save</button><button class="btn ghost small" data-hcancel>Cancel</button></div>`
+        : `<div class="row" style="justify-content:space-between;margin-top:8px"><span>${esc(h.name)} <span class="tag">${h.owner==='both'?'both':esc(nameOf(h.owner))}</span> <span class="tag">${esc(h.cat)}</span></span>
+          <span class="row"><button class="btn ghost small" data-hedit="${h.id}">Edit</button><button class="btn ghost small" data-del="${h.id}">Delete</button></span></div>`).join('') || '<p class="muted">Nothing here yet.</p>'}
     </div>`;
   $('ha').onclick = async () => { await addHabit($('hn').value,$('hc').value,$('hw').value,$('ho').value); };
   $('hn').onkeydown = e => { if(e.key==='Enter') $('ha').click(); };
   $('v-habits').querySelectorAll('[data-t]').forEach(b => b.onclick = () => toggle(b.dataset.t));
   $('v-habits').querySelectorAll('[data-del]').forEach(b => b.onclick = () => removeHabit(b.dataset.del));
+  $('v-habits').querySelectorAll('[data-hedit]').forEach(b => b.onclick = () => { editHabit=b.dataset.hedit; render(); });
+  $('v-habits').querySelectorAll('[data-hcancel]').forEach(b => b.onclick = () => { editHabit=null; render(); });
+  $('v-habits').querySelectorAll('[data-hsave]').forEach(b => b.onclick = async () => {
+    const f=b.closest('[data-hform]'); const name=f.querySelector('[data-hn]').value.trim(); if(!name) return;
+    await updateDoc(doc(cref(),'habits',b.dataset.hsave),{name,cat:f.querySelector('[data-hc]').value,weight:Number(f.querySelector('[data-hw]').value)});
+    editHabit=null; render(); toast('Habit updated');
+  });
   $('v-habits').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { const s=SUGGEST[b.dataset.s]; addHabit(s[0],s[1],s[2],me.uid); });
 }
 
 function renderGoals(){
   const pid=partnerId();
   const goalCard=g=>{
+    if(editGoal===g.id) return `<div class="card"><h3>Edit goal</h3><div class="form" style="grid-template-columns:2fr 1.2fr 1fr auto auto" data-gform="${g.id}">
+      <input data-gn value="${esc(g.title)}" aria-label="Goal title">
+      <select data-gc>${CATS.map(c=>`<option ${c===g.cat?'selected':''}>${c}</option>`).join('')}</select>
+      <input data-gt type="number" min="1" value="${g.target}" aria-label="Target number">
+      <button class="btn small" data-gsave="${g.id}">Save</button><button class="btn ghost small" data-gcancel>Cancel</button></div></div>`;
     const p=Math.round(goalProgress(g)*100), t=g.target;
     const btns=`<button class="btn ghost small" data-g="${g.id}" data-by="-1" aria-label="Minus one">−1</button>
       <button class="btn small" data-g="${g.id}" data-by="1" aria-label="Plus one">+1</button>`;
@@ -1154,7 +1284,7 @@ function renderGoals(){
     }
     return `<div class="card"><div class="row" style="justify-content:space-between">
         <div><b>${esc(g.title)}</b> <span class="tag">${esc(g.cat)}</span> <span class="tag">${g.mode==='each'?'each of us':'together'}</span></div>
-        <button class="btn ghost small" data-gd="${g.id}">Delete</button></div>${body}</div>`;
+        <span class="row"><button class="btn ghost small" data-gedit="${g.id}">Edit</button><button class="btn ghost small" data-gd="${g.id}">Delete</button></span></div>${body}</div>`;
   };
   $('v-goals').innerHTML = `
     <div class="card"><h3>Add a goal</h3>
@@ -1173,8 +1303,16 @@ function renderGoals(){
   $('ga').onclick = () => addGoal($('gt').value,$('gc').value,$('gn').value,$('gm').value);
   $('v-goals').querySelectorAll('[data-g]').forEach(b => b.onclick = () => bumpGoal(goals.find(g=>g.id===b.dataset.g), Number(b.dataset.by)));
   $('v-goals').querySelectorAll('[data-gd]').forEach(b => b.onclick = () => removeGoal(b.dataset.gd));
+  $('v-goals').querySelectorAll('[data-gedit]').forEach(b => b.onclick = () => { editGoal=b.dataset.gedit; render(); });
+  $('v-goals').querySelectorAll('[data-gcancel]').forEach(b => b.onclick = () => { editGoal=null; render(); });
+  $('v-goals').querySelectorAll('[data-gsave]').forEach(b => b.onclick = async () => {
+    const f=b.closest('[data-gform]'); const title=f.querySelector('[data-gn]').value.trim(); if(!title) return;
+    await updateDoc(doc(cref(),'goals',b.dataset.gsave),{title,cat:f.querySelector('[data-gc]').value,target:Math.max(1,Number(f.querySelector('[data-gt]').value)||1)});
+    editGoal=null; render(); toast('Goal updated');
+  });
 }
 
+setInterval(()=>{ if(couple&&me) render(); },60000);
 show('auth');
 </script>
 </body>
