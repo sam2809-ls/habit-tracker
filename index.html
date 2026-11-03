@@ -1290,6 +1290,85 @@ function colourHistoryHTML(pid){
     ${days||'<p class="muted" style="margin:6px 0 0">Earlier days will show up here.</p>'}
     ${dates.length>histDays?'<div style="margin-top:14px"><button class="btn ghost small" id="hmore">Show older days</button></div>':''}</div>`;
 }
+/* ---------- colour collage ---------- */
+let collageColour=null;
+function collageColours(){
+  const m=new Map();
+  for(const f of fun) if(f.kind==='colour'&&f.photoId&&f.colour) m.set(f.colour,(m.get(f.colour)||0)+1);
+  return m;
+}
+function colourCollageHTML(){
+  const m=collageColours(), names=COLOURS.map(c=>c[0]).filter(n=>m.has(n));
+  if(!names.length) return `<div class="card" style="margin-top:14px"><h3>Colour collage</h3><p class="muted" style="margin:6px 0 0">Add photos to your finds and you can download a collage for each colour.</p></div>`;
+  if(!names.includes(collageColour)) collageColour=names.includes(colourOfDay()[0])?colourOfDay()[0]:names[0];
+  return `<div class="card" style="margin-top:14px"><h3>Colour collage</h3>
+    <p class="muted" style="margin:4px 0 0">Pick a colour and get one picture with all the photos you both found for it.</p>
+    <div class="row" style="margin-top:10px"><select id="colsel" style="width:auto;flex:1;min-width:180px" aria-label="Colour">${names.map(n=>`<option value="${n}" ${n===collageColour?'selected':''}>${n} (${m.get(n)} photo${m.get(n)>1?'s':''})</option>`).join('')}</select>
+      <button class="btn" id="colgo">Make collage</button></div></div>`;
+}
+const loadImg=src=>new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; });
+async function photoData(id){
+  if(photoCache[id]) return photoCache[id];
+  const snap=await getDoc(doc(cref(),'photos',id));
+  if(!snap.exists()) throw new Error('missing');
+  photoCache[id]=snap.data().data; return photoCache[id];
+}
+async function makeCollage(name){
+  let list=fun.filter(f=>f.kind==='colour'&&f.photoId&&f.colour===name).sort((a,b)=>(a.at||0)-(b.at||0));
+  if(!list.length){ toast('No photos for that colour yet'); return; }
+  const MAXP=30, trimmed=list.length>MAXP; if(trimmed) list=list.slice(-MAXP);
+  toast('Making your collage…');
+  const items=[];
+  for(const f of list){ try{ items.push({f,img:await loadImg(await photoData(f.photoId))}); }catch(e){} }
+  if(!items.length){ toast('Could not load the photos'); return; }
+  const hex=(COLOURS.find(c=>c[0]===name)||['','#e0457b'])[1];
+  const n=items.length, cols=n===1?1:(n<=4?2:3), cell=440, gap=16, cap=56, head=150;
+  const rows=Math.ceil(n/cols), W=cols*cell+(cols+1)*gap, H=head+rows*(cell+cap)+(rows+1)*gap;
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
+  const g=c.getContext('2d');
+  g.fillStyle='#ffffff'; g.fillRect(0,0,W,H);
+  g.fillStyle=hex; g.fillRect(0,0,W,head);
+  const lum=(parseInt(hex.slice(1,3),16)*299+parseInt(hex.slice(3,5),16)*587+parseInt(hex.slice(5,7),16)*114)/1000;
+  g.fillStyle=lum>150?'#24203b':'#ffffff';
+  g.textAlign='left'; g.textBaseline='alphabetic';
+  g.font='700 54px "Bricolage Grotesque","DM Sans",sans-serif';
+  g.fillText('Our '+name.toLowerCase()+' finds',gap+8,76);
+  g.font='500 28px "DM Sans",sans-serif';
+  const pid=partnerId();
+  g.fillText(nameOf(me.uid)+(pid?' & '+nameOf(pid):'')+' · '+n+' photo'+(n>1?'s':''),gap+8,120);
+  items.forEach(({f,img},i)=>{
+    const col=i%cols, row=Math.floor(i/cols);
+    const x=gap+col*(cell+gap), y=head+gap+row*(cell+cap+gap);
+    const k=Math.max(cell/img.width,cell/img.height), sw=cell/k, sh=cell/k;
+    g.drawImage(img,(img.width-sw)/2,(img.height-sh)/2,sw,sh,x,y,cell,cell);
+    g.fillStyle=f.uid===me.uid?'#e0457b':'#1f9d8f'; g.fillRect(x,y+cell,cell,6);
+    g.fillStyle='#24203b'; g.font='500 24px "DM Sans",sans-serif';
+    let t=(nameOf(f.uid)+(f.note?': '+f.note:'')).trim();
+    if(g.measureText(t).width>cell-8){ while(t.length>1&&g.measureText(t+'…').width>cell-8) t=t.slice(0,-1); t+='…'; }
+    g.fillText(t,x+4,y+cell+38);
+  });
+  c.toBlob(b=>{ if(!b){ toast('Could not make the collage'); return; } showCollage(b,name,trimmed); },'image/jpeg',0.88);
+}
+function showCollage(blob,name,trimmed){
+  const url=URL.createObjectURL(blob), fname='colour-hunt-'+name.toLowerCase()+'.jpg';
+  const file=new File([blob],fname,{type:'image/jpeg'});
+  const canShare=!!(navigator.canShare&&navigator.canShare({files:[file]}));
+  const m=document.createElement('div'); m.className='modal';
+  m.innerHTML=`<div class="card"><h3>Our ${esc(name.toLowerCase())} collage</h3>
+    <img src="${url}" alt="Collage of your ${esc(name.toLowerCase())} finds" style="width:100%;border-radius:12px;margin-top:10px">
+    ${trimmed?'<p class="muted" style="font-size:14px;margin:8px 0 0">This shows your latest 30 photos.</p>':''}
+    <p class="muted" style="font-size:14px;margin:8px 0 0">If the download doesn’t start, press and hold the picture to save it.</p>
+    <div class="row" style="justify-content:flex-end;margin-top:12px">
+      ${canShare?'<button class="btn ghost small" id="cshare">Share</button>':''}
+      <a class="btn small" href="${url}" download="${esc(fname)}" style="text-decoration:none">Download</a>
+      <button class="btn ghost small" id="cclose">Close</button></div></div>`;
+  document.body.appendChild(m);
+  const close=()=>{ m.remove(); URL.revokeObjectURL(url); };
+  m.querySelector('#cclose').onclick=close;
+  m.onclick=e=>{ if(e.target===m) close(); };
+  const sh=m.querySelector('#cshare');
+  if(sh) sh.onclick=()=>navigator.share({files:[file],title:'Our '+name.toLowerCase()+' finds'}).catch(()=>{});
+}
 function bindColour(cname){
   if(!$('cs')) return;
   $('cs').onclick=()=>addFind(cname,$('cf').value);
@@ -1304,6 +1383,7 @@ function bindColour(cname){
   };
   if($('cpx')) $('cpx').onclick=()=>{ pendingPhoto=null; render(); };
   $('v-fun').querySelectorAll('[data-fdel]').forEach(b=>b.onclick=()=>deleteFind(b.dataset.fdel));
+  if($('colgo')){ $('colsel').onchange=e=>{ collageColour=e.target.value; }; $('colgo').onclick=()=>makeCollage($('colsel').value); }
   if($('hmore')) $('hmore').onclick=()=>{ histDays+=14; render(); };
 }
 const COLOUR_LEVELS=[[0,'Just starting'],[10,'Colour spotters'],[30,'Sharp eyes'],[60,'Colour masters'],[100,'Rainbow legends']];
@@ -1349,6 +1429,7 @@ function renderFun(pid){
     ${colourTodayHTML(pid,cname,chex)}
     ${colourStatsHTML(pid)}
     ${colourHistoryHTML(pid)}
+    ${colourCollageHTML()}
     <div class="card" style="margin-top:14px"><h3>Things to do together</h3>
       <p class="muted" style="margin:4px 0 0">Tick one off when you’ve done it together.</p>
       <div class="row" style="margin-top:10px"><input id="ii" style="flex:1;min-width:200px" placeholder="Add an idea"><button class="btn" id="ia">Add</button></div>
