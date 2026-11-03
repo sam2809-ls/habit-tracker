@@ -233,7 +233,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
-  onSnapshot, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  onSnapshot, arrayUnion, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -926,11 +926,48 @@ function feedItems(){
   }
   return out.sort((a,b)=>b.at-a.at).slice(0,30);
 }
+
+/* service worker: needed so notifications work on Android Chrome */
+let swReg=null;
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(r=>swReg=r).catch(()=>{});
+
 function showAlert(it){
   if(document.hidden && 'Notification' in window && Notification.permission==='granted'){
-    try{ new Notification(it.title,{body:it.text||'',icon:'icon-192.png'}); }catch(e){}
-  }else toast(it.title);
+    const o={body:it.text||'',icon:'icon-192.png',badge:'icon-192.png',tag:it.key};
+    if(swReg) swReg.showNotification(it.title,o).catch(()=>{});
+    else { try{ new Notification(it.title,o); }catch(e){} }
+  } else toast(it.title);
 }
+
+/* check for new items every 3 minutes, as a backup when the live listener stalls */
+async function pollNow(){
+  if(!couple||!me||!profile||!profile.coupleId) return;
+  try{
+    const s=await getDocs(collection(cref(),'fun'));
+    fun=s.docs.map(d=>({id:d.id,...d.data()}));
+    checkAlerts(); render();
+  }catch(e){}
+}
+setInterval(pollNow,3*60*1000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pollNow(); });
+
+/* keep-alive: a looping near-silent sound stops Chrome from freezing the app in the background */
+let keepEl=null;
+function silentWavURL(){
+  const n=8000,b=new ArrayBuffer(44+n*2),v=new DataView(b);
+  const w=(o,s)=>[...s].forEach((c,i)=>v.setUint8(o+i,c.charCodeAt(0)));
+  w(0,'RIFF');v.setUint32(4,36+n*2,true);w(8,'WAVEfmt ');v.setUint32(16,16,true);
+  v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,16000,true);
+  v.setUint16(32,2,true);v.setUint16(34,16,true);w(36,'data');v.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++) v.setInt16(44+i*2,(i%2?1:-1),true);
+  return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));
+}
+function toggleKeepAlive(){
+  if(keepEl){ keepEl.pause(); keepEl=null; toast('Keep-alive off'); renderNotif(); return; }
+  keepEl=new Audio(silentWavURL()); keepEl.loop=true; keepEl.volume=0.01;
+  keepEl.play().then(()=>{ toast('Keep-alive on'); renderNotif(); }).catch(()=>{ keepEl=null; toast('Tap again to allow'); });
+}
+
 function checkAlerts(){
   if(!me||!couple||!funLoaded) return;
   const items=feedItems();
@@ -944,23 +981,12 @@ function updateBell(){
   document.title=(n?`(${n}) `:'')+'Our Road to Ready';
   try{ if(navigator.setAppBadge){ n?navigator.setAppBadge(n):navigator.clearAppBadge(); } }catch(e){}
 }
-function pingTopic(topic,title,msg){
-  if(!topic) return;
-  try{ fetch(`https://ntfy.sh/${topic}?title=${encodeURIComponent(title)}&tags=heart`,{method:'POST',body:msg||''}).catch(()=>{}); }catch(e){}
-}
 const pn=()=>nickOf(me.uid,Math.floor(Math.random()*1000));
-function notifyPartner(title,msg){
-  const pid=partnerId(); if(!pid||!couple.ntfy) return;
-  pingTopic(couple.ntfy[pid],title,msg);
-}
-function makeTopic(){
-  const a=new Uint8Array(10); crypto.getRandomValues(a);
-  return 'rr-'+[...a].map(x=>x.toString(36).padStart(2,'0')).join('').slice(0,18);
-}
+/* ntfy removed: partner now gets updates through the app itself */
+function notifyPartner(){}
 function renderNotif(){
   const pid=partnerId();
   const items=feedItems().slice(0,15);
-  const mine=couple.ntfy&&couple.ntfy[me.uid], theirs=pid&&couple.ntfy&&couple.ntfy[pid];
   const canAlert='Notification' in window;
   const perm=canAlert?Notification.permission:'unsupported';
   $('notifbody').innerHTML=`
@@ -972,17 +998,12 @@ function renderNotif(){
       perm==='granted'?'<p style="margin:0">Alerts are on 💗</p>':
       perm==='denied'?'<p class="muted" style="margin:0">Alerts are blocked in your browser settings for this site.</p>':
       '<p class="muted" style="margin:0">This device doesn’t support alerts in the browser.</p>'}
-    <h3 style="margin-top:20px">Phone pings when the app is closed</h3>
-    <p class="muted" style="margin:4px 0 8px">Uses a free app called <b>ntfy</b>. Each of you does this once. Only short messages are sent, like “Luqu is now 📖”.</p>
-    ${mine?`<p style="margin:0 0 6px">1. Install the free <b>ntfy</b> app on your phone.<br>2. Open it, tap <b>+</b>, and paste this name. Leave the server as it is.</p>
-      <div class="mono">${esc(mine)}</div>
-      <div class="row" style="margin-top:10px"><button class="btn small" id="ncopy">Copy name</button><button class="btn ghost small" id="ntest">Send myself a test ping</button></div>`
-      :'<button class="btn small" id="ncreate">Set up my phone pings</button>'}
-    ${pid?`<p class="muted" style="margin:12px 0 0;font-size:14px">${esc(nickOf(pid))}: ${theirs?'ready to get pings 💗':'hasn’t set up pings yet'}</p>`:''}`;
+    <h3 style="margin-top:20px">Keep running in background</h3>
+    <p class="muted" style="margin:4px 0 8px">Turn this on and leave the app in the background (don’t swipe it away). It checks for updates every few minutes.</p>
+    <button class="btn small" id="nkeep">${keepEl?'Turn keep-alive off':'Turn keep-alive on'}</button>
+    ${pid?`<p class="muted" style="margin:12px 0 0;font-size:14px">Each of you needs to do this on your own phone.</p>`:''}`;
   if($('nperm')) $('nperm').onclick=async()=>{ try{ await Notification.requestPermission(); }catch(e){} renderNotif(); };
-  if($('ncreate')) $('ncreate').onclick=async()=>{ await updateDoc(doc(db,'couples',profile.coupleId),{[`ntfy.${me.uid}`]:makeTopic()}); };
-  if($('ncopy')) $('ncopy').onclick=()=>{ try{ navigator.clipboard.writeText(mine); toast('Copied'); }catch(e){ toast('Copy it by hand'); } };
-  if($('ntest')) $('ntest').onclick=()=>{ pingTopic(mine,'Test ping 💗','If you see this, pings work!'); toast('Test sent'); };
+  if($('nkeep')) $('nkeep').onclick=toggleKeepAlive;
 }
 $('bell').onclick=()=>{ markSeen(); updateBell(); renderNotif(); $('notifmodal').classList.remove('hidden'); };
 $('notifclose').onclick=()=>$('notifmodal').classList.add('hidden');
