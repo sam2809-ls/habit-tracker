@@ -962,11 +962,31 @@ function silentWavURL(){
   for(let i=0;i<n;i++) v.setInt16(44+i*2,(i%2?1:-1),true);
   return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));
 }
-function toggleKeepAlive(){
-  if(keepEl){ keepEl.pause(); keepEl=null; toast('Keep-alive off'); renderNotif(); return; }
-  keepEl=new Audio(silentWavURL()); keepEl.loop=true; keepEl.volume=0.01;
-  keepEl.play().then(()=>{ toast('Keep-alive on'); renderNotif(); }).catch(()=>{ keepEl=null; toast('Tap again to allow'); });
+let keepWanted=false;
+try{ keepWanted=localStorage.getItem('rr_keep')==='1'; }catch(e){}
+function startKeep(){
+  if(keepEl) return Promise.resolve();
+  const a=new Audio(silentWavURL()); a.loop=true; a.volume=0.01;
+  a.addEventListener('pause',()=>{ if(keepEl===a && keepWanted) a.play().catch(()=>{}); });
+  return a.play().then(()=>{ keepEl=a; }).catch(()=>{});
 }
+function toggleKeepAlive(){
+  if(keepEl){
+    const a=keepEl; keepEl=null; keepWanted=false;
+    try{ localStorage.setItem('rr_keep','0'); }catch(e){}
+    a.pause(); toast('Keep-alive off'); renderNotif(); return;
+  }
+  keepWanted=true;
+  try{ localStorage.setItem('rr_keep','1'); }catch(e){}
+  startKeep().then(()=>{ toast(keepEl?'Keep-alive on':'Tap again to allow'); renderNotif(); });
+}
+/* after a reload, switch it back on at the first tap */
+document.addEventListener('pointerdown',()=>{
+  if(keepWanted && !keepEl) startKeep().then(()=>{ if(keepEl) renderNotif(); });
+},{passive:true});
+document.addEventListener('visibilitychange',()=>{
+  if(keepWanted && keepEl && keepEl.paused) keepEl.play().catch(()=>{});
+});
 
 function checkAlerts(){
   if(!me||!couple||!funLoaded) return;
