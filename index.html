@@ -120,7 +120,8 @@
   .sol{padding:10px 12px;border-radius:12px;background:var(--bg);margin-top:8px;border-left:4px solid var(--c)}
   .trial{margin-top:10px;padding:10px 12px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card)}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;z-index:30;padding:16px}
-  .modal .card{width:min(420px,100%)}
+  .modal .card{width:min(460px,100%);max-height:88vh;overflow:auto}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--bg);padding:8px 10px;border-radius:8px;word-break:break-all}
   .quick{display:inline-flex;align-items:center;gap:4px}
   .quick .x{background:transparent;border:0;color:var(--muted);padding:2px 6px}
   .dua{padding:12px;border-radius:12px;background:var(--bg);margin-top:10px}
@@ -169,6 +170,7 @@
       <div><h1 id="title">Our road to ready</h1><div class="muted" id="today" style="font-size:14px"></div></div>
       <div class="row">
         <span class="muted" id="codeInfo"></span>
+        <button class="btn ghost small" id="bell" aria-label="Updates">🔔<span id="bellcount"></span></button>
         <button class="btn ghost small" id="editname">Edit my name</button>
         <button class="btn ghost small" id="editnick">Nicknames</button>
         <button class="btn ghost small" id="signout">Sign out</button>
@@ -201,6 +203,10 @@
   </main>
 </div>
 
+<div id="notifmodal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Updates and notifications">
+  <div class="card"><div id="notifbody"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost small" id="notifclose">Done</button></div></div>
+</div>
 <div id="nickmodal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="nickh">
   <div class="card">
     <h3 id="nickh">Nicknames</h3>
@@ -408,7 +414,7 @@ $('join').onclick = async () => {
 };
 
 onAuthStateChanged(auth, async user => {
-  unsubs.forEach(u=>u()); unsubs=[];
+  unsubs.forEach(u=>u()); unsubs=[]; alertKeys=null; funLoaded=false;
   if(!user){ me=null; show('auth'); return; }
   me = user;
   let snap = await getDoc(doc(db,'users',user.uid));
@@ -422,13 +428,14 @@ onAuthStateChanged(auth, async user => {
 
 /* ---------- live data ---------- */
 function start(){
+  alertKeys=null; funLoaded=false;
   show('app');
   const cid = profile.coupleId;
   const base = doc(db,'couples',cid);
   const cutoff = lastDays(70)[0];
-  unsubs.push(onSnapshot(base, s => { couple = s.data(); couple && couple.id===undefined && (couple.id=cid); render(); if(!$('nickmodal').classList.contains('hidden')) renderNicks(); }));
+  unsubs.push(onSnapshot(base, s => { couple = s.data(); couple && couple.id===undefined && (couple.id=cid); checkAlerts(); render(); if(!$('nickmodal').classList.contains('hidden')) renderNicks(); if(!$('notifmodal').classList.contains('hidden')) renderNotif(); }));
   unsubs.push(onSnapshot(collection(base,'habits'), s => { habits = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
-  unsubs.push(onSnapshot(collection(base,'fun'), s => { fun = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
+  unsubs.push(onSnapshot(collection(base,'fun'), s => { fun = s.docs.map(d=>({id:d.id,...d.data()})); funLoaded=true; checkAlerts(); render(); }));
   unsubs.push(onSnapshot(collection(base,'goals'), s => { goals = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
   unsubs.push(onSnapshot(query(collection(base,'logs'), where('date','>=',cutoff)), s => {
     logs = new Map(s.docs.map(d=>[d.id, d.data()])); render();
@@ -631,7 +638,8 @@ function renderSleep(pid){
 /* ---------- when we meet wishlist ---------- */
 const WISHES=['Pray side by side','Eat biryani together','Go for a long walk','Cook a meal together','Take a photo together','Watch the sunset together'];
 async function addWish(t){ if(!t.trim()) return;
-  await addDoc(collection(cref(),'fun'),{kind:'wish',title:t.trim(),by:me.uid,done:false,doneOn:null}); }
+  await addDoc(collection(cref(),'fun'),{kind:'wish',title:t.trim(),by:me.uid,done:false,doneOn:null,at:Date.now()});
+  notifyPartner(`${nickOf(me.uid)} added to When we meet`,t.trim()); }
 async function toggleWish(f){ await updateDoc(doc(cref(),'fun',f.id), f.done?{done:false,doneOn:null}:{done:true,doneOn:todayStr()}); }
 async function deleteWish(id){ if(confirm('Delete this one?')) await deleteDoc(doc(cref(),'fun',id)); }
 function wishCard(){
@@ -666,15 +674,18 @@ const RESULT={worked:'💗 It worked',partly:'🙂 Partly worked',failed:'😢 I
 async function addProblem(title,details){
   if(!title.trim()) return;
   await addDoc(collection(cref(),'fun'),{kind:'problem',title:title.trim(),details:details.trim(),by:me.uid,status:'open',at:Date.now()});
+  notifyPartner(`${nickOf(me.uid)} added a problem`,'Open the Problems tab to help 🤍');
   toast('Added');
 }
 async function addSolution(problemId,text){
   if(!text.trim()) return;
   await addDoc(collection(cref(),'fun'),{kind:'solution',problemId,text:text.trim(),by:me.uid,at:Date.now(),state:'idea'});
+  notifyPartner(`${nickOf(me.uid)} suggested a solution`,'Open the Problems tab 🤍');
 }
 async function acceptSolution(s,days){
   await updateDoc(doc(cref(),'fun',s.id),{state:'trying',startedOn:todayStr(),days:Number(days)});
   await updateDoc(doc(cref(),'fun',s.problemId),{status:'trying'});
+  notifyPartner(`${nickOf(me.uid)} accepted a solution`,'The trial has started 💞');
   toast('Accepted. The trial has started 💞');
 }
 async function toggleTrial(s){
@@ -685,6 +696,7 @@ async function toggleTrial(s){
 async function finishTrial(s,result,note){
   await updateDoc(doc(cref(),'fun',s.id),{state:result,outcomeNote:note.trim(),outcomeOn:todayStr()});
   await updateDoc(doc(cref(),'fun',s.problemId),{status:result==='worked'?'solved':'open'});
+  notifyPartner(`${nickOf(me.uid)} saved a trial result`,RESULT[result]||'');
   toast('Saved');
 }
 async function removeSolution(s){
@@ -782,6 +794,7 @@ let justOpened=null;
 async function writeNote(text,when,to){
   if(!text.trim()) return;
   await addDoc(collection(cref(),'fun'),{kind:'jarnote',text:text.trim(),when,by:me.uid,to,at:Date.now(),opened:false});
+  notifyPartner(`${nickOf(me.uid)} left you a note 🫙`,'Pull it from the love jar');
   toast('Into the jar it goes 🫙');
 }
 async function pullNote(when){
@@ -832,6 +845,7 @@ function ago(t){
 async function setNow(emoji,text){
   if(!text.trim()) return;
   await setDoc(doc(cref(),'fun',`status_${me.uid}`),{kind:'status',uid:me.uid,emoji:(emoji||'').trim()||'💭',text:text.trim(),at:Date.now()});
+  notifyPartner(`${nickOf(me.uid)} is now ${(emoji||'').trim()||'💭'}`,text.trim());
   toast('Status updated');
 }
 async function clearNow(){ await deleteDoc(doc(cref(),'fun',`status_${me.uid}`)); }
@@ -890,6 +904,88 @@ function spiritChartHTML(pid){
     <p class="muted" style="margin:8px 2px 0;font-size:14px">${uids.map(sum).join(' · ')}</p>`;
 }
 
+/* ---------- notifications ---------- */
+let alertKeys=null, funLoaded=false;
+const lastSeenTs=()=>{ try{ return Number(localStorage.getItem('rr_seen_'+me.uid)||0); }catch(e){ return 0; } };
+const markSeen=()=>{ try{ localStorage.setItem('rr_seen_'+me.uid,String(Date.now())); }catch(e){} };
+function feedItems(){
+  const pid=partnerId(); if(!pid||!couple) return [];
+  const who=nickOf(pid), out=[];
+  for(const f of fun){
+    if(!f.at) continue;
+    let t=null;
+    if(f.kind==='nudge'&&f.to===me.uid) t=[`${who} sent you a nudge 💌`,f.text];
+    else if(f.kind==='status'&&f.uid===pid) t=[`${who} is now ${f.emoji}`,f.text];
+    else if(f.kind==='problem'&&f.by===pid) t=[`${who} added a problem`,f.title];
+    else if(f.kind==='solution'&&f.by===pid) t=[`${who} suggested a solution`,f.text];
+    else if(f.kind==='jarnote'&&f.to===me.uid) t=[`${who} left you a note 🫙`,'Pull it from the love jar'];
+    else if(f.kind==='dua'&&f.by===pid) t=[`${who} added a dua 🤲`,f.title];
+    else if(f.kind==='wish'&&f.by===pid) t=[`${who} added to When we meet`,f.title];
+    if(t) out.push({key:f.id+'@'+f.at,at:f.at,title:t[0],text:t[1]});
+  }
+  return out.sort((a,b)=>b.at-a.at).slice(0,30);
+}
+function showAlert(it){
+  if(document.hidden && 'Notification' in window && Notification.permission==='granted'){
+    try{ new Notification(it.title,{body:it.text||'',icon:'icon-192.png'}); }catch(e){}
+  }else toast(it.title);
+}
+function checkAlerts(){
+  if(!me||!couple||!funLoaded) return;
+  const items=feedItems();
+  if(alertKeys===null){ alertKeys=new Set(items.map(i=>i.key)); return; }
+  for(const it of items){ if(!alertKeys.has(it.key)){ alertKeys.add(it.key); showAlert(it); } }
+}
+function updateBell(){
+  if(!couple||!me||!$('bellcount')) return;
+  const seen=lastSeenTs(), n=feedItems().filter(i=>i.at>seen).length;
+  $('bellcount').textContent=n?` ${n}`:'';
+  document.title=(n?`(${n}) `:'')+'Our Road to Ready';
+  try{ if(navigator.setAppBadge){ n?navigator.setAppBadge(n):navigator.clearAppBadge(); } }catch(e){}
+}
+function pingTopic(topic,title,msg){
+  if(!topic) return;
+  try{ fetch(`https://ntfy.sh/${topic}?title=${encodeURIComponent(title)}&tags=heart`,{method:'POST',body:msg||''}).catch(()=>{}); }catch(e){}
+}
+function notifyPartner(title,msg){
+  const pid=partnerId(); if(!pid||!couple.ntfy) return;
+  pingTopic(couple.ntfy[pid],title,msg);
+}
+function makeTopic(){
+  const a=new Uint8Array(10); crypto.getRandomValues(a);
+  return 'rr-'+[...a].map(x=>x.toString(36).padStart(2,'0')).join('').slice(0,18);
+}
+function renderNotif(){
+  const pid=partnerId();
+  const items=feedItems().slice(0,15);
+  const mine=couple.ntfy&&couple.ntfy[me.uid], theirs=pid&&couple.ntfy&&couple.ntfy[pid];
+  const canAlert='Notification' in window;
+  const perm=canAlert?Notification.permission:'unsupported';
+  $('notifbody').innerHTML=`
+    <h3>Updates</h3>
+    ${items.length?items.map(i=>`<div class="find"><b>${esc(i.title)}</b>${i.text?`<br>${esc(i.text)}`:''}<br><small class="muted">${ago(i.at)}</small></div>`).join(''):'<p class="muted">Nothing new yet.</p>'}
+    <h3 style="margin-top:20px">Alerts on this device</h3>
+    <p class="muted" style="margin:4px 0 8px">Pops up when something new arrives while the app is open or in the background.</p>
+    ${perm==='default'?'<button class="btn small" id="nperm">Turn on alerts</button>':
+      perm==='granted'?'<p style="margin:0">Alerts are on 💗</p>':
+      perm==='denied'?'<p class="muted" style="margin:0">Alerts are blocked in your browser settings for this site.</p>':
+      '<p class="muted" style="margin:0">This device doesn’t support alerts in the browser.</p>'}
+    <h3 style="margin-top:20px">Phone pings when the app is closed</h3>
+    <p class="muted" style="margin:4px 0 8px">Uses a free app called <b>ntfy</b>. Each of you does this once. Only short messages are sent, like “Luqu is now 📖”.</p>
+    ${mine?`<p style="margin:0 0 6px">1. Install the free <b>ntfy</b> app on your phone.<br>2. Open it, tap <b>+</b>, and paste this name. Leave the server as it is.</p>
+      <div class="mono">${esc(mine)}</div>
+      <div class="row" style="margin-top:10px"><button class="btn small" id="ncopy">Copy name</button><button class="btn ghost small" id="ntest">Send myself a test ping</button></div>`
+      :'<button class="btn small" id="ncreate">Set up my phone pings</button>'}
+    ${pid?`<p class="muted" style="margin:12px 0 0;font-size:14px">${esc(nickOf(pid))}: ${theirs?'ready to get pings 💗':'hasn’t set up pings yet'}</p>`:''}`;
+  if($('nperm')) $('nperm').onclick=async()=>{ try{ await Notification.requestPermission(); }catch(e){} renderNotif(); };
+  if($('ncreate')) $('ncreate').onclick=async()=>{ await updateDoc(doc(db,'couples',profile.coupleId),{[`ntfy.${me.uid}`]:makeTopic()}); };
+  if($('ncopy')) $('ncopy').onclick=()=>{ try{ navigator.clipboard.writeText(mine); toast('Copied'); }catch(e){ toast('Copy it by hand'); } };
+  if($('ntest')) $('ntest').onclick=()=>{ pingTopic(mine,'Test ping 💗','If you see this, pings work!'); toast('Test sent'); };
+}
+$('bell').onclick=()=>{ markSeen(); updateBell(); renderNotif(); $('notifmodal').classList.remove('hidden'); };
+$('notifclose').onclick=()=>$('notifmodal').classList.add('hidden');
+$('notifmodal').onclick=e=>{ if(e.target===$('notifmodal')) $('notifmodal').classList.add('hidden'); };
+
 /* ---------- nudges ---------- */
 let nudgeSeed=Math.floor(Math.random()*100), nudgeCustom=false, nudgeText='';
 const MEAL_DUE={breakfast:10,lunch:15,dinner:21}, PRAYER_DUE={fajr:7,dhuhr:14,asr:17,maghrib:19.5,isha:21};
@@ -930,6 +1026,7 @@ function autoNudge(pid){
 async function sendNudge(pid,text){
   if(!text.trim()) return;
   await addDoc(collection(cref(),'fun'),{kind:'nudge',from:me.uid,to:pid,text:text.trim(),at:Date.now(),seen:false});
+  notifyPartner(`${nickOf(me.uid)} sent you a nudge 💌`,'Open Road to Ready to read it');
   nudgeCustom=false; nudgeText=''; nudgeSeed++;
   toast('Sent 💌');
 }
@@ -977,7 +1074,8 @@ function quranStreak(uid){
 }
 async function addDua(title,text){
   if(!title.trim()&&!text.trim()) return;
-  await addDoc(collection(cref(),'fun'),{kind:'dua',title:(title.trim()||'Dua'),text:text.trim(),by:me.uid});
+  await addDoc(collection(cref(),'fun'),{kind:'dua',title:(title.trim()||'Dua'),text:text.trim(),by:me.uid,at:Date.now()});
+  notifyPartner(`${nickOf(me.uid)} added a dua 🤲`,'Open Quran & duas');
 }
 async function deleteDua(id){ if(confirm('Delete this dua?')) await deleteDoc(doc(cref(),'fun',id)); }
 
@@ -1099,6 +1197,7 @@ function render(){
   document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab===tab));
   ['dash','habits','goals','problems','pray','meals','sleep','quran','fun','jar'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
   const pid = partnerId();
+  updateBell();
   $('today').textContent = new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   $('title').textContent = pid ? `${nameOf(me.uid)} & ${nameOf(pid)}` : 'Our road to ready';
   if(tab==='dash') renderDash(pid);
