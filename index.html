@@ -147,7 +147,14 @@
   @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
   .conf{position:fixed;top:-12px;width:10px;height:14px;border-radius:2px;z-index:20;pointer-events:none;animation:fall 1.9s ease-in forwards}
   @keyframes fall{to{transform:translateY(105vh) rotate(720deg);opacity:.9}}
-  @media (prefers-reduced-motion: reduce){.fill,.heart{transition:none}.conf{display:none}.kit{animation:none}}
+  @media (prefers-reduced-motion: reduce){.fill,.heart{transition:none}.conf{display:none}.kit{animation:none}.wisp,.imp-in{animation:none}}
+  .mb{display:block;height:5px;width:74px;border-radius:9px;background:var(--bg);overflow:hidden;margin-top:3px}
+  .mb i{display:block;height:100%;border-radius:9px}
+  #v-kitten .kit{cursor:pointer}
+  .wisp{animation:wisp 5s ease-in-out infinite}
+  @keyframes wisp{0%,100%{opacity:.45}50%{opacity:1}}
+  .imp-in{animation:impb 3.4s ease-in-out infinite}
+  @keyframes impb{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 </style>
 </head>
 <body>
@@ -506,16 +513,16 @@ async function addHabit(name, cat, weight, owner){
 async function removeHabit(id){ if(confirm('Delete this habit? Past progress for it will stop counting.')) await deleteDoc(doc(cref(),'habits',id)); }
 async function addGoal(title, cat, target, mode){
   if(!title.trim()) return;
-  await addDoc(collection(cref(),'goals'), { title:title.trim(), cat, target:Math.max(1,Number(target)||1), mode:mode||'together', current:0, counts:{} });
+  await addDoc(collection(cref(),'goals'), { title:title.trim(), cat, target:Math.max(1,Number(target)||1), mode:mode||'together', current:0, counts:{}, touched:Date.now() });
 }
 async function bumpGoal(g, by){
   if(g.mode==='each'){
     const cur = Math.max(0, Math.min(g.target, ((g.counts||{})[me.uid]||0)+by));
-    await updateDoc(doc(cref(),'goals',g.id), { [`counts.${me.uid}`]: cur });
+    await updateDoc(doc(cref(),'goals',g.id), { [`counts.${me.uid}`]: cur, touched:Date.now() });
     return;
   }
   const cur = Math.max(0, Math.min(g.target, (g.current||0)+by));
-  await updateDoc(doc(cref(),'goals',g.id), { current:cur });
+  await updateDoc(doc(cref(),'goals',g.id), { current:cur, touched:Date.now() });
 }
 async function removeGoal(id){ if(confirm('Delete this goal?')) await deleteDoc(doc(cref(),'goals',id)); }
 
@@ -1546,51 +1553,120 @@ async function toggleCare(key){
     toast('The kitten says thank you 🐱💗');
   }
 }
-function kittenSVG(stage,mood,name,size){
-  const sc=[0.5,0.62,0.74,0.86,0.95,1][stage]||1;
-  const dk='#24203b', fur='#f58a1f', belly='#ffe3c2', pink='#f7a8b8';
-  const eyes = mood==='sleepy'
-    ? `<path d="M-23 -84 h15 M8 -84 h15" stroke="${dk}" stroke-width="4" stroke-linecap="round" fill="none"/>`
-    : mood==='happy'
-      ? `<path d="M-23 -83 q8 -11 16 0 M7 -83 q8 -11 16 0" stroke="${dk}" stroke-width="4" fill="none" stroke-linecap="round"/>`
-      : `<circle cx="-15" cy="-84" r="6" fill="${dk}"/><circle cx="15" cy="-84" r="6" fill="${dk}"/><circle cx="-13" cy="-86" r="2" fill="#fff"/><circle cx="17" cy="-86" r="2" fill="#fff"/>`;
-  const mouth = mood==='sleepy'
-    ? `<path d="M-6 -65 q6 4 12 0" stroke="${dk}" stroke-width="3" fill="none" stroke-linecap="round"/>`
-    : `<path d="M0 -69 q-6 8 -13 3 M0 -69 q6 8 13 3" stroke="${dk}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
-  const extra = mood==='happy'
-    ? `<text x="150" y="48" font-size="22">💗</text><text x="34" y="62" font-size="16">✨</text>`
-    : (mood==='sleepy' ? `<text x="140" y="50" font-size="22" fill="#6f6a8a">z</text><text x="156" y="34" font-size="16" fill="#6f6a8a">z</text>` : '');
-  return `<svg class="kit" viewBox="0 0 200 200" width="${size}" height="${size}" role="img" aria-label="${esc(name)} the kitten, feeling ${mood}">
+/* ---------- kitten health: shared, slow and gradual ---------- */
+let pokeMsg=null;
+const HDAYS=14, DECAY=0.82;
+const lerp=(a,b,t)=>a+(b-a)*t, clamp01=x=>Math.max(0,Math.min(1,x));
+const mixHex=(a,b,t)=>{ const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); const x=p(a),y=p(b);
+  return '#'+x.map((n,i)=>Math.round(lerp(n,y[i],t)).toString(16).padStart(2,'0')).join(''); };
+function trackStarts(uid){
+  const first=(...a)=>a.filter(Boolean).sort()[0]||null;
+  return { food:earliestLog(uid,id=>id.startsWith('meal_')||id.startsWith('tea_')),
+    sleep:earliestFun(uid,'sleep'),
+    spirit:first(earliestLog(uid,id=>id.startsWith('prayer_')),earliestFun(uid,'quran')) };
+}
+function dimDay(dim,uid,d,S){
+  if(dim==='habits') return dayScore(uid,d);
+  const s=S[uid][dim]; if(!s||d<s) return null;
+  return dim==='food'?foodDay(uid,d):(dim==='sleep'?sleepDay(uid,d):spiritDay(uid,d));
+}
+/* recent days count most (each older day counts 18% less), so one bad day dents a little and a long streak of bad days sinks it */
+function dimHealth(dim,S){
+  const days=lastDays(HDAYS+1).reverse(), vals=days.map(d=>avg(couple.members.map(u=>dimDay(dim,u,d,S))));
+  let ws=0, wt=0;
+  for(let i=1;i<vals.length;i++) if(vals[i]!==null){ const w=Math.pow(DECAY,i); ws+=vals[i]*w; wt+=w; }
+  const base=wt?ws/wt:null;
+  if(vals[0]!==null){ const exp=clamp01((nowH()-6)/16); ws+=Math.min(1,vals[0]+(1-exp)*(base===null?0.7:base)); wt+=1; }
+  return wt?ws/wt:null;
+}
+/* goals: health drops the longer no open goal has been moved */
+function goalHealth(){
+  const t=goals.filter(g=>g.touched); if(!t.length) return null;
+  const open=t.filter(g=>goalProgress(g)<1); if(!open.length) return 1;
+  const days=(Date.now()-Math.max(...open.map(g=>g.touched)))/864e5;
+  return days<=2?1:Math.max(0.1,1-(days-2)/14*0.9);
+}
+const HW={habits:30,food:20,sleep:15,spirit:20,goals:15};
+const HLAB={habits:'Habits',food:'Meals',sleep:'Sleep',spirit:'Spirit',goals:'Goals'};
+function kittyHealth(){
+  const S={}; for(const u of couple.members) S[u]=trackStarts(u);
+  const c={}; for(const k of ['habits','food','sleep','spirit']) c[k]=dimHealth(k,S);
+  c.goals=goalHealth();
+  let s=0, w=0; for(const k in HW) if(c[k]!==null){ s+=c[k]*HW[k]; w+=HW[k]; }
+  const fresh=!w, v=fresh?0.75:s/w;
+  const dark=c.spirit===null?0:clamp01((0.8-c.spirit)/0.7);
+  return {c,v,fresh,dark,light:c.spirit!==null&&c.spirit>=0.85&&v>=0.8};
+}
+const hLabel=v=>v>=0.85?'Glowing':(v>=0.65?'Healthy':(v>=0.45?'Tired':(v>=0.25?'Weak':'Fading')));
+const hColor=v=>`hsl(${Math.round(v*120)} 62% 46%)`;
+
+const IMP='<path d="M-9 9 Q-11 -8 0 -11 Q11 -8 9 9 Q5 13 3 9 Q0 13 -3 9 Q-5 13 -9 9Z" fill="#0e0716"/><path d="M-8 -7 L-12 -18 L-3 -10Z M8 -7 L12 -18 L3 -10Z" fill="#0e0716"/><circle cx="-3.6" cy="-2" r="2" fill="#ff3b30"/><circle cx="3.6" cy="-2" r="2" fill="#ff3b30"/><path d="M-4 3.5 q4 3.5 8 0" stroke="#ff3b30" stroke-width="1.2" fill="none" stroke-linecap="round"/>';
+const IMPS=[[24,72,1.5,.1],[176,64,1.5,.3],[22,142,1.7,.5],[178,140,1.7,.7],[100,16,1.4,.9]];
+const WISPS=['M24 188 q-18 -34 2 -58 q14 -18 -2 -40','M176 188 q18 -34 -2 -58 q-14 -18 2 -40','M52 190 q-12 -26 6 -44','M150 190 q12 -26 -6 -44','M10 150 q16 -14 8 -34','M190 150 q-16 -14 -8 -34'];
+
+function kittenSVG(stage,H,name,size){
+  const v=H.v, dk=H.dark, w=clamp01((0.8-v)/0.8), sc=[0.5,0.62,0.74,0.86,0.95,1][stage]||1, u='k'+size;
+  const ink='#24203b', fur=mixHex('#f58a1f','#9a8b80',w*0.85), belly=mixHex('#ffe3c2','#cfc4b8',w*0.8), pink='#f7a8b8';
+  const bx=lerp(52,36,w), by=lerp(34,23,w), cy=4-by, sad=w*5, bo=Math.min(1,w*1.3).toFixed(2);
+  const happy=v>=0.78&&dk<0.3, ery=lerp(6,2.6,w).toFixed(1), m=lerp(8,-6,w), hi=(1-w*1.4).toFixed(2);
+  const tail=`M46 -16 C${lerp(82,70,w)} ${lerp(-18,-8,w)} ${lerp(86,82,w)} ${lerp(-62,-2,w)} ${lerp(58,80,w)} ${lerp(-72,10,w)}`;
+  const eyes=happy
+    ? `<path d="M-23 -83 q8 -11 16 0 M7 -83 q8 -11 16 0" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`
+    : `<ellipse cx="-15" cy="-84" rx="6" ry="${ery}" fill="${ink}"/><ellipse cx="15" cy="-84" rx="6" ry="${ery}" fill="${ink}"/>
+       ${w<0.7?`<circle cx="-13" cy="-86" r="2" fill="#fff" opacity="${hi}"/><circle cx="17" cy="-86" r="2" fill="#fff" opacity="${hi}"/>`:''}
+       <path d="M-24 ${(-90+sad*0.5).toFixed(1)} L-8 ${(-96-sad*0.6).toFixed(1)} M24 ${(-90+sad*0.5).toFixed(1)} L8 ${(-96-sad*0.6).toFixed(1)}" stroke="${ink}" stroke-width="2.5" stroke-linecap="round" opacity="${bo}"/>`;
+  const face=`<ellipse cx="-15" cy="-77" rx="8" ry="3" fill="#3a2d4a" opacity="${(w*0.35).toFixed(2)}"/><ellipse cx="15" cy="-77" rx="8" ry="3" fill="#3a2d4a" opacity="${(w*0.35).toFixed(2)}"/>
+    ${w>0.5?`<path d="M-15 -77 q-3 6 0 9 q3 -3 0 -9" fill="#7ec8ff" opacity="${clamp01((w-0.5)*2).toFixed(2)}"/>`:''}`;
+  const ribs=w>0.45?`<path d="M-30 ${cy-4} q8 5 16 0 M-28 ${cy+4} q8 5 16 0 M14 ${cy-4} q8 5 16 0 M12 ${cy+4} q8 5 16 0" stroke="#7a5a44" stroke-width="2" fill="none" stroke-linecap="round" opacity="${clamp01((w-0.45)*1.8).toFixed(2)}"/>`:'';
+  const nW=Math.ceil(dk*6), wisps=WISPS.slice(0,nW).map((p,i)=>`<path class="wisp" d="${p}" stroke="#3b1d5e" stroke-width="8" fill="none" stroke-linecap="round" stroke-opacity="${Math.min(0.55,dk*0.9).toFixed(2)}" style="animation-delay:${i*0.7}s"/>`).join('');
+  const imps=IMPS.map(([x,y,s,t],i)=>{ const o=clamp01((dk-t+0.1)/0.25); return o>0.02?`<g transform="translate(${x} ${y}) scale(${s})" opacity="${o.toFixed(2)}"><g class="imp-in" style="animation-delay:${i*0.5}s">${IMP}</g></g>`:''; }).join('');
+  const extra=happy?`<text x="150" y="48" font-size="22">💗</text><text x="34" y="62" font-size="16">✨</text>`:(w>0.3?`<text x="140" y="50" font-size="20" fill="#6f6a8a">z</text>`:'');
+  return `<svg class="kit" viewBox="0 0 200 200" width="${size}" height="${size}" role="img" aria-label="${esc(name)} the kitten, ${hLabel(v)}">
+    <defs><radialGradient id="${u}a"><stop offset="35%" stop-color="#1a0b2e" stop-opacity="${(dk*0.75).toFixed(2)}"/><stop offset="100%" stop-color="#1a0b2e" stop-opacity="0"/></radialGradient>
+      <radialGradient id="${u}g"><stop offset="30%" stop-color="#ffd76a" stop-opacity=".55"/><stop offset="100%" stop-color="#ffd76a" stop-opacity="0"/></radialGradient></defs>
+    ${dk>0.02?`<circle cx="100" cy="100" r="99" fill="url(#${u}a)"/>`:''}${H.light?`<circle cx="100" cy="105" r="95" fill="url(#${u}g)"/>`:''}${wisps}
     <ellipse cx="100" cy="188" rx="${(60*sc).toFixed(1)}" ry="7" fill="rgba(0,0,0,.12)"/>
     <g transform="translate(100 185) scale(${sc})">
-      <path d="M46 -16 C82 -18 86 -62 58 -72" stroke="${fur}" stroke-width="13" fill="none" stroke-linecap="round"/>
-      <ellipse cx="0" cy="-30" rx="52" ry="34" fill="${fur}"/>
-      <ellipse cx="0" cy="-24" rx="30" ry="20" fill="${belly}"/>
+      <path d="${tail}" stroke="${fur}" stroke-width="13" fill="none" stroke-linecap="round"/>
+      <ellipse cx="0" cy="${cy}" rx="${bx.toFixed(1)}" ry="${by.toFixed(1)}" fill="${fur}"/>
+      <ellipse cx="0" cy="${(cy+6).toFixed(1)}" rx="${(bx*0.58).toFixed(1)}" ry="${(by*0.58).toFixed(1)}" fill="${belly}"/>
+      ${ribs}
       <ellipse cx="-24" cy="-3" rx="15" ry="9" fill="${fur}"/><ellipse cx="24" cy="-3" rx="15" ry="9" fill="${fur}"/>
-      <path d="M-34 -104 L-30 -142 L-8 -116 Z M34 -104 L30 -142 L8 -116 Z" fill="${fur}"/>
-      <path d="M-30 -108 L-28 -132 L-15 -115 Z M30 -108 L28 -132 L15 -115 Z" fill="${pink}"/>
-      <circle cx="0" cy="-82" r="38" fill="${fur}"/>
-      <path d="M-8 -118 v10 M0 -120 v12 M8 -118 v10" stroke="#c96a12" stroke-width="3" stroke-linecap="round"/>
-      ${stage>=2?`<path d="M-26 -50 q26 14 52 0" stroke="#e0457b" stroke-width="7" fill="none" stroke-linecap="round"/>`:''}
-      ${stage>=4?`<circle cx="0" cy="-42" r="5.5" fill="#f2b134" stroke="#c98d10" stroke-width="1.5"/>`:''}
-      ${eyes}
-      <ellipse cx="-27" cy="-72" rx="7" ry="4" fill="${pink}" opacity=".6"/><ellipse cx="27" cy="-72" rx="7" ry="4" fill="${pink}" opacity=".6"/>
-      <path d="M-4 -75 h8 l-4 5 Z" fill="#e8708a"/>
-      ${mouth}
-      <path d="M-42 -76 l-18 -4 M-42 -70 l-18 2 M42 -76 l18 -4 M42 -70 l18 2" stroke="${dk}" stroke-width="2" stroke-linecap="round" opacity=".55"/>
-      ${stage>=5?`<text x="0" y="-146" text-anchor="middle" font-size="30">👑</text>`:''}
-    </g>${extra}</svg>`;
+      <g transform="translate(0 ${(w*9).toFixed(1)}) rotate(${(-w*5).toFixed(1)} 0 -60)">
+        <path d="M-34 -104 L-30 -142 L-8 -116 Z M34 -104 L30 -142 L8 -116 Z" fill="${fur}"/>
+        <path d="M-30 -108 L-28 -132 L-15 -115 Z M30 -108 L28 -132 L15 -115 Z" fill="${pink}"/>
+        <circle cx="0" cy="-82" r="${lerp(38,35,w).toFixed(1)}" fill="${fur}"/>
+        <path d="M-8 -118 v10 M0 -120 v12 M8 -118 v10" stroke="#c96a12" stroke-width="3" stroke-linecap="round" opacity="${(1-w*0.6).toFixed(2)}"/>
+        ${stage>=2?`<path d="M-26 -50 q26 14 52 0" stroke="#e0457b" stroke-width="7" fill="none" stroke-linecap="round"/>`:''}
+        ${stage>=4?`<circle cx="0" cy="-42" r="5.5" fill="#f2b134" stroke="#c98d10" stroke-width="1.5"/>`:''}
+        ${eyes}${face}
+        <ellipse cx="-27" cy="-72" rx="7" ry="4" fill="${pink}" opacity="${(0.6*(1-w)).toFixed(2)}"/><ellipse cx="27" cy="-72" rx="7" ry="4" fill="${pink}" opacity="${(0.6*(1-w)).toFixed(2)}"/>
+        <path d="M-4 -75 h8 l-4 5 Z" fill="#e8708a"/>
+        <path d="M0 -68 q-6 ${m.toFixed(1)} -13 ${(m*0.4).toFixed(1)} M0 -68 q6 ${m.toFixed(1)} 13 ${(m*0.4).toFixed(1)}" stroke="${ink}" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M-42 -76 l-18 -4 M-42 -70 l-18 2 M42 -76 l18 -4 M42 -70 l18 2" stroke="${ink}" stroke-width="2" stroke-linecap="round" opacity=".55"/>
+        ${stage>=5&&w<0.5?`<text x="0" y="-146" text-anchor="middle" font-size="30">👑</text>`:''}
+      </g>
+    </g>${imps}${extra}</svg>`;
 }
-function kittenSays(mood){
-  const d=todayStr(), mem=couple.members;
-  const AREAS=[['water','I’m thirsty 💧 Please drink some water!'],['workout','Let’s move! 💪 I want to see you both work out.'],['study','Study time 📚 I’ll sit on the books and wait.'],['sleep','I’m sleepy 😴 Sleep well tonight, okay?']];
-  const missing=AREAS.filter(([k])=>!mem.every(u=>careDone(u,k,d)));
-  if(!missing.length) return 'Purrrr 💗 You both took care of me today!';
-  let t=missing[0][1];
-  if(missing.length>1) t+=` (and ${missing.length-1} more thing${missing.length>2?'s':''} today)`;
-  if(mood==='sleepy') t='Meow… I’ve been feeling a bit sleepy lately 🥺 '+t;
-  return t;
+
+/* ---------- what the kitten says ---------- */
+const SAY={
+  spirit:['Mew… it feels so peaceful when you pray together 🤲 Maybe soon?','It’s getting dark around me… I can hear whispers 🥺 Please pray and read Quran, both of you.','I’m so scared… the shadows are all around me 😿 Please, I need the light. Pray, please.'],
+  food:['My tummy is rumbling 🍽️ Did you both eat today?','I’m getting thin… please eat your meals, for me too 🥺','I can barely stand… I’m so hungry 😿 Please eat and look after each other.'],
+  sleep:['Yaaawn… 😴 Sleep on time tonight?','I’m so tired… my eyes won’t stay open 🥺 Please rest well.','I can’t keep my eyes open any more… 😿 Please sleep, both of you.'],
+  habits:['Our little habits help me grow 🌱 Shall we do some today?','I’m feeling weak… our habits have slipped 🥺 Even one small one helps.','I feel so faint… we stopped everything 😿 Please start with just one thing today.'],
+  goals:['Our goals miss us 🎯 Tap one forward today?','I’m drooping… our goals haven’t moved in days 🥺','I’m fading… our goals were forgotten 😿 Move one forward, please.']
+};
+const HAPPY=['Purrrr 💗 I feel strong and warm!','Mew! 🐾 You two take such good care of me.','*rubs against you* 💞 Thank you!','Prrrr… everything feels light today ✨'];
+const POKE=[['Prrr… 💗','*purrs and bumps your hand* 🐾','Mew mew! 😸'],['Mew… 🐾','*a weak little purr*','Mrrp… thank you 🥺'],['…mew… 😿','*barely lifts her head*','…still here… please help me 🥺']];
+const hTier=v=>v>=0.55?0:(v>=0.3?1:2);
+function kittySays(H){
+  if(H.fresh) return 'Mew! 🐾 I’m brand new. Take care of each other and I’ll grow up strong!';
+  let worst=null, wd=0.2;
+  for(const k in H.c){ if(H.c[k]===null) continue; const d=(1-H.c[k])*(k==='spirit'?1.2:1); if(d>wd){ wd=d; worst=k; } }
+  return worst?SAY[worst][hTier(H.c[worst])]:HAPPY[Number(todayStr().replace(/-/g,''))%HAPPY.length];
 }
+
 function careRows(pid){
   const d=todayStr();
   return CARE_ALL.map(([k,label,ic])=>{
@@ -1605,11 +1681,11 @@ function careRows(pid){
 }
 function renderKitten(pid){
   bankPetDays();
-  const xp=petXP(), st=petStage(xp), mood=petMood(xp), name=petName(), d=todayStr();
-  const today=petLive(d), bank=petBank();
-  const prog=st.next?Math.round((xp-st.cur[0])/(st.next[0]-st.cur[0])*100):100;
-  const wk=lastDays(7).map(x=>{ const pts=x===d?today:petPointsOn(x,bank);
-    return `<i title="${x}: ${pts}/8" style="height:${Math.max(4,pts/8*100)}%;background:var(--gold);${pts?'':'opacity:.2'}"></i>`; }).join('');
+  const H=kittyHealth(), xp=petXP(), st=petStage(xp), name=petName(), d=todayStr(), today=petLive(d);
+  const hp=Math.round(H.v*100), prog=st.next?Math.round((xp-st.cur[0])/(st.next[0]-st.cur[0])*100):100;
+  const marks=[[25,'Weak'],[50,'Tired'],[75,'Healthy']].map(([p,l])=>`<div class="mile ${hp>=p?'hit':''}" style="left:${p}%"><span>${l}</span></div>`).join('');
+  const rows=Object.keys(HLAB).map(k=>{ const v=H.c[k];
+    return `<div class="bar" style="grid-template-columns:70px 1fr 44px"><span>${HLAB[k]}</span><span class="b"><i style="width:${v===null?0:Math.round(v*100)}%;background:${v===null?'var(--line)':hColor(v)}"></i></span><small class="muted">${pct(v)}</small></div>`; }).join('');
   const chips=Object.keys(CARE_DEFAULTS).map(k=>{
     const lacking=couple.members.filter(u=>!careHabits(u,k).length);
     if(!lacking.length) return '';
@@ -1617,25 +1693,35 @@ function renderKitten(pid){
   }).join('');
   $('v-kitten').innerHTML=`
     <div class="card" style="text-align:center">
-      ${kittenSVG(st.i,mood,name,230)}
+      ${kittenSVG(st.i,H,name,230)}
       <h2 style="margin-top:6px;font-size:28px">${esc(name)}</h2>
-      <p style="margin:2px 0 0"><span class="tag">${st.cur[1]}</span> <span class="muted">· ${xp} growth points</span></p>
-      <div class="bubble in" style="--c:var(--gold);margin:14px auto 0;text-align:left"><small>${esc(name)} says</small><p>${esc(kittenSays(mood))}</p></div>
-      <div class="gbar" style="max-width:420px;margin:14px auto 0" role="progressbar" aria-valuenow="${prog}" aria-valuemin="0" aria-valuemax="100"><i style="width:${prog}%"></i></div>
-      <p class="muted" style="margin:6px 0 0;font-size:14px">${st.next?`${st.next[0]-xp} points until ${esc(st.next[1])}`:'Fully grown. Look at that fluff 👑'}</p>
+      <p style="margin:2px 0 0"><span class="tag">${hLabel(H.v)}</span> <span class="tag">${st.cur[1]}</span></p>
+      <div class="bubble in" style="--c:var(--gold);margin:14px auto 0;text-align:left"><small>${esc(name)} says · tap me to pet me</small><p>${esc(pokeMsg||kittySays(H))}</p></div>
+      <div style="text-align:left;margin-top:16px"><b>Health</b> <span class="muted">${hp}%</span></div>
+      <div class="track" style="margin:10px 0 30px" role="progressbar" aria-label="Kitten health" aria-valuenow="${hp}" aria-valuemin="0" aria-valuemax="100">
+        <div class="fill" style="width:${hp}%;background:${hColor(H.v)}"></div>${marks}
+        <div class="heart" style="left:${Math.max(4,Math.min(96,hp))}%;font-size:24px">🐾</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px"><h3>What keeps ${esc(name)} healthy</h3>
+      <p class="muted" style="margin:4px 0 8px;font-size:14px">Both of you count together, and the last few days count most. One missed day makes ${esc(name)} a little weaker. Many missed days in a row make ${esc(name)} much weaker. It always heals again, a little more with each good day.</p>
+      <div class="bars">${rows}</div>
+      <p class="muted" style="margin:10px 0 0;font-size:14px">Spirit is your prayers and Quran. When they fade, shadows slowly gather around ${esc(name)}. Goals count when you tap +1 or −1 on one that is still open.</p>
+    </div>
+    <div class="card" style="margin-top:14px"><h3>Growing up</h3>
+      <div class="gbar" role="progressbar" aria-valuenow="${prog}" aria-valuemin="0" aria-valuemax="100"><i style="width:${prog}%"></i></div>
+      <p class="muted" style="margin:6px 0 0;font-size:14px">${xp} growth points · ${st.next?`${st.next[0]-xp} points until ${esc(st.next[1])}`:'Fully grown. Look at that fluff 👑'}</p>
     </div>
     <div class="card" style="margin-top:14px"><h3>Today’s care</h3>
-      <p class="muted" style="margin:4px 0 8px">${esc(name)} grows when you both do these. You get 1 point each, 2 when you both do one, up to 8 a day. Today: <b>${today}/8</b></p>
+      <p class="muted" style="margin:4px 0 8px">Care makes ${esc(name)} grow. 1 point each, 2 when you both do one, up to 8 a day. Today: <b>${today}/8</b></p>
       ${theadRow(pid)}${careRows(pid)}
-      <p class="muted" style="margin:12px 0 0;font-size:14px">Sleep comes from your Sleep tab (7 hours or more counts). Tap its circle to open it. The other three use your habits: water, workout and study.</p>
+      <p class="muted" style="margin:12px 0 0;font-size:14px">Sleep comes from your Sleep tab (7 hours or more counts). The other three use your habits: water, workout and study.</p>
       ${chips?`<p class="muted" style="margin:14px 0 0">Add the habits ${esc(name)} is waiting for:</p><div class="chips">${chips}</div>`:''}
     </div>
-    <div class="card" style="margin-top:14px"><h3>Last 7 days</h3>
-      <p class="muted" style="margin:4px 0 0;font-size:14px">Taller means more care</p>
-      <div class="sbars" aria-label="Care points, last 7 days">${wk}</div></div>
     <div class="card" style="margin-top:14px"><h3>Rename</h3>
       <div class="row" style="margin-top:8px"><input id="pn" style="flex:1;min-width:160px" maxlength="20" placeholder="Kitten’s name" value="${esc(name)}"><button class="btn small" id="pns">Save</button></div></div>`;
   const el=$('v-kitten');
+  el.querySelector('.kit').onclick=()=>{ const a=POKE[hTier(H.v)]; pokeMsg=a[Math.floor(Math.random()*a.length)]; renderKitten(pid); };
   el.querySelectorAll('[data-care]').forEach(b=>b.onclick=()=>toggleCare(b.dataset.care));
   el.querySelectorAll('[data-addcare]').forEach(b=>b.onclick=()=>{
     const k=b.dataset.addcare, def=CARE_DEFAULTS[k], mem=couple.members;
@@ -1651,11 +1737,11 @@ function renderKitten(pid){
 function renderKitBox(){
   const b=$('kitbtn'); if(!b||!couple) return;
   bankPetDays();
-  const xp=petXP(), st=petStage(xp), name=petName();
-  b.innerHTML=`${kittenSVG(st.i,petMood(xp),name,40)}<span class="kl"><b>${esc(name)}</b><small>${petLive(todayStr())}/8 today</small></span>`;
-  b.setAttribute('aria-label',`Visit ${name}`);
+  const H=kittyHealth(), st=petStage(petXP()), name=petName(), hp=Math.round(H.v*100);
+  b.innerHTML=`${kittenSVG(st.i,H,name,44)}<span class="kl"><b>${esc(name)}</b><small>${hLabel(H.v)} · ${hp}%</small><span class="mb"><i style="width:${hp}%;background:${hColor(H.v)}"></i></span></span>`;
+  b.setAttribute('aria-label',`Visit ${name}, ${hLabel(H.v)}`);
 }
-$('kitbtn').onclick=()=>{ renderKitten(partnerId()); $('kitmodal').classList.remove('hidden'); };
+$('kitbtn').onclick=()=>{ pokeMsg=null; renderKitten(partnerId()); $('kitmodal').classList.remove('hidden'); };
 $('kitclose').onclick=()=>$('kitmodal').classList.add('hidden');
 $('kitmodal').onclick=e=>{ if(e.target===$('kitmodal')) $('kitmodal').classList.add('hidden'); };
 
