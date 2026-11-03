@@ -639,7 +639,7 @@ function renderSleep(pid){
 const WISHES=['Pray side by side','Eat biryani together','Go for a long walk','Cook a meal together','Take a photo together','Watch the sunset together'];
 async function addWish(t){ if(!t.trim()) return;
   await addDoc(collection(cref(),'fun'),{kind:'wish',title:t.trim(),by:me.uid,done:false,doneOn:null,at:Date.now()});
-  notifyPartner(`${nickOf(me.uid)} added to When we meet`,t.trim()); }
+  notifyPartner(`${pn()} added to When we meet 💞`,'Open Road to Ready to see'); }
 async function toggleWish(f){ await updateDoc(doc(cref(),'fun',f.id), f.done?{done:false,doneOn:null}:{done:true,doneOn:todayStr()}); }
 async function deleteWish(id){ if(confirm('Delete this one?')) await deleteDoc(doc(cref(),'fun',id)); }
 function wishCard(){
@@ -674,18 +674,18 @@ const RESULT={worked:'💗 It worked',partly:'🙂 Partly worked',failed:'😢 I
 async function addProblem(title,details){
   if(!title.trim()) return;
   await addDoc(collection(cref(),'fun'),{kind:'problem',title:title.trim(),details:details.trim(),by:me.uid,status:'open',at:Date.now()});
-  notifyPartner(`${nickOf(me.uid)} added a problem`,'Open the Problems tab to help 🤍');
+  notifyPartner(`${pn()} added a problem`,'Open the Problems tab to help 🤍');
   toast('Added');
 }
 async function addSolution(problemId,text){
   if(!text.trim()) return;
   await addDoc(collection(cref(),'fun'),{kind:'solution',problemId,text:text.trim(),by:me.uid,at:Date.now(),state:'idea'});
-  notifyPartner(`${nickOf(me.uid)} suggested a solution`,'Open the Problems tab 🤍');
+  notifyPartner(`${pn()} suggested a solution`,'Open the Problems tab 🤍');
 }
 async function acceptSolution(s,days){
   await updateDoc(doc(cref(),'fun',s.id),{state:'trying',startedOn:todayStr(),days:Number(days)});
   await updateDoc(doc(cref(),'fun',s.problemId),{status:'trying'});
-  notifyPartner(`${nickOf(me.uid)} accepted a solution`,'The trial has started 💞');
+  notifyPartner(`${pn()} accepted a solution`,'The trial has started 💞');
   toast('Accepted. The trial has started 💞');
 }
 async function toggleTrial(s){
@@ -696,7 +696,7 @@ async function toggleTrial(s){
 async function finishTrial(s,result,note){
   await updateDoc(doc(cref(),'fun',s.id),{state:result,outcomeNote:note.trim(),outcomeOn:todayStr()});
   await updateDoc(doc(cref(),'fun',s.problemId),{status:result==='worked'?'solved':'open'});
-  notifyPartner(`${nickOf(me.uid)} saved a trial result`,RESULT[result]||'');
+  notifyPartner(`${pn()} saved a trial result`,'Open the Problems tab 🤍');
   toast('Saved');
 }
 async function removeSolution(s){
@@ -794,7 +794,7 @@ let justOpened=null;
 async function writeNote(text,when,to){
   if(!text.trim()) return;
   await addDoc(collection(cref(),'fun'),{kind:'jarnote',text:text.trim(),when,by:me.uid,to,at:Date.now(),opened:false});
-  notifyPartner(`${nickOf(me.uid)} left you a note 🫙`,'Pull it from the love jar');
+  notifyPartner(`${pn()} left you a note 🫙`,'Pull it from the love jar');
   toast('Into the jar it goes 🫙');
 }
 async function pullNote(when){
@@ -845,7 +845,8 @@ function ago(t){
 async function setNow(emoji,text){
   if(!text.trim()) return;
   await setDoc(doc(cref(),'fun',`status_${me.uid}`),{kind:'status',uid:me.uid,emoji:(emoji||'').trim()||'💭',text:text.trim(),at:Date.now()});
-  notifyPartner(`${nickOf(me.uid)} is now ${(emoji||'').trim()||'💭'}`,text.trim());
+  { const n=pn(), L=[`${n} just updated their status 💗`,`${n} changed their status 🥰`,`New status from ${n} 💞`,`${n} is up to something new 👀`];
+    notifyPartner(L[Math.floor(Math.random()*L.length)],'Open Road to Ready to see'); }
   toast('Status updated');
 }
 async function clearNow(){ await deleteDoc(doc(cref(),'fun',`status_${me.uid}`)); }
@@ -947,6 +948,7 @@ function pingTopic(topic,title,msg){
   if(!topic) return;
   try{ fetch(`https://ntfy.sh/${topic}?title=${encodeURIComponent(title)}&tags=heart`,{method:'POST',body:msg||''}).catch(()=>{}); }catch(e){}
 }
+const pn=()=>nickOf(me.uid,Math.floor(Math.random()*1000));
 function notifyPartner(title,msg){
   const pid=partnerId(); if(!pid||!couple.ntfy) return;
   pingTopic(couple.ntfy[pid],title,msg);
@@ -1026,7 +1028,7 @@ function autoNudge(pid){
 async function sendNudge(pid,text){
   if(!text.trim()) return;
   await addDoc(collection(cref(),'fun'),{kind:'nudge',from:me.uid,to:pid,text:text.trim(),at:Date.now(),seen:false});
-  notifyPartner(`${nickOf(me.uid)} sent you a nudge 💌`,'Open Road to Ready to read it');
+  notifyPartner(`${pn()} sent you a nudge 💌`,'Open Road to Ready to read it');
   nudgeCustom=false; nudgeText=''; nudgeSeed++;
   toast('Sent 💌');
 }
@@ -1075,7 +1077,7 @@ function quranStreak(uid){
 async function addDua(title,text){
   if(!title.trim()&&!text.trim()) return;
   await addDoc(collection(cref(),'fun'),{kind:'dua',title:(title.trim()||'Dua'),text:text.trim(),by:me.uid,at:Date.now()});
-  notifyPartner(`${nickOf(me.uid)} added a dua 🤲`,'Open Quran & duas');
+  notifyPartner(`${pn()} added a dua 🤲`,'Open Quran & duas');
 }
 async function deleteDua(id){ if(confirm('Delete this dua?')) await deleteDoc(doc(cref(),'fun',id)); }
 
