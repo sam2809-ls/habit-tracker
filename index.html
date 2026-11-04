@@ -341,13 +341,14 @@ function trackScore(uid,starts,dayFn){
   return avg(D30().filter(d=>d>=st).map(dayFn));
 }
 const spiritDay=(uid,d)=>Math.min(1, cnt('prayer_',PRAYERS,uid,d)/5*0.7 + (quranDoc(uid,d)?0.3:0) + (has('prayer_','tahajjud',uid,d)?0.1:0));
-const foodDay=(uid,d)=>0.8*cnt('meal_',MEALS,uid,d)/3 + 0.2*cnt('tea_',TEA,uid,d)/2;
+const foodDay=(uid,d)=>{ const b=0.8*cnt('meal_',MEALS,uid,d)/3+0.2*cnt('tea_',TEA,uid,d)/2, ws=earliestLog(uid,id=>id.startsWith('water_'));
+  return ws&&d>=ws ? 0.75*b+0.25*Math.min(1,waterCount(uid,d)/WATER_N) : b; };
 const sleepDay=(uid,d)=>{ const x=sleepDoc(uid,d); return x?Math.min(1,x.hours/SLEEP_TARGET):0; };
-const COMPS=[['habits','Habits',25],['spirit','Prayers and Quran',25],['food','Meals and tea',15],['sleep','Sleep',15]];
+const COMPS=[['habits','Habits',25],['spirit','Prayers and Quran',25],['food','Meals, tea and water',15],['sleep','Sleep',15]];
 function compScore(uid,key){
   if(key==='habits') return rangeScore(uid,D30());
   if(key==='spirit') return trackScore(uid,[earliestLog(uid,id=>id.startsWith('prayer_')),earliestFun(uid,'quran')],d=>spiritDay(uid,d));
-  if(key==='food')   return trackScore(uid,[earliestLog(uid,id=>id.startsWith('meal_')||id.startsWith('tea_'))],d=>foodDay(uid,d));
+  if(key==='food')   return trackScore(uid,[earliestLog(uid,id=>id.startsWith('meal_')||id.startsWith('tea_')||id.startsWith('water_'))],d=>foodDay(uid,d));
   if(key==='sleep')  return trackScore(uid,[earliestFun(uid,'sleep')],d=>sleepDay(uid,d));
   return null;
 }
@@ -595,9 +596,34 @@ function renderPray(pid){
   bindTicks($('v-pray'));
 }
 const teaStat=uid=>`<div><span class="big">${lastDays(7).reduce((a,x)=>a+cnt('tea_',TEA,uid,x),0)}/14</span><small>teas this week</small></div>`;
+const WATER_N=12, WATER_OK=8;
+const waterCount=(uid,d)=>{ let n=0; for(let i=1;i<=WATER_N;i++) if(has('water_',String(i),uid,d)) n++; return n; };
+async function setWater(n){
+  n=Math.max(0,Math.min(WATER_N,n)); const d=todayStr(), cur=waterCount(me.uid,d);
+  if(n===cur) return;
+  const ops=[];
+  for(let i=1;i<=WATER_N;i++){
+    const key=lk('water_',String(i),me.uid,d), ref=doc(db,'couples',profile.coupleId,'logs',key), want=i<=n;
+    if(want&&!logs.has(key)) ops.push(setDoc(ref,{habitId:'water_'+i,uid:me.uid,date:d}));
+    if(!want&&logs.has(key)) ops.push(deleteDoc(ref));
+  }
+  await Promise.all(ops);
+  if(n>=WATER_N&&cur<WATER_N) toast('All 12 glasses! The kitten is so proud 💧🐱');
+}
+function waterCardHTML(pid){
+  const d=todayStr(), a=waterCount(me.uid,d), b=pid?waterCount(pid,d):0;
+  const gl=n=>Array.from({length:WATER_N},(_,i)=>`<span style="font-size:20px;${i<n?'':'opacity:.2;filter:grayscale(1)'}">💧</span>`).join('');
+  const face=!pid?'':((a>=WATER_OK&&b>=WATER_OK)?'😊':((a>=WATER_OK||b>=WATER_OK)?'😢':''));
+  return `<div class="card"><div class="row" style="justify-content:space-between"><h3>Water today</h3><span class="st">${face}</span></div>
+    <p class="muted" style="margin:4px 0 8px">Aim for ${WATER_N} glasses. ${WATER_OK} or more keeps the kitten happy. 😊 means you both got there, 😢 means only one of you did.</p>
+    <div style="margin-top:6px"><b style="color:var(--me)">${esc(nameOf(me.uid))}</b> <span class="muted">${a}/${WATER_N}</span><div>${gl(a)}</div>
+      <div class="row" style="margin-top:6px"><button class="btn ghost small" data-wat="-1" aria-label="Remove a glass">− glass</button><button class="btn small" data-wat="1">+ glass 💧</button></div></div>
+    ${pid?`<div style="margin-top:12px"><b style="color:var(--you)">${esc(nameOf(pid))}</b> <span class="muted">${b}/${WATER_N}</span><div>${gl(b)}</div></div>`:''}</div>`;
+}
 function renderMeals(pid){
   $('v-meals').innerHTML=`
-    <div class="card"><h3>Today’s meals</h3>
+    ${waterCardHTML(pid)}
+    <div class="card" style="margin-top:14px"><h3>Today’s meals</h3>
       <p class="muted" style="margin:4px 0 8px">Tap your circle when you have eaten. 😊 means you both ate, 😢 means only one of you has.</p>
       ${theadRow(pid)}${togetherRows('meal_',MEALS,pid,'😊')}
       <p class="muted" style="margin:14px 0 0">Tea</p>
@@ -606,6 +632,7 @@ function renderMeals(pid){
     <div class="grid2" style="margin-top:14px">${statsCard(me.uid,'var(--me)','meal_',MEALS,teaStat(me.uid))}
       ${pid?statsCard(pid,'var(--you)','meal_',MEALS,teaStat(pid)):waitingCard}</div>`;
   bindTicks($('v-meals'));
+  $('v-meals').querySelectorAll('[data-wat]').forEach(b=>b.onclick=()=>setWater(waterCount(me.uid,todayStr())+Number(b.dataset.wat)));
 }
 
 /* ---------- sleep ---------- */
@@ -1485,10 +1512,11 @@ const CARE=[
   ['study','Study','📚',h=>/study|read|learn|homework|revis|assignment/i.test(h.name)||h.cat==='Growth']
 ];
 const CARE_ALL=[...CARE.map(c=>[c[0],c[1],c[2]]),['sleep','Sleep well','😴']];
-const CARE_DEFAULTS={water:['Drink enough water','Health',1],workout:['Workout','Fitness',3],study:['Study','Growth',2]};
+const CARE_DEFAULTS={workout:['Workout','Fitness',3],study:['Study','Growth',2]};
 const PET_STAGES=[[0,'Newborn kitten'],[20,'Little kitten'],[60,'Playful kitten'],[120,'Young cat'],[220,'Grown cat'],[350,'Royal fluffball']];
 const careHabits=(uid,key)=>{ const c=CARE.find(x=>x[0]===key); return c?hOf(uid).filter(c[3]):[]; };
 function careDone(uid,key,d){
+  if(key==='water'&&waterCount(uid,d)>=WATER_OK) return true;
   if(key==='sleep'){
     const x=sleepDoc(uid,d);
     if(x&&x.hours>=SLEEP_TARGET) return true;
@@ -1543,6 +1571,7 @@ function bankPetDays(){
 async function toggleCare(key){
   const d=todayStr();
   if(key==='sleep'){ tab='sleep'; $('kitmodal').classList.add('hidden'); render(); return; }
+  if(key==='water'){ tab='meals'; $('kitmodal').classList.add('hidden'); render(); return; }
   const hs=careHabits(me.uid,key).filter(h=>h.start<=d);
   if(!hs.length){ toast('Add a habit for this first'); return; }
   const done=hs.filter(h=>logs.has(logKey(h.id,me.uid,d)));
@@ -1561,18 +1590,19 @@ const mixHex=(a,b,t)=>{ const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); 
   return '#'+x.map((n,i)=>Math.round(lerp(n,y[i],t)).toString(16).padStart(2,'0')).join(''); };
 function trackStarts(uid){
   const first=(...a)=>a.filter(Boolean).sort()[0]||null;
-  return { food:earliestLog(uid,id=>id.startsWith('meal_')||id.startsWith('tea_')),
+  return { food:earliestLog(uid,id=>id.startsWith('meal_')||id.startsWith('tea_')||id.startsWith('water_')),
     sleep:earliestFun(uid,'sleep'),
     spirit:first(earliestLog(uid,id=>id.startsWith('prayer_')),earliestFun(uid,'quran')) };
 }
 function dimDay(dim,uid,d,S){
   if(dim==='habits') return dayScore(uid,d);
-  const s=S[uid][dim]; if(!s||d<s) return null;
+  const s=S[uid][dim]; if(dim==='spirit'){ if(d>=S.start||(s&&d>=s)) return spiritDay(uid,d); return null; } if(!s||d<s) return null;
   return dim==='food'?foodDay(uid,d):(dim==='sleep'?sleepDay(uid,d):spiritDay(uid,d));
 }
 /* recent days count most (each older day counts 18% less), so one bad day dents a little and a long streak of bad days sinks it */
-function dimHealth(dim,S){
+function dimHealth(dim,S,prior){
   const days=lastDays(HDAYS+1).reverse(), vals=days.map(d=>avg(couple.members.map(u=>dimDay(dim,u,d,S))));
+  if(prior!==undefined) for(let i=1;i<vals.length;i++) if(vals[i]===null) vals[i]=prior;
   let ws=0, wt=0;
   for(let i=1;i<vals.length;i++) if(vals[i]!==null){ const w=Math.pow(DECAY,i); ws+=vals[i]*w; wt+=w; }
   const base=wt?ws/wt:null;
@@ -1586,11 +1616,18 @@ function goalHealth(){
   const days=(Date.now()-Math.max(...open.map(g=>g.touched)))/864e5;
   return days<=2?1:Math.max(0.1,1-(days-2)/14*0.9);
 }
+const kittenStart=()=>{ const f=fun.find(x=>x.id==='kitten_start'); return (f&&f.date)||todayStr(); };
+let startSaving=false;
+function ensureKittenStart(){
+  if(!funLoaded||!couple||!profile||startSaving||fun.some(x=>x.id==='kitten_start')) return;
+  startSaving=true;
+  setDoc(doc(cref(),'fun','kitten_start'),{kind:'kittenstart',date:todayStr()}).catch(()=>{ startSaving=false; });
+}
 const HW={habits:30,food:20,sleep:15,spirit:20,goals:15};
 const HLAB={habits:'Habits',food:'Meals',sleep:'Sleep',spirit:'Spirit',goals:'Goals'};
 function kittyHealth(){
-  const S={}; for(const u of couple.members) S[u]=trackStarts(u);
-  const c={}; for(const k of ['habits','food','sleep','spirit']) c[k]=dimHealth(k,S);
+  const S={}; for(const u of couple.members) S[u]=trackStarts(u); S.start=kittenStart();
+  const c={}; for(const k of ['habits','food','sleep','spirit']) c[k]=dimHealth(k,S,k==='spirit'?0.8:undefined);
   c.goals=goalHealth();
   let s=0, w=0; for(const k in HW) if(c[k]!==null){ s+=c[k]*HW[k]; w+=HW[k]; }
   const fresh=!w, v=fresh?0.75:s/w;
@@ -1606,10 +1643,12 @@ const WISPS=['M24 188 q-18 -34 2 -58 q14 -18 -2 -40','M176 188 q18 -34 -2 -58 q-
 
 function kittenSVG(stage,H,name,size){
   const v=H.v, dk=H.dark, w=clamp01((0.8-v)/0.8), sc=[0.5,0.62,0.74,0.86,0.95,1][stage]||1, u='k'+size;
-  const ink='#24203b', fur=mixHex('#f58a1f','#9a8b80',w*0.85), belly=mixHex('#ffe3c2','#cfc4b8',w*0.8), pink='#f7a8b8';
-  const bx=lerp(52,36,w), by=lerp(34,23,w), cy=4-by, sad=w*5, bo=Math.min(1,w*1.3).toFixed(2);
+  const ink='#24203b', fur=mixHex(mixHex('#f58a1f','#ff9d3a',f),'#9a8b80',w*0.85), belly=mixHex('#ffe3c2','#cfc4b8',w*0.8), pink='#f7a8b8';
+  const f=clamp01((v-0.65)/0.3), bx=lerp(52,36,w)+f*6, by=lerp(34,23,w)+f*3, cy=4-by, sad=w*5, bo=Math.min(1,w*1.3).toFixed(2);
   const happy=v>=0.78&&dk<0.3, ery=lerp(6,2.6,w).toFixed(1), m=lerp(8,-6,w), hi=(1-w*1.4).toFixed(2);
   const tail=`M46 -16 C${lerp(82,70,w)} ${lerp(-18,-8,w)} ${lerp(86,82,w)} ${lerp(-62,-2,w)} ${lerp(58,80,w)} ${lerp(-72,10,w)}`;
+  const fluff=f>0.12?[[-bx+3,cy+9],[bx-3,cy+9],[-bx+8,cy-11],[bx-8,cy-11],[-bx*0.45,3],[bx*0.45,3]].map(([x,y])=>`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(4+5*f).toFixed(1)}" fill="${fur}"/>`).join('')+`<path d="M-9 ${cy+16} l4.5 9 l4.5 -9 l4.5 9 l4.5 -9Z" fill="${belly}"/><ellipse cx="-12" cy="${cy-9}" rx="15" ry="5" fill="#fff" opacity="${(0.28*f).toFixed(2)}"/>`:'';
+  const cheeks=f>0.12?`<path d="M-38 -76 l-9 -2 l6 6 l-9 3 l10 3Z M38 -76 l9 -2 l-6 6 l9 3 l-10 3Z" fill="${fur}" opacity="${f.toFixed(2)}"/>`:'';
   const eyes=happy
     ? `<path d="M-23 -83 q8 -11 16 0 M7 -83 q8 -11 16 0" stroke="${ink}" stroke-width="4" fill="none" stroke-linecap="round"/>`
     : `<ellipse cx="-15" cy="-84" rx="6" ry="${ery}" fill="${ink}"/><ellipse cx="15" cy="-84" rx="6" ry="${ery}" fill="${ink}"/>
@@ -1627,15 +1666,15 @@ function kittenSVG(stage,H,name,size){
     ${dk>0.02?`<circle cx="100" cy="100" r="99" fill="url(#${u}a)"/>`:''}${H.light?`<circle cx="100" cy="105" r="95" fill="url(#${u}g)"/>`:''}${wisps}
     <ellipse cx="100" cy="188" rx="${(60*sc).toFixed(1)}" ry="7" fill="rgba(0,0,0,.12)"/>
     <g transform="translate(100 185) scale(${sc})">
-      <path d="${tail}" stroke="${fur}" stroke-width="13" fill="none" stroke-linecap="round"/>
+      <path d="${tail}" stroke="${fur}" stroke-width="${(13+5*f).toFixed(1)}" fill="none" stroke-linecap="round"/>
       <ellipse cx="0" cy="${cy}" rx="${bx.toFixed(1)}" ry="${by.toFixed(1)}" fill="${fur}"/>
       <ellipse cx="0" cy="${(cy+6).toFixed(1)}" rx="${(bx*0.58).toFixed(1)}" ry="${(by*0.58).toFixed(1)}" fill="${belly}"/>
-      ${ribs}
+      ${ribs}${fluff}
       <ellipse cx="-24" cy="-3" rx="15" ry="9" fill="${fur}"/><ellipse cx="24" cy="-3" rx="15" ry="9" fill="${fur}"/>
       <g transform="translate(0 ${(w*9).toFixed(1)}) rotate(${(-w*5).toFixed(1)} 0 -60)">
         <path d="M-34 -104 L-30 -142 L-8 -116 Z M34 -104 L30 -142 L8 -116 Z" fill="${fur}"/>
         <path d="M-30 -108 L-28 -132 L-15 -115 Z M30 -108 L28 -132 L15 -115 Z" fill="${pink}"/>
-        <circle cx="0" cy="-82" r="${lerp(38,35,w).toFixed(1)}" fill="${fur}"/>
+        <circle cx="0" cy="-82" r="${lerp(38,35,w).toFixed(1)}" fill="${fur}"/>${cheeks}
         <path d="M-8 -118 v10 M0 -120 v12 M8 -118 v10" stroke="#c96a12" stroke-width="3" stroke-linecap="round" opacity="${(1-w*0.6).toFixed(2)}"/>
         ${stage>=2?`<path d="M-26 -50 q26 14 52 0" stroke="#e0457b" stroke-width="7" fill="none" stroke-linecap="round"/>`:''}
         ${stage>=4?`<circle cx="0" cy="-42" r="5.5" fill="#f2b134" stroke="#c98d10" stroke-width="1.5"/>`:''}
@@ -1706,7 +1745,7 @@ function renderKitten(pid){
     <div class="card" style="margin-top:14px"><h3>What keeps ${esc(name)} healthy</h3>
       <p class="muted" style="margin:4px 0 8px;font-size:14px">Both of you count together, and the last few days count most. One missed day makes ${esc(name)} a little weaker. Many missed days in a row make ${esc(name)} much weaker. It always heals again, a little more with each good day.</p>
       <div class="bars">${rows}</div>
-      <p class="muted" style="margin:10px 0 0;font-size:14px">Spirit is your prayers and Quran. When they fade, shadows slowly gather around ${esc(name)}. Goals count when you tap +1 or −1 on one that is still open.</p>
+      <p class="muted" style="margin:10px 0 0;font-size:14px">Spirit is your prayers and Quran, and days you don’t log them count as missed. When they fade, shadows slowly gather around ${esc(name)}. Goals count when you tap +1 or −1 on one that is still open.</p>
     </div>
     <div class="card" style="margin-top:14px"><h3>Growing up</h3>
       <div class="gbar" role="progressbar" aria-valuenow="${prog}" aria-valuemin="0" aria-valuemax="100"><i style="width:${prog}%"></i></div>
@@ -1715,7 +1754,7 @@ function renderKitten(pid){
     <div class="card" style="margin-top:14px"><h3>Today’s care</h3>
       <p class="muted" style="margin:4px 0 8px">Care makes ${esc(name)} grow. 1 point each, 2 when you both do one, up to 8 a day. Today: <b>${today}/8</b></p>
       ${theadRow(pid)}${careRows(pid)}
-      <p class="muted" style="margin:12px 0 0;font-size:14px">Sleep comes from your Sleep tab (7 hours or more counts). The other three use your habits: water, workout and study.</p>
+      <p class="muted" style="margin:12px 0 0;font-size:14px">Water comes from the tracker on your Meals tab (8 or more glasses counts) and sleep from your Sleep tab (7 hours or more). Workout and study use your habits.</p>
       ${chips?`<p class="muted" style="margin:14px 0 0">Add the habits ${esc(name)} is waiting for:</p><div class="chips">${chips}</div>`:''}
     </div>
     <div class="card" style="margin-top:14px"><h3>Rename</h3>
@@ -1736,6 +1775,7 @@ function renderKitten(pid){
 /* ---------- header kitten box and hamburger menu ---------- */
 function renderKitBox(){
   const b=$('kitbtn'); if(!b||!couple) return;
+  ensureKittenStart();
   bankPetDays();
   const H=kittyHealth(), st=petStage(petXP()), name=petName(), hp=Math.round(H.v*100);
   b.innerHTML=`${kittenSVG(st.i,H,name,44)}<span class="kl"><b>${esc(name)}</b><small>${hLabel(H.v)} · ${hp}%</small><span class="mb"><i style="width:${hp}%;background:${hColor(H.v)}"></i></span></span>`;
