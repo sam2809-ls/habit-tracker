@@ -1643,8 +1643,10 @@ const WISPS=['M24 188 q-18 -34 2 -58 q14 -18 -2 -40','M176 188 q18 -34 -2 -58 q-
 
 function kittenSVG(stage,H,name,size){
   const v=H.v, dk=H.dark, w=clamp01((0.8-v)/0.8), sc=[0.5,0.62,0.74,0.86,0.95,1][stage]||1, u='k'+size;
+  /* f must be declared before fur uses it */
+  const f=clamp01((v-0.65)/0.3);
   const ink='#24203b', fur=mixHex(mixHex('#f58a1f','#ff9d3a',f),'#9a8b80',w*0.85), belly=mixHex('#ffe3c2','#cfc4b8',w*0.8), pink='#f7a8b8';
-  const f=clamp01((v-0.65)/0.3), bx=lerp(52,36,w)+f*6, by=lerp(34,23,w)+f*3, cy=4-by, sad=w*5, bo=Math.min(1,w*1.3).toFixed(2);
+  const bx=lerp(52,36,w)+f*6, by=lerp(34,23,w)+f*3, cy=4-by, sad=w*5, bo=Math.min(1,w*1.3).toFixed(2);
   const happy=v>=0.78&&dk<0.3, ery=lerp(6,2.6,w).toFixed(1), m=lerp(8,-6,w), hi=(1-w*1.4).toFixed(2);
   const tail=`M46 -16 C${lerp(82,70,w)} ${lerp(-18,-8,w)} ${lerp(86,82,w)} ${lerp(-62,-2,w)} ${lerp(58,80,w)} ${lerp(-72,10,w)}`;
   const fluff=f>0.12?[[-bx+3,cy+9],[bx-3,cy+9],[-bx+8,cy-11],[bx-8,cy-11],[-bx*0.45,3],[bx*0.45,3]].map(([x,y])=>`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(4+5*f).toFixed(1)}" fill="${fur}"/>`).join('')+`<path d="M-9 ${cy+16} l4.5 9 l4.5 -9 l4.5 9 l4.5 -9Z" fill="${belly}"/><ellipse cx="-12" cy="${cy-9}" rx="15" ry="5" fill="#fff" opacity="${(0.28*f).toFixed(2)}"/>`:'';
