@@ -2024,6 +2024,12 @@ function renderGoals(){
 }
 
 setInterval(()=>{ if(couple&&me) render(); },60000);
+  { const orig=renderKitBox;
+  renderKitBox=function(){
+    try{ orig(); }
+    catch(e){ const b=$('kitbtn'); if(b) b.textContent='🐱 '+(e&&e.message); console.error(e); }
+  };
+}
 show('auth');
 </script>
 </body>
