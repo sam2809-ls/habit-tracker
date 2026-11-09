@@ -33,7 +33,7 @@
   button{font:inherit;cursor:pointer}
   input,select{font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
   :focus-visible{outline:3px solid var(--gold);outline-offset:2px}
-  .wrap{max-width:980px;margin:0 auto;padding:20px 16px 90px}
+  .wrap{max-width:980px;margin:0 auto;padding:20px 16px 120px}
   .hidden{display:none!important}
   .card{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:18px}
   .btn{background:var(--ink);color:var(--bg);border:0;border-radius:10px;padding:10px 16px;font-weight:700}
@@ -49,11 +49,8 @@
   .auth h1{font-size:34px}
 
   /* header */
-  header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;position:relative}
+  header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px 12px;margin-bottom:16px;position:relative}
   header h1{font-size:22px}
-  .tabs{display:flex;gap:6px;margin:0 0 16px}
-  .tab{background:transparent;border:1.5px solid var(--line);color:var(--ink);border-radius:999px;padding:8px 16px;font-weight:700}
-  .tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 
   /* kitten box + hamburger menu */
   .kitbox{display:flex;align-items:center;gap:8px;padding:4px 12px 4px 6px}
@@ -112,7 +109,6 @@
   .gbar{height:10px;border-radius:99px;background:var(--bg);overflow:hidden;margin-top:8px}
   .gbar i{display:block;height:100%;background:linear-gradient(90deg,var(--me),var(--you));border-radius:99px}
   .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:9}
-  .tabs{flex-wrap:wrap}
   textarea{font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-height:80px;resize:vertical}
   .trow{display:grid;grid-template-columns:1fr 64px 64px 44px;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
   .thead{font-size:13px;color:var(--muted);border-top:0;text-align:center}
@@ -155,6 +151,42 @@
   @keyframes wisp{0%,100%{opacity:.45}50%{opacity:1}}
   .imp-in{animation:impb 3.4s ease-in-out infinite}
   @keyframes impb{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+
+  /* floating dock: the active section opens up to show its name */
+  .dock{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:15;display:flex;gap:4px;padding:6px;border-radius:999px;background:var(--card);border:1.5px solid var(--line);box-shadow:0 10px 30px rgba(36,32,59,.22);transition:transform .45s cubic-bezier(.2,.8,.2,1),visibility 0s}
+  .dk{display:flex;align-items:center;border:0;background:transparent;color:var(--ink);border-radius:999px;padding:10px 12px;font-weight:700;transition:background .25s,color .25s}
+  .dk .ic{font-size:20px;line-height:1}
+  .dk .lb{max-width:0;opacity:0;overflow:hidden;white-space:nowrap;transition:max-width .3s ease,opacity .2s,margin .3s}
+  .dk[aria-current]{background:var(--ink);color:var(--bg)}
+  .dk[aria-current] .lb{max-width:90px;opacity:1;margin-left:8px}
+  /* More sheet */
+  .sheetbg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:28;display:flex;align-items:flex-end;justify-content:center}
+  .sheet{width:min(520px,100%);background:var(--card);border-radius:26px 26px 0 0;padding:14px 16px 28px;animation:sheetup .28s cubic-bezier(.2,.8,.2,1)}
+  .sheet h2{font-size:18px;margin:0 0 12px}
+  @keyframes sheetup{from{transform:translateY(40px);opacity:0}}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .tile{display:grid;justify-items:center;gap:6px;padding:16px 6px;border-radius:20px;border:2px solid transparent;background:color-mix(in srgb,var(--t) 24%,var(--card));color:var(--ink);font-weight:700;font-size:14px;transition:transform .15s}
+  .tile:active{transform:scale(.95)}
+  .tile .ic{font-size:30px;line-height:1}
+  .tile[aria-current]{border-color:var(--ink)}
+  /* 25: its own round badge, ring = today's ticks */
+  @property --p{syntax:'<number>';inherits:false;initial-value:0}
+  .p25badge{--p:0;flex:none;width:54px;height:54px;border-radius:50%;border:0;padding:4px;background:conic-gradient(var(--gold) calc(var(--p)*1%),var(--line) 0);transition:--p .8s cubic-bezier(.2,.8,.2,1),transform .2s}
+  .p25badge span{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:var(--ink);color:var(--bg);font-family:var(--head);font-weight:800;font-size:20px;letter-spacing:-.5px}
+  .p25badge:active{transform:scale(.92)}
+  .p25badge.new{animation:p25nudge 2.4s ease-in-out infinite}
+  @keyframes p25nudge{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+  .p25badge.full{box-shadow:0 0 0 4px color-mix(in srgb,var(--gold) 40%,transparent)}
+  .p25back{display:none}
+  /* inside 25 the whole app becomes a separate private room */
+  body{transition:background .4s,color .4s}
+  body.in25{--bg:#101a2b;--card:#182740;--ink:#f4efe4;--line:#2b3d5c;--muted:#9aaac4;--me:#ffb547;--you:#5fd3c4;--me-soft:#3a2e1c;--you-soft:#17383a;--gold:#ffc857;color-scheme:dark}
+  body.in25 #kitbtn,body.in25 #bell,body.in25 #p25btn{display:none}
+  body.in25 .p25back{display:inline-block}
+  body.in25 .dock{visibility:hidden;transform:translate(-50%,160%);transition:transform .45s cubic-bezier(.2,.8,.2,1),visibility 0s .45s}
+  body.in25 #v-p25 .cb{color:#0e1a2b}
+  body.in25 #v-p25 .ch[aria-pressed=true]{color:#1b1405}
+  @media (prefers-reduced-motion: reduce){.dock,.dk,.dk .lb,.sheet,.p25badge,body{transition:none;animation:none}.p25badge.new{animation:none}}
 </style>
 </head>
 <body>
@@ -189,7 +221,11 @@
   <!-- APP -->
   <main id="app" class="hidden">
     <header>
-      <div><h1 id="title">Our road to ready</h1><div class="muted" id="today" style="font-size:14px"></div></div>
+      <div class="row" style="flex-wrap:nowrap;gap:12px">
+        <button class="p25badge" id="p25btn" aria-label="Open 25, my private space"><span>25</span></button>
+        <button class="btn ghost small p25back" id="p25back">← Us</button>
+        <div><h1 id="title">Our road to ready</h1><div class="muted" id="today" style="font-size:14px"></div></div>
+      </div>
       <div class="row">
         <button class="btn ghost small kitbox" id="kitbtn" aria-label="Visit our kitten"></button>
         <button class="btn ghost small" id="bell" aria-label="Updates">🔔<span id="bellcount"></span></button>
@@ -205,18 +241,26 @@
       </div>
     </header>
 
-    <div class="tabs" role="tablist">
-      <button class="tab" role="tab" data-tab="p25" aria-selected="false" aria-label="25, my personal space">25</button>
-      <button class="tab" role="tab" data-tab="dash" aria-selected="true">Dashboard</button>
-      <button class="tab" role="tab" data-tab="habits" aria-selected="false">Habits</button>
-      <button class="tab" role="tab" data-tab="goals" aria-selected="false">Goals</button>
-      <button class="tab" role="tab" data-tab="problems" aria-selected="false">Problems</button>
-      <button class="tab" role="tab" data-tab="pray" aria-selected="false">Prayers</button>
-      <button class="tab" role="tab" data-tab="meals" aria-selected="false">Meals</button>
-      <button class="tab" role="tab" data-tab="sleep" aria-selected="false">Sleep</button>
-      <button class="tab" role="tab" data-tab="quran" aria-selected="false">Quran &amp; duas</button>
-      <button class="tab" role="tab" data-tab="fun" aria-selected="false">Fun together</button>
-      <button class="tab" role="tab" data-tab="jar" aria-selected="false">Love jar</button>
+    <nav class="dock" aria-label="Sections">
+      <button class="tab dk" data-tab="dash" aria-label="Home"><span class="ic">🏠</span><span class="lb">Home</span></button>
+      <button class="tab dk" data-tab="habits" aria-label="Habits"><span class="ic">✅</span><span class="lb">Habits</span></button>
+      <button class="tab dk" data-tab="goals" aria-label="Goals"><span class="ic">🎯</span><span class="lb">Goals</span></button>
+      <button class="tab dk" data-tab="pray" aria-label="Prayers"><span class="ic">🕌</span><span class="lb">Prayers</span></button>
+      <button class="dk" id="morebtn" aria-label="More sections" aria-haspopup="dialog"><span class="ic">✨</span><span class="lb">More</span></button>
+    </nav>
+
+    <div id="more" class="sheetbg hidden">
+      <div class="sheet" role="dialog" aria-label="More sections">
+        <h2>More of us</h2>
+        <div class="tiles">
+          <button class="tab tile" data-tab="problems" style="--t:#f2b134"><span class="ic">🧩</span>Problems</button>
+          <button class="tab tile" data-tab="meals" style="--t:#e0457b"><span class="ic">🍽️</span>Meals</button>
+          <button class="tab tile" data-tab="sleep" style="--t:#7a5cff"><span class="ic">🌙</span>Sleep</button>
+          <button class="tab tile" data-tab="quran" style="--t:#1f9d8f"><span class="ic">📖</span>Quran &amp; duas</button>
+          <button class="tab tile" data-tab="fun" style="--t:#3b82f6"><span class="ic">🎈</span>Fun together</button>
+          <button class="tab tile" data-tab="jar" style="--t:#ff7a90"><span class="ic">💌</span>Love jar</button>
+        </div>
+      </div>
     </div>
 
     <div id="v-p25" class="hidden"></div>
@@ -268,7 +312,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
   onSnapshot, arrayUnion, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { initP25, renderP25 } from "./p25.js";
+import { initP25, renderP25, p25Progress, p25Week } from "./p25.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -1798,7 +1842,32 @@ document.addEventListener('click',e=>{ if(!menuEl.contains(e.target)) closeMenu(
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeMenu(); });
 
 /* ---------- tabs ---------- */
-document.querySelectorAll('.tab').forEach(b => b.onclick = () => { tab=b.dataset.tab; render(); });
+let prevTab='dash';
+const moreEl=$('more');
+const goTab=t=>{ if(t==='p25' && tab!=='p25') prevTab=tab; tab=t; moreEl.classList.add('hidden'); window.scrollTo({top:0}); render(); };
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => goTab(b.dataset.tab));
+$('p25btn').onclick=()=>goTab('p25');
+$('p25back').onclick=()=>goTab(prevTab||'dash');
+$('morebtn').onclick=()=>moreEl.classList.toggle('hidden');
+moreEl.onclick=e=>{ if(e.target===moreEl) moreEl.classList.add('hidden'); };
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') moreEl.classList.add('hidden'); });
+const MORE_INFO={problems:['🧩','Problems'],meals:['🍽️','Meals'],sleep:['🌙','Sleep'],quran:['📖','Quran'],fun:['🎈','Fun'],jar:['💌','Love jar']};
+function updateBadge(){
+  const b=$('p25btn'); if(!b) return;
+  const p=p25Progress();
+  b.style.setProperty('--p',p.pct);
+  b.classList.toggle('new',!p.on);
+  b.classList.toggle('full',p.on && p.total>0 && p.pct===100);
+  b.setAttribute('aria-label',p.on?`Open 25, my private space. ${p.done} of ${p.total} ticked today`:'Open 25, my private space');
+}
+function updateNav(){
+  document.querySelectorAll('.tab').forEach(b => b.dataset.tab===tab ? b.setAttribute('aria-current','page') : b.removeAttribute('aria-current'));
+  const mi=MORE_INFO[tab], mb=$('morebtn');
+  mi ? mb.setAttribute('aria-current','page') : mb.removeAttribute('aria-current');
+  mb.querySelector('.ic').textContent=mi?mi[0]:'✨';
+  mb.querySelector('.lb').textContent=mi?mi[1]:'More';
+  document.body.classList.toggle('in25',tab==='p25');
+}
 
 /* ---------- render ---------- */
 let pendingRender=false;
@@ -1807,13 +1876,14 @@ function render(){
   if(!couple || !me) return;
   const ae=document.activeElement;
   if(ae && (ae.tagName==='TEXTAREA'||ae.tagName==='INPUT') && $('app').contains(ae)){ pendingRender=true; return; }
-  document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab===tab));
+  updateNav();
   ['p25','dash','habits','goals','problems','pray','meals','sleep','quran','fun','jar'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
   const pid = partnerId();
   updateBell();
   $('today').textContent = new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   $('title').textContent = pid ? `${nameOf(me.uid)} & ${nameOf(pid)}` : 'Our road to ready';
-  if(tab==='p25') renderP25();
+  renderP25();
+  if(tab==='p25'){ const w=p25Week(); $('title').textContent='Who I’m becoming'; $('today').textContent=`Week ${w.n} of 252 · ${w.left} left`; }
   if(tab==='dash') renderDash(pid);
   if(tab==='habits') renderHabits(pid);
   if(tab==='goals') renderGoals();
@@ -1825,6 +1895,7 @@ function render(){
   if(tab==='fun') renderFun(pid);
   if(tab==='jar') renderJar(pid);
   renderKitBox();
+  updateBadge();
   if(!$('kitmodal').classList.contains('hidden')) renderKitten(pid);
 }
 
@@ -2027,7 +2098,7 @@ function renderGoals(){
   });
 }
 
-initP25({db,doc,getDoc,updateDoc,me:()=>me,habits:()=>hOf(me.uid),logs:()=>logs,goals:()=>goals,logKey,lastDays,todayStr,fmt,esc,toggle,bumpGoal});
+initP25({db,doc,getDoc,updateDoc,me:()=>me,habits:()=>hOf(me.uid),logs:()=>logs,goals:()=>goals,logKey,lastDays,todayStr,fmt,esc,toggle,bumpGoal,badge:updateBadge});
 setInterval(()=>{ if(couple&&me) render(); },60000);
   { const orig=renderKitBox;
   renderKitBox=function(){

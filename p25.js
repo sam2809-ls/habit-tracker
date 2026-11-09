@@ -60,8 +60,9 @@ function avatar(a,w,stage,size=180){
  <circle cx="80" cy="${hy}" r="30" fill="${skin}"/>${circles}${eyes}${brows}${cheeks}${mouth}${tear}${front}${grad}${acc}${crown}</g>${sparkle}${gar}</svg>`}
 
 const CSS=`#v-p25 .pc{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
-#v-p25 .sub{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}#v-p25 .sub button{border:1.5px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:6px 14px;font-weight:700}
-#v-p25 .sub button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+#v-p25 .sub{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}#v-p25 .sub button{display:grid;justify-items:center;gap:3px;border:1.5px solid var(--line);background:var(--card);color:var(--muted);border-radius:16px;padding:10px 4px 8px;font-weight:700;font-size:13px;transition:transform .2s,background .2s}#v-p25 .sub button b{font-size:20px;line-height:1;filter:grayscale(1);opacity:.7}
+#v-p25 .sub button[aria-pressed=true]{background:var(--gold);border-color:var(--gold);color:#1b1405;transform:translateY(-2px)}#v-p25 .sub button[aria-pressed=true] b{filter:none;opacity:1}
+#v-p25 .jr{display:grid;grid-template-columns:repeat(28,1fr);gap:3px;margin-top:12px}#v-p25 .jr i{aspect-ratio:1;border-radius:3px;background:var(--line)}#v-p25 .jr i.d{background:var(--you)}#v-p25 .jr i.b{background:var(--gold)}#v-p25 .jr i.n{background:var(--gold);animation:p25n 1.6s ease-in-out infinite}@keyframes p25n{50%{transform:scale(1.8);opacity:.6}}
 #v-p25 .tk{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}#v-p25 .tk:first-child{border-top:0}
 #v-p25 .cb{width:36px;height:36px;border-radius:10px;border:1.5px solid var(--line);background:transparent;font-size:18px;color:#fff}#v-p25 .cb[aria-pressed=true]{background:var(--you);border-color:var(--you)}
 #v-p25 input[type=text],#v-p25 textarea,#v-p25 select{width:100%}#v-p25 textarea{font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px}
@@ -69,11 +70,17 @@ const CSS=`#v-p25 .pc{background:var(--card);border:1.5px solid var(--line);bord
 #v-p25 .ch{border:1.5px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:5px 12px}#v-p25 .ch[aria-pressed=true]{background:var(--me);border-color:var(--me);color:#fff}
 #v-p25 .pb{height:8px;border-radius:9px;background:var(--bg);overflow:hidden;margin:6px 0}#v-p25 .pb i{display:block;height:100%;background:linear-gradient(90deg,var(--me),var(--you))}
 .p25tear{animation:p25t 2.2s infinite}@keyframes p25t{0%{transform:translateY(0);opacity:1}100%{transform:translateY(16px);opacity:0}}.p25rain{animation:p25r .9s infinite}@keyframes p25r{0%{transform:translateY(0);opacity:1}100%{transform:translateY(10px);opacity:0}}
-@media(prefers-reduced-motion:reduce){.p25tear,.p25rain{animation:none}}`;
+@media(prefers-reduced-motion:reduce){.p25tear,.p25rain,#v-p25 .jr i.n{animation:none}}`;
 
 const sw=(k,arr,v,f)=>arr.map((c,i)=>`<button class="sw" data-a="av" data-k="${k}" data-v="${i}" aria-pressed="${v===i}" style="background:${c}" aria-label="${k} ${i+1}"></button>`).join('');
 const chips=(k,arr,v)=>arr.map(c=>`<button class="ch" data-a="av" data-k="${k}" data-v="${c}" aria-pressed="${v===c}">${c}</button>`).join('');
 function maker(){const a=P.av;return `<div style="display:grid;gap:10px;margin-top:10px"><div><small class="muted">Skin</small><div class="row">${sw('s',SK,a.s)}</div></div><div><small class="muted">Hair / headwear</small><div class="row">${chips('hs',HS,a.hs)}</div></div><div><small class="muted">Hair colour</small><div class="row">${sw('h',HC,a.h)}</div></div><div><small class="muted">Outfit</small><div class="row">${sw('o',OC,a.o)}</div></div><div><small class="muted">Extra</small><div class="row">${chips('ac',AC,a.ac)}</div></div></div>`}
+const J0=new Date(2026,10,9),BD={44:21,96:22,148:23,201:24};
+function wkNow(){const t=new Date();t.setHours(0,0,0,0);return Math.floor(Math.round((t-J0)/864e5)/7)+1}
+function journey(){const w=wkNow();let c='';for(let i=1;i<=252;i++)c+=`<i class="${[i<w?'d':'',i===w?'n':'',BD[i]?'b':''].join(' ')}" title="Week ${i}${BD[i]?', turning '+BD[i]:''}"></i>`;
+ return `<div class="pc"><div class="row" style="justify-content:space-between;align-items:baseline"><h3>${w<1?'Starts 9 Nov':'Week '+Math.min(w,252)}<small class="muted"> of 252</small></h3><small class="muted">${Math.max(0,252-Math.max(w,1))} left</small></div><div class="jr" role="img" aria-label="252 weeks, ${Math.max(0,Math.min(w-1,252))} lived">${c}</div><small class="muted" style="display:block;margin-top:8px">Each square is a week. Gold ones are your birthdays.</small></div>`}
+export function p25Progress(){if(!ctx||!loaded||!P||P.step<99)return{on:false,pct:0,done:0,total:0};const d=ctx.todayStr(),total=P.tasks.length,done=P.tasks.filter(t=>isDone(t,d)).length;return{on:true,pct:total?Math.round(done/total*100):0,done,total}}
+export function p25Week(){const w=wkNow();return{n:Math.min(Math.max(w,1),252),left:Math.max(0,252-Math.max(w,1))}}
 function stats(){const x=xp(),lv=Math.floor(x/300)+1,st=Math.min(7,lv-1),m=miss();return{x,lv,st,m,w:clamp(m/10),title:TITLES[st],pr:(x%300)/300}}
 function mood(s){if(s.m===0)return s.w===0&&streak()>=3?'Thriving 🌟':'Doing well 🙂';return s.m<=2?'A bit low…':s.m<=5?'Worn down 😔':'Miserable. Please tick something 🥺'}
 const taskRow=t=>{const d=ctx.todayStr(),l=t.link&&t.link.k==='h'&&hab(t.link.id);return `<div class="tk"><button class="cb" data-a="tick" data-id="${t.id}" aria-pressed="${isDone(t,d)}" aria-label="${ctx.esc(t.t)}">${isDone(t,d)?'✓':''}</button><div style="flex:1"><b>${ctx.esc(t.t)}</b>${l?`<div class="muted" style="font-size:12px">🔗 shared with “${ctx.esc(l.name)}”: one tick counts for both</div>`:''}</div></div>`};
@@ -91,6 +98,7 @@ function onboarding(){const s=P.step,nx=`<button class="btn" data-a="next">${s==
 function today(){const s=stats(),d=ctx.todayStr(),n=P.tasks.filter(t=>isDone(t,d)).length,ed=P.editT;
  let h=`<div class="pc" style="text-align:center">${avatar(P.av,s.w,s.st)}<h2>${ctx.esc(P.name||'You')}</h2><div class="muted">${mood(s)}</div><div class="row" style="justify-content:center;gap:18px;margin-top:6px"><span><b>Lv ${s.lv}</b> ${s.title}</span><span>🔥 ${streak()}</span><span>${s.x} XP</span></div><div class="pb"><i style="width:${s.pr*100}%"></i></div>
  ${s.m>0?`<small class="muted">${s.m} day${s.m>1?'s':''} without a tick. ${ctx.esc(P.name||'They')} is fading.</small>`:`<small class="muted">${n}/${P.tasks.length} ticked today</small>`}</div>
+ ${journey()}
  <div class="pc"><div class="row" style="justify-content:space-between"><h3>Today</h3><button class="btn ghost small" data-a="edit">${ed?'Done':'Edit'}</button></div>`;
  h+=P.tasks.map(t=>ed?`<div class="tk"><div style="flex:1;display:grid;gap:6px"><input type="text" data-f="tt" data-id="${t.id}" value="${ctx.esc(t.t)}">${linkSel(t)}</div><button class="btn ghost small" data-a="deltask" data-id="${t.id}" aria-label="Delete">✕</button></div>`:taskRow(t)).join('')||'<p class="muted">No ticks yet. Tap Edit to add some.</p>';
  if(ed)h+=`<div class="row" style="margin-top:8px"><input type="text" id="p25nt" placeholder="New daily tick" style="flex:1"><button class="btn small" data-a="addtask">Add</button></div><div style="margin-top:12px"><button class="btn ghost small" data-a="redo">Re-do intro & character</button></div>`;
@@ -111,11 +119,12 @@ function goalsV(){let h=`<p class="muted">Add a number or date to each goal. Tic
 
 function winsV(){return `<div class="pc"><div class="row"><input type="text" id="p25nw" placeholder="What I achieved" style="flex:1"><button class="btn" data-a="addwin">Add (+25 XP)</button></div></div><div class="pc">${P.wins.map((x,i)=>`<div class="tk"><b style="min-width:70px;color:var(--gold)">${ctx.esc(x.d)}</b><span style="flex:1">${ctx.esc(x.t)}</span><button class="btn ghost small" data-a="delwin" data-i="${i}" aria-label="Delete">✕</button></div>`).join('')||'<p class="muted">No wins yet. Your first one goes here.</p>'}</div>`}
 
-function draw(){const el=$('v-p25');if(!el)return;if(!$('p25css')){const s=document.createElement('style');s.id='p25css';s.textContent=CSS;document.head.appendChild(s);bind(el)}
+function draw(){drawInner();if(ctx&&ctx.badge)ctx.badge()}
+function drawInner(){const el=$('v-p25');if(!el)return;if(!$('p25css')){const s=document.createElement('style');s.id='p25css';s.textContent=CSS;document.head.appendChild(s);bind(el)}
  if(!loaded||!P){el.innerHTML='<div class="pc muted">Loading your 25…</div>';return}
  sync();if(P.step<99){el.innerHTML=onboarding();return}
  const v={today,week,goals:goalsV,wins:winsV}[P.sub]();
- el.innerHTML=`<div class="sub">${[['today','Today'],['week','Week'],['goals','Goals'],['wins','Wins']].map(([k,l])=>`<button data-a="sub" data-v="${k}" aria-pressed="${P.sub===k}">${l}</button>`).join('')}</div>${v}`}
+ el.innerHTML=`<div class="sub">${[['today','🌤','Today'],['week','🗓','Week'],['goals','🎯','Goals'],['wins','🏆','Wins']].map(([k,i,l])=>`<button data-a="sub" data-v="${k}" aria-pressed="${P.sub===k}"><b aria-hidden="true">${i}</b>${l}</button>`).join('')}</div>${v}`}
 
 function bind(el){
  el.addEventListener('input',e=>{const t=e.target,f=t.dataset.f;if(!f)return;const id=t.dataset.id;
