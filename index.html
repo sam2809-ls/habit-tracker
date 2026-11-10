@@ -1032,17 +1032,17 @@ function bindDua(){ if($('dnext')) $('dnext').onclick=()=>{ duaIdx++; render(); 
 function spiritChartHTML(pid){
   const ds=lastDays(14), uids=pid?[me.uid,pid]:[me.uid], cols=['var(--me)','var(--you)'];
   const lab=ds.map(d=>`<span>${d.slice(8)}</span>`).join('');
-  const maxPages=Math.max(10,...ds.flatMap(d=>uids.map(u=>(quranDoc(u,d)||{}).pages||0)));
+  const maxAyahs=Math.max(10,...ds.flatMap(d=>uids.map(u=>(quranDoc(u,d)||{}).ayahs||0)));
   const pray=ds.map(d=>`<div class="wk">${uids.map((u,i)=>{ const c=cnt('prayer_',PRAYERS,u,d);
     return `<i title="${esc(nameOf(u))}, ${d}: ${c}/5" style="height:${c?c*20:3}%;background:${cols[i]};${c?'':'opacity:.25'}"></i>`; }).join('')}</div>`).join('');
   const qur=ds.map(d=>`<div class="wk">${uids.map((u,i)=>{ const q=quranDoc(u,d);
-    const h=q?(q.pages?Math.max(12,Math.round(q.pages/maxPages*100)):35):3;
-    return `<i title="${esc(nameOf(u))}, ${d}: ${q?(q.pages?q.pages+' pages':'read'):'not read'}" style="height:${h}%;background:${cols[i]};${q?'':'opacity:.25'}"></i>`; }).join('')}</div>`).join('');
+    const h=q?(q.ayahs?Math.max(12,Math.round(q.ayahs/maxAyahs*100)):35):3;
+    return `<i title="${esc(nameOf(u))}, ${d}: ${q?(q.ayahs?q.ayahs+' ayahs':(q.pages?q.pages+' pages':'read')):'not read'}" style="height:${h}%;background:${cols[i]};${q?'':'opacity:.25'}"></i>`; }).join('')}</div>`).join('');
   const sum=u=>`${esc(nameOf(u))}: ${lastDays(7).reduce((a,x)=>a+cnt('prayer_',PRAYERS,u,x),0)}/35 prayers, ${lastDays(7).filter(x=>quranDoc(u,x)).length} days of Quran this week`;
   return `<div class="grid2" style="margin-top:14px">
     <div class="card"><h3>Prayers</h3><p class="muted" style="margin:4px 0 0;font-size:14px">Last 14 days · taller means more of the five</p>
       <div class="weeks">${pray}</div><div class="wl">${lab}</div></div>
-    <div class="card"><h3>Quran</h3><p class="muted" style="margin:4px 0 0;font-size:14px">Last 14 days · taller means more pages</p>
+    <div class="card"><h3>Quran</h3><p class="muted" style="margin:4px 0 0;font-size:14px">Last 14 days · taller means more ayahs</p>
       <div class="weeks">${qur}</div><div class="wl">${lab}</div></div></div>
     <p class="muted" style="margin:8px 2px 0;font-size:14px">${uids.map(sum).join(' · ')}</p>`;
 }
@@ -1247,9 +1247,10 @@ function bindNudges(){
 
 /* ---------- quran & duas ---------- */
 const quranDoc=(uid,d)=>fun.find(f=>f.id===`quran_${d}_${uid}`);
-async function saveQuran(what,pages){
+const qTag=q=>q.ayahs?` <span class="tag">${q.ayahs} ayahs</span>`:(q.pages?` <span class="tag">${q.pages} pages</span>`:'');
+async function saveQuran(what,ayahs){
   const d=todayStr(); if(!what.trim()) return;
-  await setDoc(doc(cref(),'fun',`quran_${d}_${me.uid}`),{kind:'quran',date:d,uid:me.uid,what:what.trim(),pages:Math.max(0,Number(pages)||0)});
+  await setDoc(doc(cref(),'fun',`quran_${d}_${me.uid}`),{kind:'quran',date:d,uid:me.uid,what:what.trim(),ayahs:Math.max(0,Math.floor(Number(ayahs)||0))});
   toast('Saved');
 }
 async function clearQuran(){ await deleteDoc(doc(cref(),'fun',`quran_${todayStr()}_${me.uid}`)); }
@@ -1267,13 +1268,13 @@ async function deleteDua(id){ if(confirm('Delete this dua?')) await deleteDoc(do
 
 function quranCard(uid,color){
   const week=lastDays(7).filter(x=>quranDoc(uid,x)).length;
-  const pages=lastDays(30).reduce((a,x)=>a+((quranDoc(uid,x)||{}).pages||0),0);
+  const ayahs=lastDays(30).reduce((a,x)=>a+((quranDoc(uid,x)||{}).ayahs||0),0);
   const recent=lastDays(7).reverse().map(x=>{ const q=quranDoc(uid,x);
-    return q?`<div class="find" style="border-left:4px solid ${color}"><small class="muted">${x}</small><br>${esc(q.what)}${q.pages?` <span class="tag">${q.pages} pages</span>`:''}</div>`:''; }).join('');
+    return q?`<div class="find" style="border-left:4px solid ${color}"><small class="muted">${x}</small><br>${esc(q.what)}${qTag(q)}</div>`:''; }).join('');
   return `<div class="card person"><h3><span class="dot" style="background:${color}"></span>${esc(nameOf(uid))}${uid===me.uid?' <span class="tag">you</span>':''}</h3>
     <div class="stats"><div><span class="big" style="color:${color}">${week}/7</span><small>days read this week</small></div>
     <div><span class="big">${quranStreak(uid)}</span><small>day streak</small></div>
-    <div><span class="big">${pages}</span><small>pages, 30 days</small></div></div>
+    <div><span class="big">${ayahs}</span><small>ayahs, 30 days</small></div></div>
     ${recent||'<p class="muted">Nothing logged in the last 7 days.</p>'}</div>`;
 }
 function renderQuran(pid){
@@ -1285,9 +1286,9 @@ function renderQuran(pid){
     <div class="card"><h3>Quran today</h3>
       <p class="muted" style="margin:4px 0 0">${bothToday?'You both read today 🤍':(mine||theirs?'One of you has read today. 😢':'Write what you read today, like “Surah Al-Kahf, ayah 1 to 10”.')}</p>
       <div class="row" style="margin-top:12px"><input id="qw" style="flex:1;min-width:200px" placeholder="What did you read?" value="${mine?esc(mine.what):''}">
-        <input id="qp" type="number" min="0" style="width:110px" placeholder="Pages" aria-label="Pages read" value="${mine&&mine.pages?mine.pages:''}">
+        <input id="qp" type="number" min="0" style="width:110px" placeholder="Ayahs" aria-label="Ayahs read" value="${mine&&mine.ayahs?mine.ayahs:''}">
         <button class="btn" id="qs">Save</button>${mine?'<button class="btn ghost" id="qc">Remove</button>':''}</div>
-      ${pid?`<div class="find" style="border-left:4px solid var(--you)"><b>${esc(nameOf(pid))}</b> ${theirs?`read: ${esc(theirs.what)}${theirs.pages?` <span class="tag">${theirs.pages} pages</span>`:''}`:'<span class="muted">hasn’t logged yet</span>'}</div>`:''}
+      ${pid?`<div class="find" style="border-left:4px solid var(--you)"><b>${esc(nameOf(pid))}</b> ${theirs?`read: ${esc(theirs.what)}${qTag(theirs)}`:'<span class="muted">hasn’t logged yet</span>'}</div>`:''}
     </div>
     <div class="grid2" style="margin-top:14px">${quranCard(me.uid,'var(--me)')}${pid?quranCard(pid,'var(--you)'):waitingCard}</div>
     <div class="card" style="margin-top:14px"><h3>Our duas</h3>

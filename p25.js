@@ -2,8 +2,8 @@
    so it never touches readiness, the kitten, or your partner's view. */
 const TITLES=['Seedling','Apprentice','Explorer','Builder','Scholar','Strategist','Architect','Legend'];
 const SK=['#f6d5b8','#e8b98f','#c68c5f','#9a6240','#6b4129'],HC=['#2b1d17','#5a3a22','#a0622d','#d8a24a','#8a8a8a','#c0396b','#111118','#7b4a2a','#c9a66b'],OC=['#e0457b','#1f9d8f','#7a5cff','#f2b134','#3b82f6','#24203b','#d9622b','#2f6f6a','#1c1c24','#e9e4d8','#1d3557','#6b705c','#d4a373','#7f1d1d','#2d6a4f','#6c757d'];
-const HS1=['wolf','long','bun','curly','scarf','cap'],HS2=['crop','quiff','sidepart','fade','slick','curlytop','buzz','manbun'],AC=['none','shades','headband','glasses','flower','headphones'],FS=['oval','round','square','long','heart'],FH=['none','stubble','stache','short','full'],OT=['tee','long','turtle','high','hoodie','jacket'];
-const NMK={fs:{oval:'Oval',round:'Round',square:'Square',long:'Long',heart:'Heart'},fh:{none:'None',stubble:'Stubble',stache:'Moustache',short:'Short beard',full:'Full beard'},ot:{tee:'T-shirt',long:'Long sleeve',turtle:'Turtleneck',high:'High neck',hoodie:'Hoodie',jacket:'Jacket'},hs:{wolf:'Wolf cut',long:'Long',bun:'Bun',curly:'Curly',scarf:'Scarf',cap:'Cap',crop:'Textured crop',quiff:'Quiff',sidepart:'Side part',fade:'Fade',slick:'Slick back',curlytop:'Curly top',buzz:'Buzz cut',manbun:'Man bun'},ac:{none:'None',shades:'Shades',headband:'Headband',glasses:'Glasses',flower:'Flower',headphones:'Headphones'}};
+const HS1=['wolf','long','bun','curly','scarf','cap'],HS2=['crop','quiff','sidepart','fade','slick','curlytop','messy','spiky','bowl','buzz','manbun'],AC=['none','shades','headband','glasses','flower','headphones'],FS=['oval','round','square','long','heart'],FH=['none','stubble','stache','short','full'],OT=['tee','long','turtle','high','hoodie','jacket'];
+const NMK={fs:{oval:'Oval',round:'Round',square:'Square',long:'Long',heart:'Heart'},fh:{none:'None',stubble:'Stubble',stache:'Moustache',short:'Short beard',full:'Full beard'},ot:{tee:'T-shirt',long:'Long sleeve',turtle:'Turtleneck',high:'High neck',hoodie:'Hoodie',jacket:'Jacket'},hs:{wolf:'Wolf cut',long:'Long',bun:'Bun',curly:'Curly',scarf:'Scarf',cap:'Cap',crop:'Textured crop',quiff:'Quiff',sidepart:'Side part',fade:'Fade',slick:'Slick back',curlytop:'Curly top',buzz:'Buzz cut',manbun:'Man bun',messy:'Messy part',spiky:'Spiky',bowl:'Bowl cut'},ac:{none:'None',shades:'Shades',headband:'Headband',glasses:'Glasses',flower:'Flower',headphones:'Headphones'}};
 let ctx,P=null,loaded=false,saveT,uidK='';
 const $=id=>document.getElementById(id);
 const clamp=x=>Math.max(0,Math.min(1,x));
@@ -97,7 +97,7 @@ function scene(u,o){const{w,D,L,sp,ph,em,mn,rd,ct,mx}=o,
  return{defs,back:b,front:f}}
 
 /* ---- hair ---- */
-function hairParts(hs,hair,hairD,hairL,out,out2,gold,u){let back='',front='';
+function hairLegacy(hs,hair,hairD,hairL,out,out2,gold,u){let back='',front='';
  const sb=`<path d="M73 100 L75 84 L81 90 L79 108Z" fill="${hairD}"/><path d="M127 100 L125 84 L119 90 L121 108Z" fill="${hairD}"/>`,
  fade=`<path d="M72 102 L74 80 Q78 70 83 68 L84 86 L80 106Z" fill="${hair}" opacity=".4"/><path d="M72 94 L74 80 Q77 72 81 70 L81 84 L78 96Z" fill="${hair}" opacity=".7"/><path d="M128 102 L126 80 Q122 70 117 68 L116 86 L120 106Z" fill="${hair}" opacity=".4"/><path d="M128 94 L126 80 Q123 72 119 70 L119 84 L122 96Z" fill="${hair}" opacity=".7"/>`,
  st=(d,c,o,w=1.6)=>`<path d="${d}" stroke="${c}" stroke-width="${w}" fill="none" stroke-linecap="round" opacity="${o}"/>`,
@@ -124,6 +124,75 @@ function hairParts(hs,hair,hairD,hairL,out,out2,gold,u){let back='',front='';
  else if(hs==='buzz'){const cap='M74 94 C70 66 84 52 100 51 C116 52 130 66 126 94 L124 80 C121 72 112 69 100 69 C88 69 79 72 76 80Z';let dots='';for(let i=0;i<46;i++)dots+=`<circle cx="${76+(i*37)%50}" cy="${52+(i*23)%26}" r=".9" fill="${hairD}" opacity=".6"/>`;
   front=`<clipPath id="bz${u}"><path d="${cap}"/></clipPath><path d="${cap}" fill="${hair}" opacity=".8"/><g clip-path="url(#bz${u})">${dots}</g>`}
  return{back,front}}
+
+function hairParts(hs,hair,hairD,hairL,out,out2,gold,u){
+ const NEW=['crop','quiff','sidepart','fade','slick','curlytop','buzz','manbun','bun','curly','messy','spiky','bowl'];
+ const F=`url(#hg${u})`,
+ defs=`<defs><linearGradient id="hg${u}" x1="0.15" y1="0" x2="0.55" y2="1"><stop offset="0" stop-color="${hairL}"/><stop offset=".45" stop-color="${hair}"/><stop offset="1" stop-color="${mix(hair,'#000000',.16)}"/></linearGradient><linearGradient id="hf${u}" gradientUnits="userSpaceOnUse" x1="0" y1="68" x2="0" y2="104"><stop offset="0" stop-color="${hair}" stop-opacity=".9"/><stop offset="1" stop-color="${hair}" stop-opacity="0"/></linearGradient></defs>`;
+ if(!NEW.includes(hs)){const r=hairLegacy(hs,hair,hairD,hairL,out,out2,gold,u),sw=s=>s.split(`fill="${hair}"`).join(`fill="${F}"`);return{back:sw(r.back),front:defs+sw(r.front)}}
+ let sd=11;const rnd=()=>(sd=(sd*9301+49297)%233280)/233280,f1=n=>Math.round(n*10)/10,
+ st=(d,c,o,w=1.6)=>`<path d="${d}" stroke="${c}" stroke-width="${w}" fill="none" stroke-linecap="round" opacity="${o}"/>`,
+ /* a hairline made of separate locks: tip, notch, tip... (right to left) */
+ locks=(tips,notch=3.5)=>{let d=`L${tips[0][0]} ${tips[0][1]}`;for(let i=1;i<tips.length;i++){const a=tips[i-1],b=tips[i];d+=` Q${f1((a[0]+b[0])/2)} ${f1(Math.min(a[1],b[1])-notch)} ${b[0]} ${b[1]}`}return d},
+ /* a shape with depth: gradient fill, strands clipped inside it, soft dark edge */
+ layer=(k,d,inner,op=1)=>`<clipPath id="hc${u}${k}"><path d="${d}"/></clipPath><g opacity="${op}"><path d="${d}" fill="${F}"/><g clip-path="url(#hc${u}${k})">${inner}</g><path d="${d}" fill="none" stroke="${hairD}" stroke-width=".8" stroke-linejoin="round" opacity=".5"/></g>`,
+ /* strands that fan out from a point, each bowed a little and alternating dark/light */
+ fan=(sx,sy,tips,bow=5,w=1.2)=>tips.map(([x,y],i)=>{const dx=x-sx,dy=y-sy,L=Math.hypot(dx,dy)||1,o=(i%2?1:-1)*bow*(.6+rnd()*.8),cx=(sx+x)/2-dy/L*o,cy=(sy+y)/2+dx/L*o,lt=i%3===0;return `<path d="M${f1(sx+(rnd()-.5)*5)} ${f1(sy+(rnd()-.5)*3)} Q${f1(cx)} ${f1(cy)} ${x} ${y}" stroke="${lt?hairL:hairD}" stroke-width="${lt?f1(w*.9):w}" fill="none" stroke-linecap="round" opacity="${lt?.5:.42}"/>`}).join(''),
+ sbd='M73 80 C71 90 72 98 74 105 L78 99 L79 90 L80 80Z',
+ sbs=layer('sa',sbd,st('M76 84 Q75 94 76 101',hairD,.5,1))+layer('sb',mir(sbd),st('M124 84 Q125 94 124 101',hairD,.5,1)),
+ fz='M73 100 C66 70 76 50 100 48 C124 50 134 70 127 100 L123 88 C120 76 112 70 100 70 C88 70 80 76 77 88Z',
+ fadeSide=()=>{let dots='';for(let i=0;i<80;i++){const sd2=i%2?1:-1,x=100+sd2*(24.5+rnd()*4.5-rnd()*3),y=72+rnd()*30;dots+=`<circle cx="${f1(x)}" cy="${f1(y)}" r=".75" fill="${hairD}" opacity="${Math.max(.1,.75-(y-72)/45).toFixed(2)}"/>`}return `<clipPath id="fz${u}"><path d="${fz}"/></clipPath><path d="${fz}" fill="url(#hf${u})"/><g clip-path="url(#fz${u})">${dots}</g>`},
+ /* slicked-back top, hairline with a soft M shape, strands running back over the crown */
+ slickD='M74 94 C65 66 76 42 100 41 C124 42 135 66 126 94 L124 84 C122 78 120 74 116 71 C112 68 108 70 104 73 C101 75 99 75 96 73 C92 70 88 68 84 71 C80 74 78 78 76 84Z',
+ slickIn=()=>st('M84 72 Q78 56 90 43 M92 71 Q88 55 96 42 M100 72 Q99 54 100 41 M108 71 Q112 55 104 42 M116 72 Q122 56 110 43 M78 80 Q72 64 84 48 M122 80 Q128 64 116 48',hairD,.5,1.3)+st('M88 71 Q84 56 94 44 M104 72 Q106 54 102 42 M112 71 Q118 56 108 43',hairL,.55,1.1)+`<path d="M82 58 Q100 40 120 54 Q100 47 86 64Z" fill="${hairL}" opacity=".45"/>`,
+ bunBall=(cy,rx,ry,tie)=>`<ellipse cx="100" cy="${cy}" rx="${rx}" ry="${ry}" fill="${F}"/><ellipse cx="100" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="${hairD}" stroke-width=".8" opacity=".5"/>${st(`M${100-rx+2} ${cy+2} Q100 ${cy-ry*1.3} ${100+rx-2} ${cy+2}`,hairD,.5,1.2)}${st(`M${100-rx+4} ${cy+6} Q100 ${cy-ry*.6} ${100+rx-4} ${cy+6}`,hairL,.5,1.1)}${st(`M${100-rx+1} ${cy+8} Q100 ${cy-1} ${100+rx-1} ${cy+8}`,hairD,.4,1.1)}`+(tie?`<path d="M${100-rx*.7} ${cy+ry*.82} Q100 ${cy+ry+3} ${100+rx*.7} ${cy+ry*.82}" stroke="${gold}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`:''),
+ curl=(x,y,r)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="${F}"/><circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${hairD}" stroke-width=".7" opacity=".4"/><path d="M${f1(x-r*.55)} ${f1(y-r*.2)} Q${f1(x-r*.1)} ${f1(y-r*.85)} ${f1(x+r*.5)} ${f1(y-r*.4)}" stroke="${hairL}" stroke-width="1.5" fill="none" stroke-linecap="round" opacity=".6"/><path d="M${f1(x-r*.35)} ${f1(y+r*.15)} q${f1(r*.35)} ${f1(-r*.5)} ${f1(r*.7)} 0 q${f1(-r*.1)} ${f1(r*.45)} ${f1(-r*.45)} ${f1(r*.4)}" stroke="${hairD}" stroke-width="1" fill="none" stroke-linecap="round" opacity=".3"/>`;
+ let front='';
+ /* every style below is built like cartoon hair: a bold silhouette, then flowing strand lines */
+ const sk=(d,o=.55,w=1.5)=>st(d,hairD,o,w),hl=(d,o=.55,w=2)=>st(d,hairL,o,w);
+ if(hs==='crop'){ /* messy, swept to the side with a little flick */
+  const tips=[[122,78],[113,71],[103,71],[93,74],[84,80],[78,88]],
+  d=`M73 96 C64 74 66 52 86 45 C98 41 112 40 124 44 C130 46 134 50 139 48 C136 55 133 60 132 68 C131 78 129 86 127 96 L124 86 ${locks(tips,3)} L75 94Z`;
+  front=sbs+layer('m',d,sk('M120 46 Q104 50 92 66 M118 47 Q106 56 100 70 M112 44 Q96 50 84 64 M104 42 Q90 48 80 62 M124 48 Q116 58 112 70 M126 46 Q132 48 138 48',.6,1.6)+hl('M96 47 Q108 43 122 46',.6,2.2))}
+ else if(hs==='quiff'){ /* lifted wave sweeping forward */
+  const tips=[[122,76],[114,68],[106,66],[98,66],[90,68],[82,74],[77,84]],
+  d=`M73 96 C64 74 66 52 84 44 C98 38 114 38 124 42 C132 40 138 42 144 47 C137 50 134 56 133 64 C132 76 129 86 127 96 L124 86 ${locks(tips,2.5)} L75 94Z`;
+  front=sbs+layer('m',d,sk('M84 70 Q92 52 120 46 M92 67 Q102 50 128 46 M102 66 Q112 52 134 48 M112 68 Q122 56 139 50 M80 76 Q82 58 100 48 M82 70 Q84 56 94 48',.6,1.6)+hl('M88 48 Q110 41 132 45',.6,2.4))}
+ else if(hs==='sidepart'){ /* neat classic side part */
+  const d='M72 98 C63 76 68 52 90 45 C106 40 126 46 130 66 C132 78 131 88 128 98 L125 88 C124 79 119 72 111 69 C103 67 95 67 88 70 C82 74 78 82 76 91Z';
+  front=layer('m',d,sk('M88 69 Q87 54 96 44',.85,1.9)+sk('M92 46 Q116 48 126 64 M90 52 Q112 56 124 76 M90 60 Q104 62 112 71 M88 56 Q78 60 74 76',.5,1.5)+hl('M98 46 Q116 46 126 58',.6,2.4))}
+ else if(hs==='fade'){ /* pointed front tuft, faded sides */
+  const tips=[[117,66],[109,62],[101,64],[93,62],[86,66],[81,72]],
+  d=`M79 76 C72 60 80 47 92 43 C96 37 99 31 103 25 C106 32 110 37 114 41 C127 45 130 60 123 76 L121 70 ${locks(tips,3)} L80 72Z`;
+  front=fadeSide()+layer('m',d,sk('M86 64 Q88 46 103 28 M94 62 Q96 46 104 30 M101 63 Q106 46 105 29 M110 62 Q112 48 108 34 M82 70 Q80 56 90 46 M118 66 Q126 56 122 46',.6,1.5)+hl('M92 50 Q100 40 108 44',.6,2))}
+ else if(hs==='slick'){ /* combed back, clean hairline */
+  front=sbs+layer('m',slickD,slickIn())}
+ else if(hs==='messy'){ /* centre part with loose tufts */
+  const tips=[[122,78],[114,72],[106,69],[100,66],[94,69],[86,72],[78,78]],
+  d=`M73 96 C64 76 66 58 76 52 L74 44 L84 49 L88 40 L95 47 L101 38 L107 46 L113 40 L118 48 L126 44 L124 54 C134 60 134 78 127 96 L124 88 ${locks(tips,3)} L75 92Z`;
+  front=sbs+layer('m',d,sk('M100 66 Q100 54 101 40 M100 58 Q86 56 76 68 M100 58 Q114 56 124 68 M96 54 Q86 50 80 56 M104 54 Q114 50 120 56 M92 66 Q84 62 80 70 M108 66 Q116 62 120 70',.6,1.5)+hl('M90 50 Q94 44 98 48 M104 48 Q110 42 114 48',.6,2))}
+ else if(hs==='spiky'){ /* spikes along the crown */
+  const tips=[[120,76],[112,70],[104,72],[96,69],[88,72],[80,76]],
+  d=`M73 96 C64 76 66 60 76 54 L72 46 L84 50 L86 38 L96 48 L102 34 L108 48 L118 38 L118 50 L128 46 L124 56 C134 62 134 78 127 96 L124 88 ${locks(tips,3)} L75 92Z`;
+  front=sbs+layer('m',d,sk('M86 62 Q86 50 87 40 M96 60 Q100 46 102 36 M108 60 Q112 48 118 40 M78 66 Q76 56 74 48 M122 64 Q126 56 127 48 M92 66 Q92 58 96 50 M104 66 Q106 58 108 50',.6,1.5)+hl('M90 52 Q96 44 100 48',.6,2))}
+ else if(hs==='bowl'){ /* bowl cut with a long straight fringe */
+  const tips=[[124,84],[116,80],[108,83],[100,79],[92,83],[84,80],[77,86]],
+  d=`M70 108 C58 80 62 52 84 44 C96 39 112 39 124 44 C142 52 144 80 130 108 L125 100 L126 90 ${locks(tips,2.5)} L75 100Z`;
+  front=layer('m',d,sk('M100 44 Q80 52 74 80 M100 44 Q120 52 126 80 M96 50 Q88 62 86 80 M104 50 Q112 62 114 80 M100 56 Q100 68 100 78 M78 90 Q74 98 74 106 M122 90 Q126 98 126 106',.5,1.5)+hl('M86 48 Q100 42 114 48',.6,2.4))}
+ else if(hs==='buzz'){
+  const cap='M74 94 C66 68 76 48 100 47 C124 48 134 68 126 94 L124 84 C122 76 118 72 112 71 C106 70 94 70 88 71 C82 72 78 76 76 84Z';let dots='';for(let i=0;i<150;i++){const x=72+rnd()*56,y=46+rnd()*48,lt=i%3===0;dots+=`<circle cx="${f1(x)}" cy="${f1(y)}" r="${lt?.55:.8}" fill="${lt?hairL:hairD}" opacity="${lt?.45:.5}"/>`}
+  front=layer('m',cap,dots,.82)}
+ else if(hs==='curlytop'||hs==='curly'){ /* short curls all over, like a ruffled cap */
+  const cs=[],big=hs==='curly';
+  for(let a=-176;a<=-4;a+=11)cs.push([100+(big?37:34)*Math.cos(a*Math.PI/180),92+(big?36:32)*Math.sin(a*Math.PI/180),big?10:8.5]);
+  for(let a=-160;a<=-20;a+=15)cs.push([100+22*Math.cos(a*Math.PI/180),86+24*Math.sin(a*Math.PI/180),8.5]);
+  cs.push([72,96,7],[128,96,7],[75,86,8],[125,86,8]);
+  front=(big?'':fadeSide())+`<path d="M72 98 C62 68 76 46 100 44 C124 46 138 68 128 98 L124 84 C120 70 112 66 100 66 C88 66 80 70 76 84Z" fill="${F}"/>`+cs.sort((p,q)=>p[1]-q[1]).map(([x,y,r])=>curl(f1(x),f1(y),r)).join('')}
+ else if(hs==='manbun'||hs==='bun'){
+  const man=hs==='manbun';
+  front=(man?fadeSide():sbs)+bunBall(36,13,11,!man)+layer('m',slickD,slickIn())+(man?st('M96 47 Q100 53 104 47',gold,1,2.4):'')}
+ return{back:'',front:defs+front}}
+
 
 /* ---- the character: body, outfit, face, hair, inside a living scene ---- */
 function avatar(a,w,stage,size=300,S={}){
