@@ -120,6 +120,7 @@ function avatar(a,w,stage,size=210,str=1,conf=2){
 const CSS=`#v-p25 .hero{position:relative;text-align:center;padding:14px 12px 16px;border-radius:26px;background:linear-gradient(165deg,#2d1b4e 0%,#5b2a66 52%,#c2486f 100%);color:#fff4e0;margin-bottom:12px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.4),inset 0 0 0 2px rgba(255,200,87,.35)}
 #v-p25 .hero:before{content:"";position:absolute;inset:auto 0 0 0;height:46%;background:repeating-linear-gradient(0deg,rgba(255,200,87,.14) 0 6px,transparent 6px 14px);pointer-events:none}
 #v-p25 .hero>*{position:relative}
+#v-p25 .hero .hedit{position:absolute;top:12px;right:12px;z-index:2;border:0;border-radius:999px;padding:7px 14px;background:var(--gold);color:#1b1405;font-weight:800;font-size:14px;box-shadow:2px 2px 0 rgba(0,0,0,.3)}
 #v-p25 .hname{font-family:var(--head);font-weight:900;font-size:32px;letter-spacing:-1px;margin-top:8px;text-shadow:3px 3px 0 #e0457b,6px 6px 0 rgba(0,0,0,.28)}
 #v-p25 .lvchip{display:inline-block;margin:8px 0 2px;padding:4px 14px;border-radius:999px;background:var(--gold);color:#1b1405;font-weight:800;font-size:14px;transform:rotate(-2deg);box-shadow:2px 2px 0 rgba(0,0,0,.3)}
 #v-p25 .muted2,#v-p25 .hero small{color:#e8dcf5}
@@ -152,17 +153,31 @@ const CSS=`#v-p25 .hero{position:relative;text-align:center;padding:14px 12px 16
 const sw=(k,arr,v,f)=>arr.map((c,i)=>`<button class="sw" data-a="av" data-k="${k}" data-v="${i}" aria-pressed="${v===i}" style="background:${c}" aria-label="${k} ${i+1}"></button>`).join('');
 const chips=(k,arr,v)=>arr.map(c=>`<button class="ch" data-a="av" data-k="${k}" data-v="${c}" aria-pressed="${v===c}">${c}</button>`).join('');
 function maker(){const a=P.av;return `<div style="display:grid;gap:10px;margin-top:10px"><div><small class="muted">Skin</small><div class="row">${sw('s',SK,a.s)}</div></div><div><small class="muted">Hair / headwear</small><div class="row">${chips('hs',HS,a.hs)}</div></div><div><small class="muted">Hair colour</small><div class="row">${sw('h',HC,a.h)}</div></div><div><small class="muted">Outfit</small><div class="row">${sw('o',OC,a.o)}</div></div><div><small class="muted">Extra</small><div class="row">${chips('ac',AC,a.ac)}</div></div></div>`}
-const J0=new Date(2026,10,9),BD={44:21,96:22,148:23,201:24};
-function wkNow(){const t=new Date();t.setHours(0,0,0,0);return Math.floor(Math.round((t-J0)/864e5)/7)+1}
-function journey(){const w=wkNow();let c='';for(let i=1;i<=252;i++)c+=`<i class="${[i<w?'d':'',i===w?'n':'',BD[i]?'b':''].join(' ')}" title="Week ${i}${BD[i]?', turning '+BD[i]:''}"></i>`;
- return `<div class="pc"><div class="row" style="justify-content:space-between;align-items:baseline"><h3>${w<1?'Starts 9 Nov':'Week '+Math.min(w,252)}<small class="muted"> of 252</small></h3><small class="muted">${Math.max(0,252-Math.max(w,1))} left</small></div><div class="jr" role="img" aria-label="252 weeks, ${Math.max(0,Math.min(w-1,252))} lived">${c}</div><small class="muted" style="display:block;margin-top:8px">Each square is a week. Gold ones are your birthdays.</small></div>`}
+const pd=s=>{const[a,b,c]=String(s).split('-').map(Number);return new Date(a,b-1,c)};
+const dd=(a,b)=>Math.round((pd(b)-pd(a))/864e5);
+const LEG={start:'2026-11-09',age:25,weeks:252,dob:'',bd:{44:21,96:22,148:23,201:24}};
+const jr=()=>P&&P.jr?P.jr:LEG;
+function jcalc(dob,age,start){const d=pd(dob),tg=new Date(d.getFullYear()+age,d.getMonth(),d.getDate()),weeks=Math.max(1,Math.ceil(Math.round((tg-pd(start))/864e5)/7)),bd={};
+ for(let a=1;a<=age;a++){const b=new Date(d.getFullYear()+a,d.getMonth(),d.getDate()),k=Math.floor(Math.round((b-pd(start))/864e5)/7)+1;if(k>=1&&k<=weeks)bd[k]=a}return{weeks,bd,target:tg}}
+function ageOn(dob){const d=pd(dob),t=new Date();let a=t.getFullYear()-d.getFullYear();if(t.getMonth()<d.getMonth()||(t.getMonth()===d.getMonth()&&t.getDate()<d.getDate()))a--;return a}
+function wkNow(){return Math.floor(dd(jr().start,ctx.todayStr())/7)+1}
+function journey(){const w=wkNow(),J=jr(),N=J.weeks,bd=J.bd||{};let c='';for(let i=1;i<=N;i++)c+=`<i class="${[i<w?'d':'',i===w?'n':'',bd[i]?'b':''].join(' ')}" title="Week ${i}${bd[i]?', turning '+bd[i]:''}"></i>`;
+ return `<div class="pc"><div class="row" style="justify-content:space-between;align-items:baseline"><h3>${w<1?'Starts soon':'Week '+Math.min(w,N)}<small class="muted"> of ${N}</small></h3><small class="muted">${Math.max(0,N-Math.max(w,1))} left</small></div><div class="jr" style="grid-template-columns:repeat(${N>252?52:28},1fr)" role="img" aria-label="${N} weeks until ${J.age}, ${Math.max(0,Math.min(w-1,N))} lived">${c}</div><small class="muted" style="display:block;margin-top:8px">Each square is a week, until you turn ${J.age}. Gold ones are your birthdays.</small></div>`}
+const moodOf=(m,w,sk)=>m===0?(w===0&&sk>=3?'Thriving 🌟':'Doing well 🙂'):m<=2?'A bit low…':m<=5?'Worn down 😔':'Miserable 🥺';
 export function p25Progress(){if(!ctx||!loaded||!P||P.step<99)return{on:false,pct:0,done:0,total:0};const d=ctx.todayStr(),total=P.tasks.length,done=P.tasks.filter(t=>isDone(t,d)).length;return{on:true,pct:total?Math.round(done/total*100):0,done,total}}
-export function p25Week(){const w=wkNow();return{n:Math.min(Math.max(w,1),252),left:Math.max(0,252-Math.max(w,1))}}
+export function p25Week(){const N=jr().weeks,w=wkNow();return{n:Math.min(Math.max(w,1),N),left:Math.max(0,N-Math.max(w,1)),total:N}}
 function stats(){const x=xp(),lv=Math.floor(x/300)+1,st=Math.min(7,lv-1),m=miss();return{x,lv,st,m,w:clamp(m/10),title:TITLES[st],pr:(x%300)/300}}
 function mood(s){if(s.m===0)return s.w===0&&streak()>=3?'Thriving 🌟':'Doing well 🙂';return s.m<=2?'A bit low…':s.m<=5?'Worn down 😔':'Miserable. Please tick something 🥺'}
 const taskRow=t=>{const d=ctx.todayStr(),l=t.link&&t.link.k==='h'&&hab(t.link.id);return `<div class="tk"><button class="cb" data-a="tick" data-id="${t.id}" aria-pressed="${isDone(t,d)}" aria-label="${ctx.esc(t.t)}">${isDone(t,d)?'✓':''}</button><div style="flex:1"><b>${ctx.esc(t.t)}</b>${l?`<div class="muted" style="font-size:12px">🔗 shared with “${ctx.esc(l.name)}”: one tick counts for both</div>`:''}</div></div>`};
 const linkSel=(t)=>{const o=ctx.habits().map(h=>`<option value="${h.id}" ${t.link&&t.link.id===h.id?'selected':''}>${ctx.esc(h.name)}</option>`).join('');return `<select data-a="tlink" data-id="${t.id}" aria-label="Link ${ctx.esc(t.t)}"><option value="">Personal only</option>${o}</select>`};
 const goalSel=g=>{const o=ctx.goals().map(s=>`<option value="${s.id}" ${g.link&&g.link.id===s.id?'selected':''}>${ctx.esc(s.title)}</option>`).join('');return `<select data-a="glink" data-id="${g.id}" aria-label="Link goal"><option value="">Personal only</option>${o}</select>`};
+
+function jsetup(){const j=P.js=P.js||{st:'dob',dob:'',age:25,err:''},na=j.dob?ageOn(j.dob):0;let b='',fin=false;
+ if(j.st==='dob')b=`<h2>When were you born? 🎂</h2><p class="muted">Your 25 is counted in weeks, from today until the birthday you choose.</p><input type="date" data-f="jdob" value="${j.dob}" max="${ctx.todayStr()}" aria-label="Date of birth">`;
+ if(j.st==='age')b=`<h2>Until which age? 🎯</h2><p class="muted">You’re ${na} now. Pick the age you want this journey to end on.</p><input type="number" data-f="jage" min="${na+1}" max="100" value="${j.age}" aria-label="Target age">`;
+ if(j.st==='sum'){fin=true;const c=jcalc(j.dob,j.age,ctx.todayStr());b=`<h2>${c.weeks} weeks 🗓</h2><p>From today until your ${j.age}th birthday on <b>${c.target.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</b>. That’s about ${(c.weeks/52.18).toFixed(1)} years, and every square on your page is one week.</p>${P.restart?'<p class="muted">Restarting resets your XP, streak, weekly quests and wins. Your character, daily ticks and goals stay.</p>':''}`}
+ const back=j.st==='dob'?(P.restart?'<button class="btn ghost" data-a="jcancel">Cancel</button>':''):'<button class="btn ghost" data-a="jback">Back</button>';
+ return `<div class="pc">${b}${j.err?`<p role="alert" style="color:var(--me)">${ctx.esc(j.err)}</p>`:''}<div class="row" style="justify-content:flex-end;margin-top:14px">${back}<button class="btn" data-a="${fin?'jstart':'jnext'}">${fin?(P.restart?'Restart my 25 ✨':'Start my 25 ✨'):'Next'}</button></div></div>`}
 
 function onboarding(){const s=P.step,nx=`<button class="btn" data-a="next">${s===4?'Start my 25 ✨':'Next'}</button>`,bk=s>0?`<button class="btn ghost" data-a="back">Back</button>`:'';let b='';
  if(s===0)b=`<h2>Welcome to 25 🌱</h2><p>This is <b>your own private space</b> inside our app. Your partner can’t see it, and it never changes our readiness bar or our kitten.</p><p class="muted">It’s for who you’re becoming by 25: your goals, tasks, wild cards and wins.</p>`;
@@ -175,15 +190,14 @@ function onboarding(){const s=P.step,nx=`<button class="btn" data-a="next">${s==
 function today(){const s=stats(),d=ctx.todayStr(),n=P.tasks.filter(t=>isDone(t,d)).length,ed=P.editT;
  const tr=traits();if(!P.lv)P.lv={s:tr.s,c:tr.c};else if(tr.s>P.lv.s||tr.c>P.lv.c){const m=[];if(tr.s>P.lv.s)m.push('💪 Stronger! Your shoulders just levelled up.');if(tr.c>P.lv.c)m.push('🗣 More confident! Your Arabic is showing.');P.up=m.join(' ');P.upT=Date.now();P.lv={s:tr.s,c:tr.c};save()}else if(tr.s<P.lv.s||tr.c<P.lv.c){P.lv={s:tr.s,c:tr.c};save()}
  const mt=(ic,l,lv,n,has,k,words,wd)=>`<div class="mt"><div class="mt-h"><b>${ic} ${l}</b><span>${words[lv]}</span></div><div class="seg">${[1,2,3,4].map(i=>`<i class="${lv>=i?'on':''}"></i>`).join('')}</div><small>${has?`${n} ${wd} in the last 14 days. ${lv<4?'Keep showing up to level up.':'Max level. Keep it alive.'}`:`<button class="ch" data-a="addnamed" data-v="${k}">+ Add a ${k==='w'?'Workout':'Arabic'} tick</button> to grow this`}</small></div>`;
- let h=`<div class="hero">${P.up&&Date.now()-(P.upT||0)<20000?`<div class="lvup">${P.up}</div>`:''}${avatar(P.av,s.w,s.st,230,tr.s,tr.c)}<h2 class="hname">${ctx.esc(P.name||'You')}</h2><div class="lvchip">Lv ${s.lv} · ${s.title}</div><div class="muted2">${mood(s)}</div><div class="xpb"><i style="width:${Math.max(4,s.pr*100)}%"></i></div><div class="row" style="justify-content:center;gap:18px"><span>🔥 ${streak()} day streak</span><span>${s.x} XP</span></div>
- <button class="btn small" data-a="edit" style="margin-top:12px">${ed?'Done ✓':'✏️ Edit character'}</button>
+ let h=`<div class="hero"><button class="hedit" data-a="edit" aria-label="Edit character">${ed?'Done ✓':'✏️ Edit'}</button>${P.up&&Date.now()-(P.upT||0)<20000?`<div class="lvup">${P.up}</div>`:''}${avatar(P.av,s.w,s.st,230,tr.s,tr.c)}<h2 class="hname">${ctx.esc(P.name||'You')}</h2><div class="lvchip">Lv ${s.lv} · ${s.title}</div><div class="muted2">${mood(s)}</div><div class="xpb"><i style="width:${Math.max(4,s.pr*100)}%"></i></div><div class="row" style="justify-content:center;gap:18px"><span>🔥 ${streak()} day streak</span><span>${s.x} XP</span></div>
  <div class="mts">${mt('💪','Strength',tr.s,tr.sn,tr.sh,'w',['Starting out','Warming up','Building','Strong','Beast mode'],'workouts')}${mt('🗣','Confidence',tr.c,tr.cn,tr.ch,'a',['Quiet','Finding words','Speaking up','Confident','Unshakable'],'Arabic days')}</div>
  ${s.m>0?`<small class="muted2">${s.m} day${s.m>1?'s':''} without a tick. ${ctx.esc(P.name||'They')} is fading.</small>`:`<small class="muted2">${n}/${P.tasks.length} ticked today</small>`}</div>
  ${ed?`<div class="pc"><h3>Character</h3><input type="text" data-f="name" value="${ctx.esc(P.name)}" maxlength="20" placeholder="Name"><small class="muted">Hair, outfit and extras update live above.</small>${maker()}</div>`:''}
  ${journey()}
  <div class="pc"><div class="row" style="justify-content:space-between"><h3>Today</h3><button class="btn ghost small" data-a="edit">${ed?'Done':'Edit'}</button></div>`;
  h+=P.tasks.map(t=>ed?`<div class="tk"><div style="flex:1;display:grid;gap:6px"><input type="text" data-f="tt" data-id="${t.id}" value="${ctx.esc(t.t)}">${linkSel(t)}</div><button class="btn ghost small" data-a="deltask" data-id="${t.id}" aria-label="Delete">✕</button></div>`:taskRow(t)).join('')||'<p class="muted">No ticks yet. Tap Edit to add some.</p>';
- if(ed)h+=`<div class="row" style="margin-top:8px"><input type="text" id="p25nt" placeholder="New daily tick" style="flex:1"><button class="btn small" data-a="addtask">Add</button></div><div style="margin-top:12px"><button class="btn ghost small" data-a="redo">Re-do intro & character</button></div>`;
+ if(ed)h+=`<div class="row" style="margin-top:8px"><input type="text" id="p25nt" placeholder="New daily tick" style="flex:1"><button class="btn small" data-a="addtask">Add</button></div><div style="margin-top:12px;display:grid;gap:10px"><label class="row" style="gap:8px"><input type="checkbox" data-a="shareck" ${P.share!==false?'checked':''} style="width:22px;height:22px"> Show my character to my partner (only the character and mood, never your tasks, goals or wins)</label><div class="row"><button class="btn ghost small" data-a="restart">🔄 Restart my 25</button><button class="btn ghost small" data-a="redo">Re-do intro & character</button></div></div>`;
  return h+'</div>'}
 
 function week(){const k=mon(),w=P.wk[k]=P.wk[k]||{};const f=(l,key,ta)=>`<small class="muted">${l}</small>${ta?`<textarea data-f="wk" data-k="${key}" rows="2">${ctx.esc(w[key])}</textarea>`:`<input type="text" data-f="wk" data-k="${key}" value="${ctx.esc(w[key])}">`}`;
@@ -204,27 +218,38 @@ function winsV(){return `<div class="pc"><div class="row"><input type="text" id=
 function draw(){drawInner();if(ctx&&ctx.badge)ctx.badge()}
 function drawInner(){const el=$('v-p25');if(!el)return;if(!$('p25css')){const s=document.createElement('style');s.id='p25css';s.textContent=CSS;document.head.appendChild(s);bind(el)}
  if(!loaded||!P){el.innerHTML='<div class="pc muted">Loading your 25…</div>';return}
- sync();if(P.step<99){el.innerHTML=onboarding();return}
+ sync();if(P.step<99){el.innerHTML=P.step===98?jsetup():onboarding();return}
+ pub();
  const v={today,week,goals:goalsV,wins:winsV}[P.sub]();
  el.innerHTML=`<div class="sub">${[['today','🌤','Today'],['week','🗓','Week'],['goals','🎯','Goals'],['wins','🏆','Wins']].map(([k,i,l])=>`<button data-a="sub" data-v="${k}" aria-pressed="${P.sub===k}"><b aria-hidden="true">${i}</b>${l}</button>`).join('')}</div>${v}`}
 
 function bind(el){
  el.addEventListener('input',e=>{const t=e.target,f=t.dataset.f;if(!f)return;const id=t.dataset.id;
   if(f==='name')P.name=t.value;else if(f==='tt')P.tasks.find(x=>x.id===id).t=t.value;else if(f==='wk')P.wk[mon()][t.dataset.k]=t.value;
-  else if(f==='gt')P.goals.find(x=>x.id===id).t=t.value;else if(f==='gs')P.goals.find(x=>x.id===id).sp=t.value;else if(f==='feel')P.feel=t.value;save()});
+  else if(f==='gt')P.goals.find(x=>x.id===id).t=t.value;else if(f==='gs')P.goals.find(x=>x.id===id).sp=t.value;else if(f==='feel')P.feel=t.value;else if(f==='jdob'&&P.js)P.js.dob=t.value;else if(f==='jage'&&P.js)P.js.age=+t.value;save()});
  el.addEventListener('change',e=>{const t=e.target,a=t.dataset.a,id=t.dataset.id;
   if(a==='tlink'){const x=P.tasks.find(q=>q.id===id);x.link=t.value?{k:'h',id:t.value,since:ctx.todayStr()}:null;save();draw()}
   if(a==='glink'){const x=P.goals.find(q=>q.id===id);x.link=t.value?{k:'g',id:t.value}:null;save();draw()}
+  if(a==='shareck'){P.share=t.checked;save();draw()}
   if(a==='gck'){P.goals.find(q=>q.id===id).ck=t.checked;save();draw()}});
  el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!b.dataset.a)return;const d=b.dataset,a=d.a,id=d.id;
   if(a==='av'){const k=d.k;P.av[k]=(k==='hs'||k==='ac')?d.v:+d.v}
-  else if(a==='next'){P.step++;if(P.step>4){P.step=99;P.sub='today';if(!P.name)P.name='Me'}}
+  else if(a==='next'){P.step++;if(P.step>4){P.step=98;P.js=null;P.restart=false;P.sub='today';if(!P.name)P.name='Me'}}
   else if(a==='back')P.step--;
   else if(a==='starter'){const i=P.tasks.findIndex(t=>t.t===d.v);i<0?P.tasks.push({id:rid(),t:d.v,link:null}):P.tasks.splice(i,1)}
   else if(a==='sub'){P.sub=d.v}
   else if(a==='addnamed'){const nm=d.v==='w'?'Workout':'Arabic';if(!P.tasks.some(t=>t.t===nm))P.tasks.push({id:rid(),t:nm,link:null})}
   else if(a==='edit')P.editT=!P.editT;
   else if(a==='redo'){P.step=0;P.editT=false}
+  else if(a==='restart'){P.restart=true;P.step=98;P.js=null;P.editT=false}
+  else if(a==='jcancel'){P.restart=false;P.js=null;P.step=99}
+  else if(a==='jback'){P.js.err='';P.js.st=P.js.st==='sum'?'age':'dob'}
+  else if(a==='jnext'){const j=P.js;j.err='';
+   if(j.st==='dob'){if(!j.dob||pd(j.dob)>new Date()||ageOn(j.dob)<1)j.err='Please enter your date of birth.';else{j.st='age';if(!j.age||j.age<=ageOn(j.dob))j.age=Math.max(25,ageOn(j.dob)+1)}}
+   else if(j.st==='age'){if(!(j.age>ageOn(j.dob))||j.age>100)j.err='Pick an age above your current age ('+ageOn(j.dob)+').';else j.st='sum'}}
+  else if(a==='jstart'){const j=P.js,t=ctx.todayStr(),c=jcalc(j.dob,j.age,t);P.jr={dob:j.dob,age:j.age,start:t,weeks:c.weeks,bd:c.bd};
+   if(P.restart){P.days={};P.wk={};P.wins=[];P.lv=null;P.up='';P.start=t}
+   P.restart=false;P.js=null;P.step=99;P.sub='today'}
   else if(a==='addtask'){const v=$('p25nt').value.trim();if(v)P.tasks.push({id:rid(),t:v,link:null})}
   else if(a==='deltask'){P.tasks=P.tasks.filter(t=>t.id!==id)}
   else if(a==='tick'){const t=P.tasks.find(q=>q.id===id),dt=ctx.todayStr();
@@ -238,5 +263,11 @@ function bind(el){
   else if(a==='delwin')P.wins.splice(+d.i,1);
   save();draw()})}
 
+function summary(){const s=stats(),tr=traits();let last='';for(const d of ctx.lastDays(60).reverse()){if(anyTick(d)){last=d;break}}
+ return{name:P.name||'Me',av:P.av,st:s.st,lv:s.lv,title:s.title,sk:streak(),s:tr.s,c:tr.c,last,start:P.start||ctx.todayStr()}}
+export function p25Summary(force){if(!ctx||!loaded||!P||P.step<99||(!force&&P.share===false))return null;return summary()}
+export function p25View(sm,size=130){const t=ctx.todayStr();let m=0;if(sm.last!==t){const b=sm.last||sm.start||t;m=Math.min(12,Math.max(0,dd(b,t)-1))}const w=clamp(m/10);
+ return{svg:avatar(sm.av,w,sm.st,size,sm.s,sm.c),title:sm.title,mood:moodOf(m,w,sm.sk),m,sk:m?0:sm.sk}}
+let lastPub;function pub(){if(!ctx.shareChar||!P||P.step<99)return;const sm=P.share===false?null:summary(),k=JSON.stringify(sm);if(k===lastPub)return;lastPub=k;try{ctx.shareChar(sm)}catch(e){}}
 export function initP25(c){ctx=c}
 export function renderP25(){if(!ctx)return;if(loaded&&uidK!=='p25_'+uid()){loaded=false;P=null;uidK=''}if(!loaded){if(!uidK){uidK='x';load()}draw();return}draw()}
