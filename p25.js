@@ -21,7 +21,7 @@ function isDone(t,d){return !!(P.days[d]&&P.days[d][t.id])}
 function sync(){const L=ctx.logs(),u=uid();for(const t of P.tasks){if(!t.link||t.link.k!=='h'||!hab(t.link.id))continue;
  for(const d of ctx.lastDays(14)){if(d<t.link.since)continue;const day=P.days[d]=P.days[d]||{};if(L.has(ctx.logKey(t.link.id,u,d)))day[t.id]=1;else delete day[t.id]}}}
 function goalPct(g){if(g.link&&g.link.k==='g'){const s=gl(g.link.id);if(s)return Math.min(1,(s.current||0)/Math.max(1,s.target||1))}return g.ck?1:0}
-function xp(){let x=0;for(const d in P.days)x+=Object.keys(P.days[d]).length*10;for(const k in P.wk){if(P.wk[k].md)x+=100;if(P.wk[k].wd)x+=75}
+function xp(){let x=0;for(const d in P.days)x+=Object.keys(P.days[d]).length*10;for(const k in P.wk){if(P.wk[k].md)x+=100;if(P.wk[k].wd)x+=75;for(const q of ['s1d','s2d','s3d'])if(P.wk[k][q])x+=25}
  return x+P.wins.length*25+P.goals.filter(g=>goalPct(g)>=1).length*150}
 const anyTick=d=>P.days[d]&&Object.keys(P.days[d]).length>0;
 function miss(){const t=ctx.todayStr();if(anyTick(t))return 0;let n=0;for(const d of ctx.lastDays(12,1).reverse()){if(d<P.start)break;if(anyTick(d))break;n++}return n}
@@ -220,7 +220,7 @@ const CSS=`#v-p25 .hero{position:relative;text-align:center;padding:14px 12px 16
 #v-p25 .sub button[aria-pressed=true]{background:var(--gold);border-color:var(--gold);color:#1b1405;transform:translateY(-2px)}#v-p25 .sub button[aria-pressed=true] b{filter:none;opacity:1}
 #v-p25 .jr{display:grid;grid-template-columns:repeat(28,1fr);gap:3px;margin-top:12px}#v-p25 .jr i{aspect-ratio:1;border-radius:3px;background:var(--line)}#v-p25 .jr i.d{background:var(--you)}#v-p25 .jr i.b{background:var(--gold)}#v-p25 .jr i.n{background:var(--gold);animation:p25n 1.6s ease-in-out infinite}@keyframes p25n{50%{transform:scale(1.8);opacity:.6}}
 #v-p25 .tk{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}#v-p25 .tk:first-child{border-top:0}
-#v-p25 .cb{width:36px;height:36px;border-radius:10px;border:1.5px solid var(--line);background:transparent;font-size:18px;color:#fff}#v-p25 .cb[aria-pressed=true]{background:var(--you);border-color:var(--you)}
+#v-p25 .cb{flex:none;width:36px;height:36px;border-radius:10px;border:2px solid var(--muted);background:transparent;font-size:20px;font-weight:800;color:#fff}#v-p25 .cb[aria-pressed=true]{background:var(--you);border-color:var(--you)}
 #v-p25 input[type=text],#v-p25 textarea,#v-p25 select{width:100%}#v-p25 textarea{font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px}
 #v-p25 .sw{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);padding:0}#v-p25 .sw[aria-pressed=true]{outline:3px solid var(--gold)}
 #v-p25 .ch{border:1.5px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:5px 12px}#v-p25 .ch[aria-pressed=true]{background:var(--me);border-color:var(--me);color:#fff}
@@ -284,8 +284,9 @@ function today(){const s=stats(),d=ctx.todayStr(),n=P.tasks.filter(t=>isDone(t,d
  const newc=ed?`<div class="cg"><div class="cg-h"><b>➕ New aspect</b></div><div class="row"><input type="text" id="p25ncn" placeholder="e.g. Social, Money, Career" maxlength="18" style="flex:1"><input type="text" id="p25nci" placeholder="🙂" maxlength="2" style="width:64px"><button class="btn small" data-a="addcat">Add</button></div></div>`:'';
  return h+`<div class="pc"><div class="row" style="justify-content:space-between"><h3>Today</h3><button class="btn ghost small" data-a="edit">${ed?'Done':'Edit habits'}</button></div>${groups}${newc}</div>`}
 function week(){const k=mon(),w=P.wk[k]=P.wk[k]||{};const f=(l,key,ta)=>`<small class="muted">${l}</small>${ta?`<textarea data-f="wk" data-k="${key}" rows="2">${ctx.esc(w[key])}</textarea>`:`<input type="text" data-f="wk" data-k="${key}" value="${ctx.esc(w[key])}">`}`;
+ const sq=(l,key)=>`<div class="tk" style="border-top:0;padding:8px 0 0"><button class="cb" data-a="flag" data-k="${key}d" aria-pressed="${!!w[key+'d']}" aria-label="${l} done">${w[key+'d']?'✓':''}</button><div style="flex:1"><small class="muted">${l}${w[key+'d']?' · done ✓':''}</small><input type="text" data-f="wk" data-k="${key}" value="${ctx.esc(w[key])}"></div></div>`;
  return `<div class="pc" style="border-color:var(--gold);border-width:2px">${f('MAIN QUEST (one thing, done or not done by Sunday)','main',1)}<div style="margin-top:8px">${f('It makes me more…','more')}</div><button class="btn ghost" style="margin-top:10px;width:100%" data-a="flag" data-k="md" aria-pressed="${!!w.md}">${w.md?'Main quest DONE ✓':'Main quest done? +100 XP'}</button></div>
- <div class="pc">${f('Side quest 1','s1')}<div style="margin-top:8px">${f('Side quest 2','s2')}</div><div style="margin-top:8px">${f('Side quest 3','s3')}</div></div>
+ <div class="pc"><small class="muted">Side quests: tick each one when it's done (+25 XP each)</small>${sq('Side quest 1','s1')}${sq('Side quest 2','s2')}${sq('Side quest 3','s3')}</div>
  <div class="pc">${f('Wild card: something I’ve NEVER done','wild')}<button class="btn ghost" style="margin-top:10px;width:100%" data-a="flag" data-k="wd">${w.wd?'Wild card DONE ✓':'Wild card done? +75 XP'}</button></div>
  <div class="pc">${f('This week I became more…','became')}<div style="margin-top:8px">${f('Next week I dare to…','dare')}</div></div>`}
 
@@ -352,7 +353,7 @@ function bind(el){
   save();draw();if(a==='openadd')setTimeout(()=>{const e=document.getElementById('p25nt_'+d.v);if(e){e.scrollIntoView({block:'center'});e.focus()}},60);if(a==='editc'&&P.editC)setTimeout(()=>{const e=document.getElementById('p25char');e&&e.scrollIntoView({behavior:'smooth',block:'start'})},60)})}
 
 function summary(){const s=stats(),S=traits();let last='';for(const d of ctx.lastDays(60).reverse()){if(anyTick(d)){last=d;break}}
- return{name:P.name||'Me',av:P.av,st:s.st,lv:s.lv,title:s.title,sk:streak(),last,start:P.start||ctx.todayStr(),S:{p:S.p,e:S.e,m:S.m,s:S.s,np:+!!S.np,ne:+!!S.ne,nm:+!!S.nm,ct:S.ct,pr:S.pr,pd:ctx.todayStr(),rd:S.rd}}}
+ return{name:P.name||'Me',av:P.av,st:s.st,lv:s.lv,title:s.title,x:s.x,xb:Math.round(s.pr*100),sk:streak(),last,start:P.start||ctx.todayStr(),S:{p:S.p,e:S.e,m:S.m,s:S.s,np:+!!S.np,ne:+!!S.ne,nm:+!!S.nm,ct:S.ct,pr:S.pr,pd:ctx.todayStr(),rd:S.rd}}}
 export function p25Summary(force){if(!ctx||!loaded||!P||P.step<99||(!force&&P.share===false))return null;return summary()}
 export function p25View(sm,size=300,ov){const t=ctx.todayStr();let m=0;if(sm.last!==t){const b=sm.last||sm.start||t;m=Math.min(12,Math.max(0,dd(b,t)-1))}const w=clamp(m/10);
  const q=sm.S||{p:sm.s,m:sm.c},S2={...q,np:!!q.np,ne:!!q.ne,nm:!!q.nm,pr:(ov&&ov.pr)||{t:-1,y:-1},rd:ov&&ov.rd!=null?ov.rd:(q.rd||0)};
