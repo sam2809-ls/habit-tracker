@@ -154,11 +154,11 @@
 
   /* floating dock: the active section opens up to show its name */
   .dock{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:15;display:flex;gap:4px;padding:6px;border-radius:999px;background:var(--card);border:1.5px solid var(--line);box-shadow:0 10px 30px rgba(36,32,59,.22);transition:transform .45s cubic-bezier(.2,.8,.2,1),visibility 0s}
-  .dk{display:flex;align-items:center;border:0;background:transparent;color:var(--ink);border-radius:999px;padding:10px 12px;font-weight:700;transition:background .25s,color .25s}
+  .dk{display:flex;align-items:center;border:0;background:transparent;color:var(--ink);border-radius:999px;padding:10px 11px;font-weight:700;transition:background .25s,color .25s}
   .dk .ic{font-size:20px;line-height:1}
   .dk .lb{max-width:0;opacity:0;overflow:hidden;white-space:nowrap;transition:max-width .3s ease,opacity .2s,margin .3s}
   .dk[aria-current]{background:var(--ink);color:var(--bg)}
-  .dk[aria-current] .lb{max-width:90px;opacity:1;margin-left:8px}
+  .dk[aria-current] .lb{max-width:70px;opacity:1;margin-left:8px}
   /* More sheet */
   .sheetbg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:28;display:flex;align-items:flex-end;justify-content:center}
   .sheet{width:min(520px,100%);background:var(--card);border-radius:26px 26px 0 0;padding:14px 16px 28px;animation:sheetup .28s cubic-bezier(.2,.8,.2,1)}
@@ -171,8 +171,10 @@
   .tile[aria-current]{border-color:var(--ink)}
   /* 25: its own round badge, ring = today's ticks */
   @property --p{syntax:'<number>';inherits:false;initial-value:0}
-  .p25badge{--p:0;flex:none;width:54px;height:54px;border-radius:50%;border:0;padding:4px;background:conic-gradient(var(--gold) calc(var(--p)*1%),var(--line) 0);transition:--p .8s cubic-bezier(.2,.8,.2,1),transform .2s}
-  .p25badge span{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:var(--ink);color:var(--bg);font-family:var(--head);font-weight:800;font-size:20px;letter-spacing:-.5px}
+  .p25badge{--p:0;position:relative;flex:none;width:56px;height:56px;border-radius:50%;border:0;padding:4px;background:conic-gradient(var(--gold) calc(var(--p)*1%),var(--line) 0);transition:--p .8s cubic-bezier(.2,.8,.2,1),transform .2s;box-shadow:0 4px 14px rgba(242,177,52,.38)}
+  .p25badge span{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 30% 22%,#5b2a7a,#1f1236 72%);color:#ffd166;text-shadow:2px 2px 0 #e0457b;font-family:var(--head);font-weight:900;font-style:italic;font-size:21px;letter-spacing:-1px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
+  .p25badge:after{content:"✦";position:absolute;top:-4px;right:-3px;font-size:16px;color:var(--gold);text-shadow:0 0 8px var(--gold);animation:p25tw 2.8s ease-in-out infinite}
+  @keyframes p25tw{0%,100%{transform:scale(.7) rotate(0);opacity:.6}50%{transform:scale(1.15) rotate(30deg);opacity:1}}
   .p25badge:active{transform:scale(.92)}
   .p25badge.new{animation:p25nudge 2.4s ease-in-out infinite}
   @keyframes p25nudge{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
@@ -183,9 +185,27 @@
   body.in25{--bg:#101a2b;--card:#182740;--ink:#f4efe4;--line:#2b3d5c;--muted:#9aaac4;--me:#ffb547;--you:#5fd3c4;--me-soft:#3a2e1c;--you-soft:#17383a;--gold:#ffc857;color-scheme:dark}
   body.in25 #kitbtn,body.in25 #bell,body.in25 #p25btn{display:none}
   body.in25 .p25back{display:inline-block}
+  body.in25 .edge,body.in25 .rail,body.in25 .railbg,body.in25 .qpanel{display:none}
   body.in25 .dock{visibility:hidden;transform:translate(-50%,160%);transition:transform .45s cubic-bezier(.2,.8,.2,1),visibility 0s .45s}
   body.in25 #v-p25 .cb{color:#0e1a2b}
   body.in25 #v-p25 .ch[aria-pressed=true]{color:#1b1405}
+  /* side rail (Goals, Problems, Fun, Love jar) + Quran slide-over inside Prayers */
+  .edge{position:fixed;z-index:14;border:0;display:grid;place-items:center;box-shadow:0 6px 18px rgba(36,32,59,.28)}
+  .edge-l{left:0;top:46%;width:26px;height:78px;border-radius:0 18px 18px 0;background:var(--ink);color:var(--bg);font-size:22px;font-weight:800;line-height:1}
+  .edge-l.on{background:var(--gold);color:#1b1405}
+  .edge-r{right:0;top:40%;width:36px;padding:12px 0;gap:8px;border-radius:18px 0 0 18px;background:#1f9d8f;color:#fff}
+  .edge-r .vt{writing-mode:vertical-rl;font-weight:800;font-size:13px}
+  .railbg{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:28}
+  .rail{position:fixed;left:10px;top:50%;z-index:29;width:min(230px,72vw);display:grid;gap:8px;padding:12px;background:var(--card);border:1.5px solid var(--line);border-radius:26px;box-shadow:0 20px 50px rgba(0,0,0,.35);transform:translate(-125%,-50%);visibility:hidden;transition:transform .35s cubic-bezier(.2,.8,.2,1),visibility 0s .35s}
+  .rail.open{transform:translate(0,-50%);visibility:visible;transition:transform .35s cubic-bezier(.2,.8,.2,1),visibility 0s}
+  .rail h2{font-size:16px;margin:2px 4px 2px}
+  .rl{display:flex;align-items:center;gap:12px;border:2px solid transparent;border-radius:18px;padding:12px 14px;background:color-mix(in srgb,var(--t) 24%,var(--card));color:var(--ink);font-weight:700;font-size:15px;text-align:left}
+  .rl .ic{font-size:24px;line-height:1}
+  .rl[aria-current]{border-color:var(--ink)}
+  .qpanel{position:fixed;top:0;right:0;bottom:0;z-index:30;width:min(460px,94vw);padding:16px 14px 40px;overflow-y:auto;background:var(--bg);border-left:1.5px solid var(--line);box-shadow:-18px 0 40px rgba(0,0,0,.3);transform:translateX(105%);visibility:hidden;transition:transform .38s cubic-bezier(.2,.8,.2,1),visibility 0s .38s}
+  .qpanel.open{transform:none;visibility:visible;transition:transform .38s cubic-bezier(.2,.8,.2,1),visibility 0s}
+  .qhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  @media (prefers-reduced-motion: reduce){.rail,.qpanel,.p25badge:after{transition:none;animation:none}}
   @media (prefers-reduced-motion: reduce){.dock,.dk,.dk .lb,.sheet,.p25badge,body{transition:none;animation:none}.p25badge.new{animation:none}}
 </style>
 </head>
@@ -244,24 +264,24 @@
     <nav class="dock" aria-label="Sections">
       <button class="tab dk" data-tab="dash" aria-label="Home"><span class="ic">🏠</span><span class="lb">Home</span></button>
       <button class="tab dk" data-tab="habits" aria-label="Habits"><span class="ic">✅</span><span class="lb">Habits</span></button>
-      <button class="tab dk" data-tab="goals" aria-label="Goals"><span class="ic">🎯</span><span class="lb">Goals</span></button>
+      <button class="tab dk" data-tab="meals" aria-label="Meals"><span class="ic">🍽️</span><span class="lb">Meals</span></button>
+      <button class="tab dk" data-tab="sleep" aria-label="Sleep"><span class="ic">🌙</span><span class="lb">Sleep</span></button>
       <button class="tab dk" data-tab="pray" aria-label="Prayers"><span class="ic">🕌</span><span class="lb">Prayers</span></button>
-      <button class="dk" id="morebtn" aria-label="More sections" aria-haspopup="dialog"><span class="ic">✨</span><span class="lb">More</span></button>
     </nav>
 
-    <div id="more" class="sheetbg hidden">
-      <div class="sheet" role="dialog" aria-label="More sections">
-        <h2>More of us</h2>
-        <div class="tiles">
-          <button class="tab tile" data-tab="problems" style="--t:#f2b134"><span class="ic">🧩</span>Problems</button>
-          <button class="tab tile" data-tab="meals" style="--t:#e0457b"><span class="ic">🍽️</span>Meals</button>
-          <button class="tab tile" data-tab="sleep" style="--t:#7a5cff"><span class="ic">🌙</span>Sleep</button>
-          <button class="tab tile" data-tab="quran" style="--t:#1f9d8f"><span class="ic">📖</span>Quran &amp; duas</button>
-          <button class="tab tile" data-tab="fun" style="--t:#3b82f6"><span class="ic">🎈</span>Fun together</button>
-          <button class="tab tile" data-tab="jar" style="--t:#ff7a90"><span class="ic">💌</span>Love jar</button>
-        </div>
-      </div>
-    </div>
+    <button class="edge edge-l" id="railbtn" aria-label="More sections" aria-expanded="false" aria-controls="rail"><span id="railico">›</span></button>
+    <div id="railbg" class="railbg hidden"></div>
+    <aside id="rail" class="rail" aria-label="More sections">
+      <h2>More of us</h2>
+      <button class="tab rl" data-tab="goals" style="--t:#e0457b"><span class="ic">🎯</span>Goals</button>
+      <button class="tab rl" data-tab="problems" style="--t:#f2b134"><span class="ic">🧩</span>Problems</button>
+      <button class="tab rl" data-tab="fun" style="--t:#3b82f6"><span class="ic">🎈</span>Fun together</button>
+      <button class="tab rl" data-tab="jar" style="--t:#ff7a90"><span class="ic">💌</span>Love jar</button>
+    </aside>
+
+    <button class="edge edge-r hidden" id="qedge" aria-label="Open Quran and duas"><span>📖</span><span class="vt">Quran &amp; duas</span></button>
+    <div id="qbg" class="railbg hidden"></div>
+    <aside id="v-quran" class="qpanel" aria-label="Quran and duas"></aside>
 
     <div id="v-p25" class="hidden"></div>
     <div id="v-dash"></div>
@@ -271,7 +291,6 @@
     <div id="v-pray" class="hidden"></div>
     <div id="v-meals" class="hidden"></div>
     <div id="v-sleep" class="hidden"></div>
-    <div id="v-quran" class="hidden"></div>
     <div id="v-fun" class="hidden"></div>
     <div id="v-jar" class="hidden"></div>
   </main>
@@ -639,8 +658,10 @@ function renderPray(pid){
     </div>
     <div class="grid2" style="margin-top:14px">${statsCard(me.uid,'var(--me)','prayer_',PRAYERS,taha(me.uid))}
       ${pid?statsCard(pid,'var(--you)','prayer_',PRAYERS,taha(pid)):waitingCard}</div>
+    <button class="btn ghost" id="qopen" style="margin-top:14px;width:100%">📖 Open Quran &amp; duas</button>
     <p class="muted" style="margin-top:12px">Prayers don’t change the readiness bar. This is just for you two to cheer each other on.</p>`;
   bindTicks($('v-pray'));
+  $('qopen').onclick=()=>setQ(true);
 }
 const teaStat=uid=>`<div><span class="big">${lastDays(7).reduce((a,x)=>a+cnt('tea_',TEA,uid,x),0)}/14</span><small>teas this week</small></div>`;
 const WATER_N=12, WATER_OK=8;
@@ -1245,6 +1266,7 @@ function renderQuran(pid){
   const bothToday = pid && mine && theirs;
   const duas=fun.filter(f=>f.kind==='dua');
   $('v-quran').innerHTML=`
+    <div class="qhead"><h2>📖 Quran &amp; duas</h2><button class="btn ghost small" id="qclose">Close ✕</button></div>
     <div class="card"><h3>Quran today</h3>
       <p class="muted" style="margin:4px 0 0">${bothToday?'You both read today 🤍':(mine||theirs?'One of you has read today. 😢':'Write what you read today, like “Surah Al-Kahf, ayah 1 to 10”.')}</p>
       <div class="row" style="margin-top:12px"><input id="qw" style="flex:1;min-width:200px" placeholder="What did you read?" value="${mine?esc(mine.what):''}">
@@ -1264,6 +1286,7 @@ function renderQuran(pid){
         <div class="row" style="justify-content:space-between"><small class="muted">added by ${esc(nameOf(f.by))}</small>
         <button class="btn ghost small" data-dx="${f.id}">Delete</button></div></div>`).join('')||'<p class="muted" style="margin-top:10px">No duas yet. Add your first one above.</p>'}
     </div>`;
+  $('qclose').onclick=()=>setQ(false);
   $('qs').onclick=()=>saveQuran($('qw').value,$('qp').value);
   if($('qc')) $('qc').onclick=clearQuran;
   $('da').onclick=async()=>{ await addDua($('dt').value,$('dx').value); };
@@ -1843,15 +1866,21 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeMenu(); });
 
 /* ---------- tabs ---------- */
 let prevTab='dash';
-const moreEl=$('more');
-const goTab=t=>{ if(t==='p25' && tab!=='p25') prevTab=tab; tab=t; moreEl.classList.add('hidden'); window.scrollTo({top:0}); render(); };
+const railEl=$('rail'), railBg=$('railbg'), railBtn=$('railbtn');
+let qopen=false;
+const setRail=o=>{ railEl.classList.toggle('open',o); railBg.classList.toggle('hidden',!o); railBtn.setAttribute('aria-expanded',String(o)); if(o){ const f=railEl.querySelector('.rl'); f&&f.focus(); } };
+const applyQ=()=>{ const on=tab==='pray'&&qopen; $('v-quran').classList.toggle('open',on); $('qbg').classList.toggle('hidden',!on); $('qedge').classList.toggle('hidden',tab!=='pray'||on); };
+const setQ=o=>{ qopen=o; applyQ(); if(o) setTimeout(()=>{ const c=$('qclose'); c&&c.focus(); },380); };
+const goTab=t=>{ if(t==='p25' && tab!=='p25') prevTab=tab; tab=t; qopen=false; setRail(false); window.scrollTo({top:0}); render(); };
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => goTab(b.dataset.tab));
 $('p25btn').onclick=()=>goTab('p25');
 $('p25back').onclick=()=>goTab(prevTab||'dash');
-$('morebtn').onclick=()=>moreEl.classList.toggle('hidden');
-moreEl.onclick=e=>{ if(e.target===moreEl) moreEl.classList.add('hidden'); };
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') moreEl.classList.add('hidden'); });
-const MORE_INFO={problems:['🧩','Problems'],meals:['🍽️','Meals'],sleep:['🌙','Sleep'],quran:['📖','Quran'],fun:['🎈','Fun'],jar:['💌','Love jar']};
+railBtn.onclick=()=>setRail(!railEl.classList.contains('open'));
+railBg.onclick=()=>setRail(false);
+$('qedge').onclick=()=>setQ(true);
+$('qbg').onclick=()=>setQ(false);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ setRail(false); if(qopen) setQ(false); } });
+const RAIL_INFO={goals:['🎯','Goals'],problems:['🧩','Problems'],fun:['🎈','Fun'],jar:['💌','Love jar']};
 function updateBadge(){
   const b=$('p25btn'); if(!b) return;
   const p=p25Progress();
@@ -1862,10 +1891,7 @@ function updateBadge(){
 }
 function updateNav(){
   document.querySelectorAll('.tab').forEach(b => b.dataset.tab===tab ? b.setAttribute('aria-current','page') : b.removeAttribute('aria-current'));
-  const mi=MORE_INFO[tab], mb=$('morebtn');
-  mi ? mb.setAttribute('aria-current','page') : mb.removeAttribute('aria-current');
-  mb.querySelector('.ic').textContent=mi?mi[0]:'✨';
-  mb.querySelector('.lb').textContent=mi?mi[1]:'More';
+  const ri=RAIL_INFO[tab]; railBtn.classList.toggle('on',!!ri); $('railico').textContent=ri?ri[0]:'›';
   document.body.classList.toggle('in25',tab==='p25');
 }
 
@@ -1877,7 +1903,7 @@ function render(){
   const ae=document.activeElement;
   if(ae && (ae.tagName==='TEXTAREA'||ae.tagName==='INPUT') && $('app').contains(ae)){ pendingRender=true; return; }
   updateNav();
-  ['p25','dash','habits','goals','problems','pray','meals','sleep','quran','fun','jar'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
+  ['p25','dash','habits','goals','problems','pray','meals','sleep','fun','jar'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
   const pid = partnerId();
   updateBell();
   $('today').textContent = new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -1888,10 +1914,10 @@ function render(){
   if(tab==='habits') renderHabits(pid);
   if(tab==='goals') renderGoals();
   if(tab==='problems') renderProblems(pid);
-  if(tab==='pray') renderPray(pid);
+  if(tab==='pray'){ renderPray(pid); const q=$('v-quran'),st=q.scrollTop; renderQuran(pid); q.scrollTop=st; }
+  applyQ();
   if(tab==='meals') renderMeals(pid);
   if(tab==='sleep') renderSleep(pid);
-  if(tab==='quran') renderQuran(pid);
   if(tab==='fun') renderFun(pid);
   if(tab==='jar') renderJar(pid);
   renderKitBox();
