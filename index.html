@@ -205,7 +205,7 @@
   /* inside 25 the whole app becomes a separate private room */
   body{transition:background .4s,color .4s}
   body.in25{--bg:#101a2b;--card:#182740;--ink:#f4efe4;--line:#2b3d5c;--muted:#9aaac4;--me:#ffb547;--you:#5fd3c4;--me-soft:#3a2e1c;--you-soft:#17383a;--gold:#ffc857;color-scheme:dark}
-  body.in25 #kitbtn,body.in25 #bell,body.in25 #duo{display:none}
+  body.in25 #kitbtn,body.in25 #bell,body.in25 #moodbtn,body.in25 #duo{display:none}
   body.in25 .p25back{display:inline-block}
   body.in25 .edge,body.in25 .rail,body.in25 .railbg,body.in25 .qpanel{display:none}
   body.in25 .dock{visibility:hidden;transform:translate(-50%,160%);transition:transform .45s cubic-bezier(.2,.8,.2,1),visibility 0s .45s}
@@ -297,6 +297,33 @@
   @keyframes snooze{0%,100%{transform:scale(1) translateY(0)}50%{transform:scale(1.04,.96) translateY(1px)}}
   @keyframes peek{0%,100%{transform:rotate(0)}30%{transform:rotate(-6deg)}60%{transform:rotate(6deg)}}
   @keyframes cheerhop{0%{transform:translateY(0) scale(1)}35%{transform:translateY(-12px) scale(1.12) rotate(-6deg)}100%{transform:translateY(0) scale(1)}}
+
+  /* feelings */
+  .moodbtn{position:relative;font-size:18px;line-height:1}
+  .flbub{position:absolute;right:-6px;bottom:calc(100% + 7px);white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:700;line-height:1.5;padding:1px 9px;border-radius:12px 12px 3px 12px;border:1.5px solid var(--zc);background:var(--card);color:var(--ink);box-shadow:0 3px 8px rgba(0,0,0,.12);z-index:2}
+  .fldot{position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:var(--me);border:2px solid var(--card)}
+  .fl{display:grid;gap:12px}
+  .flcard{border:1.5px solid var(--zc,var(--line));background:var(--zb,transparent);border-radius:18px;padding:12px 14px;display:grid;gap:8px}
+  .flbig{font-size:38px;line-height:1}
+  .flwhy{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--card);border-radius:12px;padding:8px 10px;font-size:15px}
+  .flrow{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}
+  .flrow .em{font-size:24px;line-height:1.2}
+  .flx{background:transparent;border:0;color:var(--muted);padding:2px 8px;font-size:18px}
+  .flgrid{display:flex;flex-wrap:wrap;gap:8px}
+  .flchip{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;border:1.5px solid var(--zc,var(--line));background:var(--zb,transparent);color:var(--ink);font-weight:600}
+  .flchip[aria-pressed=true]{background:var(--zc);color:#fff;border-color:var(--zc)}
+  .flchip:active,.flzone:active{transform:scale(.95)}
+  .flzones{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .flzone{border:2px solid var(--zc);background:var(--zb);color:var(--ink);border-radius:16px;padding:8px 12px;text-align:left;display:grid;line-height:1.25}
+  .flzone small{color:var(--muted);font-size:12px}
+  .flzone[aria-pressed=true]{background:var(--zc);color:#fff}
+  .flzone[aria-pressed=true] small{color:#fff}
+  .flstrip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .flstrip i{font-style:normal;display:grid;place-items:center;height:30px;border-radius:10px;font-size:16px;background:var(--bg);color:var(--muted)}
+  .fl textarea{width:100%;font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;min-height:90px;resize:vertical}
+  .fl textarea:focus{outline:none;border-color:var(--me);box-shadow:0 0 0 4px var(--me-soft)}
+  @media (prefers-reduced-motion: no-preference){ .flbub{animation:flpop .4s cubic-bezier(.2,1.4,.4,1)} }
+  @keyframes flpop{from{transform:scale(.6);opacity:0;transform-origin:100% 100%}}
 </style>
 </head>
 <body>
@@ -337,6 +364,7 @@
       </div>
       <div class="row">
         <button class="btn ghost small kitbox" id="kitbtn" aria-label="Visit our kitten"></button>
+        <button class="btn ghost small moodbtn" id="moodbtn" aria-label="Feelings">💭</button>
         <button class="btn ghost small" id="bell" aria-label="Updates">🔔<span id="bellcount"></span></button>
         <div class="menuwrap">
           <button class="btn ghost small" id="menubtn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">☰</button>
@@ -399,6 +427,7 @@
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost small" id="nickclose">Done</button></div>
   </div>
 </div>
+<div id="moodmodal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Feelings"><div class="card"><div id="moodbody"></div></div></div>
 <div id="avmodal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Avatar"><div class="card"><div id="avbody" class="avm"></div><div class="row" id="avact" style="justify-content:flex-end;margin-top:14px"></div></div></div>
 <div id="kitmodal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Our kitten">
   <div class="card"><div id="v-kitten"></div>
@@ -1143,6 +1172,7 @@ function feedItems(){
     if(!f.at) continue;
     let t=null;
     if(f.kind==='nudge'&&f.to===me.uid) t=[`${who} sent you a nudge 💌`,f.text];
+    else if(f.kind==='mood'&&f.uid===pid) t=[`${who} is feeling ${f.w} ${f.e}`,''];
     else if(f.kind==='status'&&f.uid===pid) t=[`${who} is now ${f.emoji}`,f.text];
     else if(f.kind==='problem'&&f.by===pid) t=[`${who} added a problem`,f.title];
     else if(f.kind==='solution'&&f.by===pid) t=[`${who} suggested a solution`,f.text];
@@ -1946,6 +1976,189 @@ function renderKitten(pid){
   $('pn').onkeydown=e=>{ if(e.key==='Enter') $('pns').click(); };
 }
 
+/* ===== FEELINGS: start ===== */
+/* ---------- feelings (moods) ---------- */
+const ZONES={
+  y:{n:'Energised',d:'high energy · pleasant',c:'#f2b134',bg:'rgba(242,177,52,.2)'},
+  g:{n:'Calm',d:'low energy · pleasant',c:'#3aa57a',bg:'rgba(58,165,122,.17)'},
+  r:{n:'Tense',d:'high energy · unpleasant',c:'#e0586b',bg:'rgba(224,88,107,.17)'},
+  b:{n:'Low',d:'low energy · unpleasant',c:'#5a7fd8',bg:'rgba(90,127,216,.17)'}
+};
+/* Word|emoji|other words people might type */
+const VOC_RAW={
+  y:'Happy|😊|glad pleased joyful;Excited|🤩|thrilled pumped happy;Joyful|😄|delighted happy;Cheerful|😁|bubbly happy;Thrilled|🥳|elated;Overjoyed|🥰|ecstatic happy;Energised|⚡|energetic charged;Playful|😜|silly fun;Silly|🤪|goofy;Giddy|🤭|;Inspired|✨|creative;Motivated|💪|driven;Determined|🔥|focused resolute;Confident|😎|sure bold;Proud|🥹|accomplished;Triumphant|🏆|victorious;Amazed|😲|wow astonished;Surprised|😮|;Curious|🧐|intrigued;Optimistic|🌞|positive;Hopeful|🌈|;Eager|🙌|keen;Enthusiastic|🎉|;Lively|💃|;Adventurous|🧭|;Radiant|🌟|glowing;Flirty|😘|romantic;Cheeky|😏|naughty;Fired up|🚀|;Free|🕊️|liberated;Lucky|🍀|;Alive|🌸|;Hyped|🎶|;Productive|✅|',
+  g:'Calm|😌|relaxed peaceful;Peaceful|🕊️|tranquil;Content|🙂|satisfied happy;Grateful|🙏|thankful;Thankful|🤲|appreciative;Blessed|✨|;Relaxed|😊|easy calm;Cozy|🧸|snug comfy;Safe|🛡️|secure;Secure|🏠|;Loved|🥰|adored cherished;Tender|💗|soft gentle;Serene|🌿|;Relieved|😮‍💨|phew;Satisfied|😋|;Fulfilled|🌻|;Mellow|🍃|;Chill|😎|laid-back;Comfortable|🛋️|;Balanced|⚖️|;Centered|🧘|grounded;Humble|🌱|;Touched|🥹|moved;Appreciated|💐|valued;Nostalgic|🍂|sentimental;Warm|☕|;Rested|🛌|refreshed;Sleepy|😴|drowsy tired;Spiritually connected|🕌|iman;Humbled|🌙|;Cuddly|🫂|;Settled|🪴|;Patient|⏳|;Trusting|🤝|;Understood|💞|',
+  r:'Angry|😠|mad furious;Furious|🤬|enraged angry;Frustrated|😤|angry;Irritated|😒|angry;Annoyed|🙄|angry;Anxious|😰|worried nervous uneasy;Nervous|😬|anxious;Worried|😟|anxious;Stressed|😖|anxious;Overwhelmed|🤯|swamped;Panicked|😱|anxious;Scared|😨|afraid frightened;Tense|😣|;Restless|🌀|fidgety anxious;Jittery|🫨|;Agitated|😾|;Embarrassed|😳|;Insecure|🫣|self-conscious;Jealous|😒|envious;Resentful|😡|bitter;Betrayed|🗡️|;Disgusted|🤢|;Shocked|😧|;Defensive|🛡️|;Impatient|⏳|;Pressured|🏋️|;Rushed|🏃|;Hangry|🍽️|hungry;Cranky|😫|grumpy;Dreading|😰|;Confused|😵‍💫|lost;Triggered|⚡|;Offended|😤|;Fed up|🙄|',
+  b:'Sad|😢|down blue unhappy upset;Tired|😩|exhausted;Exhausted|😫|tired;Drained|🪫|tired;Lonely|🥺|alone sad;Down|😞|sad low;Disappointed|😞|sad let-down;Heartbroken|💔|sad;Hurt|💔|sad;Homesick|🏠|;Bored|😑|;Numb|😶|;Empty|🕳️|;Gloomy|☁️|sad;Melancholy|🌧️|sad;Discouraged|😔|;Guilty|😔|;Ashamed|🙈|;Regretful|😔|sorry;Grieving|🖤|mourning;Missing you|🥺|miss;Unmotivated|🥱|;Burnt out|🪫|burnout tired;Stuck|🧱|;Weary|😪|tired;Fragile|🥀|;Apathetic|😐|;Wistful|🌫️|;Hopeless|🕯️|;Worthless|🥀|;Left out|🚪|excluded;Ignored|🔇|;Sick|🤒|ill unwell;Sore|🤕|achy pain;Longing|💭|yearning;Distant|🌫️|;Overlooked|🫥|;Sluggish|🐌|lazy;Foggy|🌁|;Low|🌑|'
+};
+const VOC=[]; for(const z of Object.keys(VOC_RAW)) for(const row of VOC_RAW[z].split(';')){ const [w,e,s]=row.split('|'); VOC.push({w,e,z,s:s||''}); }
+const FL_TAGS=['🕌 Prayer','😴 Sleep','📚 Study','👨‍👩‍👧 Family','💞 Us','🏃 Body','🍽️ Food','💼 Work','👯 Friends','🌫️ Nothing specific'];
+const FL_EMOJI=['😊','😄','🥰','😌','🥹','😎','🤔','😮‍💨','😢','😔','😞','😰','😠','😤','😴','🤒','🥱','💗','✨','🌧️','🌈','🔥','🫠','😶‍🌫️'];
+const FL_TTL=24*3600*1000;
+const nz=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}\s-]/gu,'').replace(/\s+/g,' ').trim();
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const lev=(a,b)=>{ const m=a.length,n=b.length; if(Math.abs(m-n)>2) return 9; let p=Array.from({length:n+1},(_,j)=>j); for(let i=1;i<=m;i++){ const c=[i]; for(let j=1;j<=n;j++) c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1)); p=c; } return p[n]; };
+const firstEmoji=v=>{ v=(v||'').trim(); if(!v) return ''; try{ return [...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(v)][0].segment; }catch(e){ return Array.from(v)[0]||''; } };
+const moodsOf=uid=>fun.filter(f=>f.kind==='mood'&&f.uid===uid).sort((a,b)=>b.at-a.at);
+const curMood=uid=>{ const m=moodsOf(uid)[0]; return m&&Date.now()-m.at<FL_TTL?m:null; };
+const customFeels=()=>fun.filter(f=>f.kind==='feeling').map(f=>({w:f.w,e:f.e,z:f.z,s:'',c:1}));
+function allFeels(){ const seen=new Set(VOC.map(f=>nz(f.w))), out=[...VOC]; for(const c of customFeels()){ const k=nz(c.w); if(!seen.has(k)){ seen.add(k); out.push(c); } } return out; }
+function feelUse(){ const m=new Map(); for(const x of moodsOf(me.uid)){ const k=nz(x.w); m.set(k,(m.get(k)||0)+1); } return m; }
+function matchFeels(q0){
+  const q=nz(q0); if(!q) return [];
+  const use=feelUse(), out=[];
+  for(const f of allFeels()){
+    const w=nz(f.w), parts=w.split(/[\s-]+/), syn=nz(f.s).split(' ').filter(Boolean);
+    let sc=0;
+    if(w===q) sc=100;
+    else if(w.startsWith(q)) sc=80;
+    else if(parts.some(p=>p.startsWith(q))) sc=70;
+    else if(syn.some(p=>p===q||p.startsWith(q))) sc=55;
+    else if(q.length>=3&&w.includes(q)) sc=45;
+    if(sc) out.push([sc+(use.get(w)||0)*.5,f]);
+  }
+  if(!out.length&&q.length>=4){ /* nothing direct: forgive a typo */
+    for(const f of allFeels()){ const w=nz(f.w), parts=w.split(/[\s-]+/), syn=nz(f.s).split(' ').filter(Boolean);
+      if(lev(w,q)<=1||parts.some(p=>lev(p,q)<=1)||lev(w.slice(0,q.length),q)<=1||syn.some(p=>lev(p,q)<=1)) out.push([30,f]); }
+  }
+  return out.sort((a,b)=>b[0]-a[0]||a[1].w.localeCompare(b[1].w)).slice(0,14).map(x=>x[1]);
+}
+const flRd=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const flWr=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
+const flZ=z=>ZONES[z]||ZONES.g;
+const flVars=z=>`--zc:${flZ(z).c};--zb:${flZ(z).bg}`;
+
+/* the little box in the header: my feeling as the icon, the partner's feeling as a bubble */
+function renderMoodChip(){
+  const b=$('moodbtn'); if(!b||!couple||!me) return;
+  const pid=partnerId(), mine=curMood(me.uid), th=pid?curMood(pid):null, show=th||(!pid?mine:null);
+  const unread=th&&th.at>Number(flRd('rr_mood_seen_'+me.uid)||0);
+  b.innerHTML=`${show?`<span class="flbub" style="${flVars(show.z)}">${show.e} ${esc(show.w)}</span>`:''}<span aria-hidden="true">${mine?mine.e:'💭'}</span>${unread?'<i class="fldot"></i>':''}`;
+  b.setAttribute('aria-label',`Feelings${show?`: ${show.w}`:''}${unread?', new':''}`);
+}
+
+let MS={v:'home',q:'',z:'y',sel:null,tags:[],why:'',nf:null};
+const flReset=()=>{ MS={v:'home',q:'',z:'y',sel:null,tags:[],why:'',nf:null}; };
+const flChip=f=>`<button class="flchip" style="${flVars(f.z)}" data-m="pick" data-k="${esc(nz(f.w))}">${f.e} ${esc(f.w)}</button>`;
+function flStrip(uid){
+  const ms=moodsOf(uid);
+  return `<div class="flstrip" aria-label="Last 7 days">${lastDays(7).map(d=>{ const m=ms.find(x=>x.date===d); return m?`<i title="${esc(d)}: ${esc(m.w)}" style="background:${flZ(m.z).bg}">${m.e}</i>`:`<i title="${esc(d)}">·</i>`; }).join('')}</div>`;
+}
+function flCard(uid,title){
+  const m=moodsOf(uid)[0];
+  if(!m) return `<div class="flcard"><b>${title}</b><span class="muted">No feeling shared yet</span></div>`;
+  const old=Date.now()-m.at>=FL_TTL;
+  return `<div class="flcard" style="${flVars(m.z)}"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>${title}</b><small class="muted">${old?'last felt ':''}${ago(m.at)}</small></div>
+    <div class="row" style="flex-wrap:nowrap;gap:12px"><span class="flbig">${m.e}</span><div><div style="font-family:var(--head);font-size:22px;font-weight:600">${esc(m.w)}</div><small class="muted">${flZ(m.z).n} · ${flZ(m.z).d}</small></div></div>
+    ${(m.tags||[]).length?`<div class="row" style="gap:6px">${m.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}
+    ${m.why?`<div class="flwhy">${esc(m.why)}</div>`:''}
+    ${flStrip(uid)}</div>`;
+}
+function renderMood(){
+  const el=$('moodbody'); if(!el||!couple||!me) return;
+  const pid=partnerId();
+  if(MS.v==='home'){
+    const all=fun.filter(f=>f.kind==='mood').sort((a,b)=>b.at-a.at).slice(0,12);
+    el.innerHTML=`<div class="fl"><div class="row" style="justify-content:space-between"><h2>Feelings 💭</h2><button class="btn ghost small" data-m="close">Close</button></div>
+      ${pid?flCard(pid,esc(nameOf(pid))):''}${flCard(me.uid,pid?'Me':'How I feel')}
+      <button class="btn" data-m="new">How are you feeling? 💗</button>
+      ${all.length?`<div><h3 style="font-size:16px;margin-bottom:4px">Recent</h3>${all.map(m=>`<div class="flrow"><span class="em">${m.e}</span><div style="flex:1;min-width:0"><b>${m.uid===me.uid?'Me':esc(nameOf(m.uid))}</b> felt <b style="color:${flZ(m.z).c}">${esc(m.w)}</b> <small class="muted">· ${ago(m.at)}</small>${(m.tags||[]).length?`<div><small class="muted">${m.tags.map(esc).join(' · ')}</small></div>`:''}${m.why?`<div class="flwhy" style="margin-top:4px">${esc(m.why)}</div>`:''}</div>${m.uid===me.uid?`<button class="x flx" data-m="del" data-id="${esc(m.id)}" aria-label="Delete this entry">×</button>`:''}</div>`).join('')}</div>`:''}</div>`;
+  }else if(MS.v==='pick'){
+    el.innerHTML=`<div class="fl"><div class="row" style="justify-content:space-between"><button class="btn ghost small" data-m="home">← Back</button><h2 style="font-size:20px">How are you feeling?</h2></div>
+      <input id="flq" type="text" placeholder="Type a feeling…" autocomplete="off" maxlength="28" value="${esc(MS.q)}"><div id="flres"></div></div>`;
+    renderPickRes();
+  }else if(MS.v==='newf'){
+    const n=MS.nf;
+    el.innerHTML=`<div class="fl"><div class="row" style="justify-content:space-between"><button class="btn ghost small" data-m="pick-back">← Back</button><h2 style="font-size:20px">New feeling ➕</h2></div>
+      <p class="muted" style="margin:0">Name it, give it an emoji and say where it sits. Then it’s saved for both of you. 💗</p>
+      <input id="nfw" type="text" maxlength="28" placeholder="Feeling name" value="${esc(n.w)}">
+      <div><small class="muted">Emoji</small><div class="flgrid">${FL_EMOJI.map(e=>`<button class="flchip" data-m="nfe" data-e="${e}" aria-pressed="${n.e===e}" style="--zc:var(--me);--zb:transparent">${e}</button>`).join('')}</div>
+      <div class="row" style="margin-top:8px"><input id="nfet" type="text" placeholder="…or type your own" style="max-width:190px" value="${FL_EMOJI.includes(n.e)?'':esc(n.e)}"><span id="nfprev" class="flbig" style="font-size:30px">${n.e||''}</span></div></div>
+      <div><small class="muted">Where does it sit?</small><div class="flzones">${Object.keys(ZONES).map(z=>`<button class="flzone" data-m="nfz" data-z="${z}" aria-pressed="${n.z===z}" style="${flVars(z)}"><b>${ZONES[z].n}</b><small>${ZONES[z].d}</small></button>`).join('')}</div></div>
+      <button class="btn" data-m="nfsave" ${n.w.trim()&&n.e&&n.z?'':'disabled style="opacity:.45"'}>Save feeling</button></div>`;
+  }else if(MS.v==='why'){
+    const f=MS.sel;
+    el.innerHTML=`<div class="fl"><div class="row" style="justify-content:space-between"><button class="btn ghost small" data-m="chg">← Change</button><h2 style="font-size:20px">Why? <small class="muted">(optional)</small></h2></div>
+      <div class="flcard" style="${flVars(f.z)}"><div class="row" style="flex-wrap:nowrap;gap:12px"><span class="flbig">${f.e}</span><div><div style="font-family:var(--head);font-size:22px;font-weight:600">${esc(f.w)}</div><small class="muted">${flZ(f.z).n} · ${flZ(f.z).d}</small></div></div></div>
+      <div class="flgrid">${FL_TAGS.map(t=>`<button class="flchip" data-m="tag" data-t="${esc(t)}" aria-pressed="${MS.tags.includes(t)}" style="--zc:var(--me);--zb:transparent">${esc(t)}</button>`).join('')}</div>
+      <textarea id="flwhy" maxlength="600" placeholder="Want to say more? Only if you like…">${esc(MS.why)}</textarea>
+      <button class="btn" data-m="save">Share how I feel 💗</button></div>`;
+  }
+}
+function renderPickRes(){
+  const el=$('flres'); if(!el) return;
+  const q=MS.q.trim(); let h='';
+  if(q){
+    const ms=matchFeels(q), exact=ms.some(f=>nz(f.w)===nz(q));
+    h+=ms.length?`<div class="flgrid">${ms.map(flChip).join('')}</div>`:`<p class="muted" style="margin:4px 0">No feeling with that name yet.</p>`;
+    if(!exact&&nz(q).length>=2) h+=`<button class="flchip" data-m="addnew" style="margin-top:10px;border-style:dashed;--zc:var(--me);--zb:transparent">➕ Add “${esc(q)}” as a new feeling</button>`;
+  }else{
+    const use=feelUse(), all=allFeels(), rec=[...use.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k])=>all.find(f=>nz(f.w)===k)).filter(Boolean);
+    const cu=customFeels();
+    if(rec.length) h+=`<small class="muted">Your usual feelings</small><div class="flgrid" style="margin:4px 0 12px">${rec.map(flChip).join('')}</div>`;
+    if(cu.length) h+=`<small class="muted">✨ Our own feelings</small><div class="flgrid" style="margin:4px 0 12px">${cu.map(flChip).join('')}</div>`;
+    h+=`<small class="muted">Or browse by how it feels</small><div class="flzones" style="margin:4px 0 10px">${Object.keys(ZONES).map(z=>`<button class="flzone" data-m="zone" data-z="${z}" aria-pressed="${MS.z===z}" style="${flVars(z)}"><b>${ZONES[z].n}</b><small>${ZONES[z].d}</small></button>`).join('')}</div>
+      <div class="flgrid">${all.filter(f=>f.z===MS.z).map(flChip).join('')}</div>`;
+  }
+  el.innerHTML=h;
+}
+async function saveFeeling(){
+  const n=MS.nf, w=(n.w||'').trim().slice(0,28); if(!w||!n.e||!n.z) return;
+  const ex=allFeels().find(x=>nz(x.w)===nz(w));
+  if(ex) MS.sel=ex;
+  else{
+    try{ await setDoc(doc(cref(),'fun','feel_'+(nz(w).replace(/\s+/g,'-')||'x')),{kind:'feeling',w,e:n.e,z:n.z,by:me.uid,at:Date.now()}); }
+    catch(e){ toast('Could not save that feeling. Try again.'); return; }
+    MS.sel={w,e:n.e,z:n.z,s:'',c:1};
+  }
+  MS.v='why'; renderMood();
+}
+async function saveMood(){
+  const f=MS.sel; if(!f) return;
+  const at=Date.now();
+  try{ await setDoc(doc(cref(),'fun',`mood_${at}_${me.uid}`),{kind:'mood',uid:me.uid,at,date:todayStr(),w:f.w,e:f.e,z:f.z,tags:MS.tags,why:MS.why.trim().slice(0,600)}); }
+  catch(e){ toast('Could not save. Try again.'); return; }
+  toast(`Shared: ${f.e} ${f.w}`);
+  flReset(); renderMood(); renderMoodChip();
+}
+async function deleteMood(id){
+  if(!id||!id.startsWith('mood_')||!id.endsWith('_'+me.uid)) return;
+  if(confirm('Delete this entry?')) await deleteDoc(doc(cref(),'fun',id));
+}
+const closeMood=()=>{ $('moodmodal').classList.add('hidden'); flReset(); };
+$('moodbtn').onclick=()=>{ flReset(); flWr('rr_mood_seen_'+me.uid,String(Date.now())); renderMood(); $('moodmodal').classList.remove('hidden'); renderMoodChip(); };
+$('moodmodal').onclick=e=>{ if(e.target===$('moodmodal')) closeMood(); };
+$('moodbody').onclick=e=>{
+  const t=e.target.closest('[data-m]'); if(!t) return;
+  const a=t.dataset.m;
+  if(a==='close') closeMood();
+  else if(a==='home'){ MS.v='home'; renderMood(); }
+  else if(a==='new'){ flReset(); MS.v='pick'; renderMood(); setTimeout(()=>{ const q=$('flq'); if(q) q.focus(); },60); }
+  else if(a==='zone'){ MS.z=t.dataset.z; renderPickRes(); }
+  else if(a==='pick'){ const f=allFeels().find(x=>nz(x.w)===t.dataset.k); if(f){ MS.sel=f; MS.v='why'; renderMood(); } }
+  else if(a==='addnew'){ MS.nf={w:cap(MS.q.trim()),e:'',z:''}; MS.v='newf'; renderMood(); }
+  else if(a==='pick-back'){ MS.v='pick'; renderMood(); }
+  else if(a==='nfe'){ MS.nf.e=t.dataset.e; renderMood(); }
+  else if(a==='nfz'){ MS.nf.z=t.dataset.z; renderMood(); }
+  else if(a==='nfsave') saveFeeling();
+  else if(a==='tag'){ const v=t.dataset.t; MS.tags=MS.tags.includes(v)?MS.tags.filter(x=>x!==v):[...MS.tags,v]; renderMood(); }
+  else if(a==='save') saveMood();
+  else if(a==='chg'){ MS.v='pick'; renderMood(); }
+  else if(a==='del') deleteMood(t.dataset.id);
+};
+$('moodbody').addEventListener('input',e=>{
+  const id=e.target.id;
+  if(id==='flq'){ MS.q=e.target.value; renderPickRes(); }
+  else if(id==='flwhy') MS.why=e.target.value;
+  else if(id==='nfw'){ MS.nf.w=e.target.value; const b=$('moodbody').querySelector('[data-m="nfsave"]'); if(b){ const ok=MS.nf.w.trim()&&MS.nf.e&&MS.nf.z; b.disabled=!ok; b.style.opacity=ok?'':'.45'; } }
+  else if(id==='nfet'){ MS.nf.e=firstEmoji(e.target.value); $('nfprev').textContent=MS.nf.e; const b=$('moodbody').querySelector('[data-m="nfsave"]'); if(b){ const ok=MS.nf.w.trim()&&MS.nf.e&&MS.nf.z; b.disabled=!ok; b.style.opacity=ok?'':'.45'; } }
+});
+$('moodbody').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.id==='flq'){ e.preventDefault(); const q=MS.q.trim(); if(!q) return; const ms=matchFeels(q);
+    if(ms.length){ MS.sel=ms[0]; MS.v='why'; renderMood(); } else { MS.nf={w:cap(q),e:'',z:''}; MS.v='newf'; renderMood(); } }
+});
+/* ===== FEELINGS: end ===== */
+
 /* ---------- Juju reacts to how you're doing ---------- */
 function jujuMood(){
   if(!couple||!me) return null;
@@ -2030,7 +2243,7 @@ railBtn.onclick=()=>setRail(!railEl.classList.contains('open'));
 railBg.onclick=()=>setRail(false);
 $('qedge').onclick=()=>setQ(true);
 $('qbg').onclick=()=>setQ(false);
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ $('avmodal').classList.add('hidden'); setRail(false); if(qopen) setQ(false); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ $('avmodal').classList.add('hidden'); if(!$('moodmodal').classList.contains('hidden')) closeMood(); setRail(false); if(qopen) setQ(false); } });
 const RAIL_INFO={goals:['🎯','Goals'],problems:['🧩','Problems'],fun:['🎈','Fun'],jar:['💌','Love jar']};
 const avSm={}; let avU=null;
 function renderAv(){
@@ -2094,6 +2307,8 @@ function render(){
   if(tab==='fun') renderFun(pid);
   if(tab==='jar') renderJar(pid);
   renderKitBox();
+  renderMoodChip();
+  if(!$('moodmodal').classList.contains('hidden')&&MS.v==='home') renderMood();
   updateBadge();
   try{ checkCelebrations(); }catch(e){ console.warn(e); }
   if(!$('kitmodal').classList.contains('hidden')) renderKitten(pid);
