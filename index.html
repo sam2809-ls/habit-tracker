@@ -178,6 +178,14 @@
   .dcard .dl{display:grid;line-height:1.15;min-width:0}
   .dcard b{font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .dcard small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .avm{display:grid;justify-items:center;gap:6px;text-align:center}
+  .avm svg{width:min(260px,100%);height:auto;border-radius:20px}
+  .avm h2{margin:2px 0 0}
+  .avlook{width:100%;display:grid;gap:6px;margin-top:6px;text-align:left}
+  .avlook div{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:12px;background:var(--bg);font-size:14px}
+  .avlook span{color:var(--muted);flex:none;min-width:84px}
+  .avlook b{flex:1}
+  .avlook i{width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(0,0,0,.2);flex:none}
   .dxp{width:74px;height:5px;border-radius:9px;background:var(--bg);overflow:hidden;margin-top:3px}
   .dxp i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,#ffc857,#ff9f43)}
   /* 25: its own round badge, ring = today's ticks */
@@ -323,6 +331,7 @@
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost small" id="nickclose">Done</button></div>
   </div>
 </div>
+<div id="avmodal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Avatar"><div class="card"><div id="avbody" class="avm"></div><div class="row" id="avact" style="justify-content:flex-end;margin-top:14px"></div></div></div>
 <div id="kitmodal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Our kitten">
   <div class="card"><div id="v-kitten"></div>
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost small" id="kitclose">Close</button></div></div>
@@ -345,7 +354,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
   onSnapshot, arrayUnion, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View } from "./p25.js?v=10";
+import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View, p25Look } from "./p25.js?v=11";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -1888,31 +1897,43 @@ const applyQ=()=>{ const on=tab==='pray'&&qopen; $('v-quran').classList.toggle('
 const setQ=o=>{ qopen=o; applyQ(); if(o) setTimeout(()=>{ const c=$('qclose'); c&&c.focus(); },380); };
 const goTab=t=>{ if(t==='p25' && tab!=='p25') prevTab=tab; tab=t; qopen=false; setRail(false); window.scrollTo({top:0}); render(); };
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => goTab(b.dataset.tab));
-$('duo').onclick=e=>{ if(e.target.closest('.dcard.me')) goTab('p25'); };
+$('duo').onclick=e=>{ const c=e.target.closest('.dcard'); if(!c) return; if(c.dataset.setup){ goTab('p25'); return; } if(c.dataset.u){ avU=c.dataset.u; renderAv(); $('avmodal').classList.remove('hidden'); } };
+$('avmodal').onclick=e=>{ if(e.target===$('avmodal')) $('avmodal').classList.add('hidden'); };
 $('p25back').onclick=()=>goTab(prevTab||'dash');
 railBtn.onclick=()=>setRail(!railEl.classList.contains('open'));
 railBg.onclick=()=>setRail(false);
 $('qedge').onclick=()=>setQ(true);
 $('qbg').onclick=()=>setQ(false);
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ setRail(false); if(qopen) setQ(false); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ $('avmodal').classList.add('hidden'); setRail(false); if(qopen) setQ(false); } });
 const RAIL_INFO={goals:['🎯','Goals'],problems:['🧩','Problems'],fun:['🎈','Fun'],jar:['💌','Love jar']};
+const avSm={}; let avU=null;
+function renderAv(){
+  const sm=avSm[avU]; if(!sm){ $('avmodal').classList.add('hidden'); return; }
+  const u=avU, mine=me&&u===me.uid, nm=esc(nameOf(u));
+  const v=p25View(sm,260,{pr:{t:prayN(u,todayStr()),y:prayN(u,lastDays(2)[0])},rd:couple?readiness():0});
+  const look=p25Look(sm).map(([k,t,c])=>`<div><span>${k}</span><b>${esc(t||'')}</b>${c?`<i style="background:${c}"></i>`:''}</div>`).join('');
+  $('avbody').innerHTML=`${v.svg}<h2>${nm}</h2><span class="dchip" style="display:inline-block">Lv ${sm.lv} · ${esc(sm.title)}</span>${sm.x!=null?`<span class="dxp" style="width:70%;height:8px"><i style="width:${Math.max(4,sm.xb||0)}%"></i></span>`:''}<small class="muted">${v.mood}</small><small class="muted">${v.sk?`🔥 ${v.sk} day streak`:'No streak yet'}${sm.x!=null?` · ${sm.x} XP`:''}</small><div class="avlook">${look}</div>`;
+  $('avact').innerHTML=(mine?'<button class="btn small" id="avgo">Open my space</button>':'')+'<button class="btn ghost small" id="avclose">Close</button>';
+  $('avclose').onclick=()=>$('avmodal').classList.add('hidden');
+  if(mine) $('avgo').onclick=()=>{ $('avmodal').classList.add('hidden'); goTab('p25'); };
+}
 function updateBadge(){
   const d=$('duo'); if(!d||!couple||!me) return;
   const pid=partnerId(), p=p25Progress();
   const card=(sm,u,mine)=>{
     const nm=esc(nameOf(u));
     if(!sm) return mine
-      ? `<button class="dcard me" aria-label="Open my private space"><span class="dl"><b>${nm}</b><small>Tap to set up your avatar</small></span></button>`
+      ? `<button class="dcard me" data-setup="1" aria-label="Set up my avatar"><span class="dl"><b>${nm}</b><small>Tap to set up your avatar</small></span></button>`
       : `<div class="dcard"><span class="dl"><b>${nm}</b><small>hasn’t shared an avatar yet</small></span></div>`;
+    avSm[u]=sm;
     const v=p25View(sm,44,{pr:{t:prayN(u,todayStr()),y:prayN(u,lastDays(2)[0])},rd:couple?readiness():0,mini:true});
     const xpbar=sm.x!=null?`<span class="dxp"><i style="width:${Math.max(4,sm.xb||0)}%"></i></span>`:'';
     const inner=`${v.svg}<span class="dl"><b>${nm}</b><small>Lv ${sm.lv} · ${esc(sm.title)}${v.sk?` · 🔥${v.sk}`:''}</small>${xpbar}</span>`;
-    return mine
-      ? `<button class="dcard me" aria-label="Open my private space, ${v.mood}">${inner}</button>`
-      : `<div class="dcard" aria-label="${v.mood}">${inner}</div>`;
+    return `<button class="dcard${mine?' me':''}" data-u="${esc(u)}" aria-label="Open ${nm}’s avatar">${inner}</button>`;
   };
   const mine=p25Summary(true), th=pid&&fun.find(f=>f.kind==='char'&&f.uid===pid);
   d.innerHTML=card(mine,me.uid,true)+(pid?card(th||null,pid,false):`<div class="dcard"><span class="dl"><b>Partner</b><small>will show here once they join</small></span></div>`);
+  if(!$('avmodal').classList.contains('hidden')) renderAv();
 }
 function updateNav(){
   document.querySelectorAll('.tab').forEach(b => b.dataset.tab===tab ? b.setAttribute('aria-current','page') : b.removeAttribute('aria-current'));

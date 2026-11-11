@@ -428,5 +428,13 @@ export function p25View(sm,size=300,ov){const t=ctx.todayStr();let m=0;if(sm.las
  const q=sm.S||{p:sm.s,m:sm.c},S2={...q,np:!!q.np,ne:!!q.ne,nm:!!q.nm,pr:(ov&&ov.pr)||{t:-1,y:-1},rd:ov&&ov.rd!=null?ov.rd:(q.rd||0),mini:!!(ov&&ov.mini)};
  return{svg:avatar(sm.av,w,sm.st,size,S2),title:sm.title,mood:moodOf(m,w,sm.sk),m,sk:m?0:sm.sk}}
 let lastPub;function pub(){if(!ctx.shareChar||!P||P.step<99)return;const sm=P.share===false?null:summary(),k=JSON.stringify(sm);if(k===lastPub)return;lastPub=k;try{ctx.shareChar(sm)}catch(e){}}
+export function p25Look(sm){const a=(sm&&sm.av)||{},r=[];
+ r.push(['Hair',NMK.hs[a.hs]||'—',HC[a.h]]);
+ r.push(['Skin tone','',SK[a.s]]);
+ r.push(['Face',NMK.fs[a.fs]||'—']);
+ if(a.fh&&a.fh!=='none')r.push(['Facial hair',NMK.fh[a.fh]||'—']);
+ r.push(['Outfit',NMK.ot[a.ot]||'—',OC[a.o]]);
+ if(a.ac&&a.ac!=='none')r.push(['Accessory',NMK.ac[a.ac]||'—']);
+ return r}
 export function initP25(c){ctx=c}
 export function renderP25(){if(!ctx)return;if(loaded&&uidK!=='p25_'+uid()){loaded=false;P=null;uidK=''}if(!loaded){if(!uidK){uidK='x';load()}draw();return}draw()}
