@@ -170,17 +170,16 @@
   .tile .ic{font-size:30px;line-height:1}
   .tile[aria-current]{border-color:var(--ink)}
   /* avatar duo: me + partner, always at the top */
-  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-  .dcard{display:grid;justify-items:center;align-content:start;gap:3px;padding:8px 8px 10px;border-radius:20px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);text-align:center;font:inherit;min-width:0}
-  .dcard.me{cursor:pointer;box-shadow:0 6px 18px rgba(242,177,52,.28);border-color:var(--gold)}
+  .duo{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .dcard{display:flex;align-items:center;gap:8px;padding:4px 12px 4px 5px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);text-align:left;font:inherit;min-width:0;flex:1 1 150px}
+  .dcard.me{cursor:pointer;border-color:var(--gold);box-shadow:0 3px 10px rgba(242,177,52,.25)}
   .dcard:active{transform:scale(.98)}
-  .dcard svg{max-width:100%;height:auto;border-radius:14px}
-  .dcard b{font-size:15px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .dcard small{color:var(--muted);font-size:12px;line-height:1.25}
-  .dchip{padding:2px 10px;border-radius:999px;background:var(--gold);color:#1b1405;font-weight:800;font-size:12px}
-  .dxp{width:86%;height:8px;border-radius:9px;background:var(--bg);overflow:hidden;margin:3px 0 1px}
+  .dcard svg{flex:none;width:44px;height:44px;border-radius:50%}
+  .dcard .dl{display:grid;line-height:1.15;min-width:0}
+  .dcard b{font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dcard small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dxp{width:74px;height:5px;border-radius:9px;background:var(--bg);overflow:hidden;margin-top:3px}
   .dxp i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,#ffc857,#ff9f43)}
-  .dtap{font-size:11px;color:var(--muted)}
   /* 25: its own round badge, ring = today's ticks */
   @property --p{syntax:'<number>';inherits:false;initial-value:0}
   .p25badge{--p:0;position:relative;flex:none;width:56px;height:56px;border-radius:50%;border:0;padding:4px;background:conic-gradient(var(--gold) calc(var(--p)*1%),var(--line) 0);transition:--p .8s cubic-bezier(.2,.8,.2,1),transform .2s;box-shadow:0 4px 14px rgba(242,177,52,.38)}
@@ -346,7 +345,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
   onSnapshot, arrayUnion, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View } from "./p25.js?v=9";
+import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View } from "./p25.js?v=10";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -1903,22 +1902,23 @@ function updateBadge(){
   const card=(sm,u,mine)=>{
     const nm=esc(nameOf(u));
     if(!sm) return mine
-      ? `<button class="dcard me" aria-label="Open my private space"><b>${nm}</b><small>Tap to set up your avatar</small><span class="dtap">✦ my space</span></button>`
-      : `<div class="dcard"><b>${nm}</b><small>hasn’t shared an avatar yet</small></div>`;
-    const v=p25View(sm,170,{pr:{t:prayN(u,todayStr()),y:prayN(u,lastDays(2)[0])},rd:couple?readiness():0});
-    const xpbar=sm.x!=null?`<div class="dxp"><i style="width:${Math.max(4,sm.xb||0)}%"></i></div>`:'';
-    const inner=`${v.svg}<b>${nm}</b><span class="dchip">Lv ${sm.lv} · ${esc(sm.title)}</span>${xpbar}<small>${v.mood}</small><small>${v.sk?`🔥 ${v.sk} day streak`:'No streak yet'}${sm.x!=null?` · ${sm.x} XP`:''}</small>`;
+      ? `<button class="dcard me" aria-label="Open my private space"><span class="dl"><b>${nm}</b><small>Tap to set up your avatar</small></span></button>`
+      : `<div class="dcard"><span class="dl"><b>${nm}</b><small>hasn’t shared an avatar yet</small></span></div>`;
+    const v=p25View(sm,44,{pr:{t:prayN(u,todayStr()),y:prayN(u,lastDays(2)[0])},rd:couple?readiness():0,mini:true});
+    const xpbar=sm.x!=null?`<span class="dxp"><i style="width:${Math.max(4,sm.xb||0)}%"></i></span>`:'';
+    const inner=`${v.svg}<span class="dl"><b>${nm}</b><small>Lv ${sm.lv} · ${esc(sm.title)}${v.sk?` · 🔥${v.sk}`:''}</small>${xpbar}</span>`;
     return mine
-      ? `<button class="dcard me" aria-label="Open my private space">${inner}<span class="dtap">${p.on?`${p.done}/${p.total} ticked today · `:''}tap to open my space</span></button>`
-      : `<div class="dcard">${inner}</div>`;
+      ? `<button class="dcard me" aria-label="Open my private space, ${v.mood}">${inner}</button>`
+      : `<div class="dcard" aria-label="${v.mood}">${inner}</div>`;
   };
   const mine=p25Summary(true), th=pid&&fun.find(f=>f.kind==='char'&&f.uid===pid);
-  d.innerHTML=card(mine,me.uid,true)+(pid?card(th||null,pid,false):`<div class="dcard"><b>Partner</b><small>will show here once they join</small></div>`);
+  d.innerHTML=card(mine,me.uid,true)+(pid?card(th||null,pid,false):`<div class="dcard"><span class="dl"><b>Partner</b><small>will show here once they join</small></span></div>`);
 }
 function updateNav(){
   document.querySelectorAll('.tab').forEach(b => b.dataset.tab===tab ? b.setAttribute('aria-current','page') : b.removeAttribute('aria-current'));
   const ri=RAIL_INFO[tab]; railBtn.classList.toggle('on',!!ri); $('railico').textContent=ri?ri[0]:'›';
   document.body.classList.toggle('in25',tab==='p25');
+  $('duo').classList.toggle('hidden',tab!=='dash');
 }
 
 /* ---------- render ---------- */
