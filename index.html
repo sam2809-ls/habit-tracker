@@ -14,13 +14,13 @@
 <meta name="apple-mobile-web-app-title" content="Road to Ready">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#f2f0f8; --card:#ffffff; --ink:#24203b; --muted:#6f6a8a; --line:#e2dff0;
     --me:#e0457b; --me-soft:#fde4ed; --you:#1f9d8f; --you-soft:#d9f2ee;
     --road:#24203b; --gold:#f2b134;
-    --head:'Bricolage Grotesque','Trebuchet MS',sans-serif;
+    --head:'Fredoka','Bricolage Grotesque','Trebuchet MS',sans-serif;
     --body:'DM Sans','Segoe UI',system-ui,sans-serif;
   }
   @media (prefers-color-scheme: dark){
@@ -229,6 +229,45 @@
   .qhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
   @media (prefers-reduced-motion: reduce){.rail,.qpanel,.p25badge:after{transition:none;animation:none}}
   @media (prefers-reduced-motion: reduce){.dock,.dk,.dk .lb,.sheet,.p25badge,body{transition:none;animation:none}.p25badge.new{animation:none}}
+
+  /* ===== cute layer (all additive: delete this block to undo) ===== */
+  ::selection{background:var(--me-soft);color:var(--ink)}
+  body{background-image:radial-gradient(circle at 0 0,rgba(224,69,123,.11),transparent 42%),radial-gradient(circle at 100% 0,rgba(31,157,143,.11),transparent 42%),radial-gradient(circle at 50% 100%,rgba(242,177,52,.08),transparent 45%);background-attachment:fixed}
+  .card{border-radius:22px;border-color:transparent;box-shadow:0 6px 20px rgba(224,69,123,.08),0 1px 0 rgba(255,255,255,.6) inset}
+  @media (prefers-color-scheme: dark){.card{border-color:var(--line);box-shadow:0 6px 20px rgba(0,0,0,.25)}}
+  h1,h2,h3{letter-spacing:.2px}
+  header h1{font-weight:600}
+  .btn{border-radius:999px;padding:10px 18px;transition:transform .15s,box-shadow .2s}
+  .btn:not(.ghost){background:linear-gradient(135deg,#e0457b,#ff7a90);color:#fff;box-shadow:0 4px 12px rgba(224,69,123,.28)}
+  .btn.small{padding:6px 12px}
+  .btn:hover{transform:translateY(-1px)}
+  .btn:active{transform:scale(.94)}
+  input,select{border-radius:14px}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--me);box-shadow:0 0 0 4px var(--me-soft)}
+  .tick{border-radius:13px;transition:transform .15s,border-color .2s,background .2s}
+  .tick:not(.ro):hover{transform:scale(1.1);border-color:var(--c)}
+  .tick:not(.ro):active{transform:scale(.88)}
+  .tick.on{background:var(--me-soft);box-shadow:0 0 0 3px var(--me-soft)}
+  .tick.ro.on{background:var(--you-soft);box-shadow:0 0 0 3px var(--you-soft)}
+  .dock{box-shadow:0 12px 32px rgba(224,69,123,.22);border-color:transparent}
+  .dk[aria-current]{background:linear-gradient(135deg,#e0457b,#ff7a90);color:#fff}
+  .dcard{box-shadow:0 4px 12px rgba(224,69,123,.08);border-color:transparent}
+  .toast{border-radius:999px;padding:10px 20px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+  .burst{position:fixed;z-index:60;pointer-events:none;font-size:18px;transform:translate(-50%,-50%)}
+  @media (prefers-reduced-motion: no-preference){
+    .tick.on{animation:pop .45s cubic-bezier(.2,1.6,.4,1)}
+    .dk[aria-current] .ic{animation:hop .55s cubic-bezier(.3,1.7,.5,1)}
+    .toast{animation:toastin .35s cubic-bezier(.2,1.4,.4,1)}
+    .burst{animation:floatup .9s ease-out forwards}
+    .dcard.me{animation:wiggle 5s ease-in-out 1.5s infinite}
+    .card{animation:cardin .35s ease-out both}
+  }
+  @keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+  @keyframes hop{0%{transform:translateY(0)}35%{transform:translateY(-7px) scale(1.15)}100%{transform:translateY(0)}}
+  @keyframes toastin{from{transform:translate(-50%,16px) scale(.9);opacity:0}}
+  @keyframes floatup{0%{opacity:1;transform:translate(-50%,-50%) scale(.6)}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.2)}}
+  @keyframes wiggle{0%,92%,100%{transform:rotate(0)}94%{transform:rotate(-2deg)}97%{transform:rotate(2deg)}}
+  @keyframes cardin{from{opacity:0;transform:translateY(8px)}}
 </style>
 </head>
 <body>
@@ -455,6 +494,14 @@ const pct = v => v===null ? '–' : Math.round(v*100)+'%';
 
 /* ---------- auth ---------- */
 function show(which){ ['auth','pair','app'].forEach(k => $(k).classList.toggle('hidden', k!==which)); }
+document.addEventListener('click',e=>{
+  const t=e.target.closest('.tick:not(.ro)');
+  if(!t||t.classList.contains('on')||matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const r=t.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+  ['💗','✨','💖','🌸','💕'].forEach((c,i)=>{ const b=document.createElement('span'); b.className='burst'; b.textContent=c;
+    b.style.cssText=`left:${x}px;top:${y}px;--dx:${(i-2)*24+(Math.random()*12-6)}px;--dy:${-40-Math.random()*30}px`;
+    document.body.appendChild(b); setTimeout(()=>b.remove(),950); });
+},true);
 function toast(t){ const el=document.createElement('div'); el.className='toast'; el.textContent=t; document.body.appendChild(el); setTimeout(()=>el.remove(),2200); }
 
 $('signin').onclick = async () => {
@@ -1953,7 +2000,7 @@ function render(){
   ['p25','dash','habits','goals','problems','pray','meals','sleep','fun','jar'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
   const pid = partnerId();
   updateBell();
-  $('today').textContent = new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  { const hr=new Date().getHours(); $('today').textContent = (hr<5?'🌙':hr<12?'☀️':hr<18?'🌤️':'🌙')+' '+new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
   $('title').textContent = pid ? `${nameOf(me.uid)} & ${nameOf(pid)}` : 'Our road to ready';
   renderP25();
   if(tab==='p25'){ const w=p25Week(); $('title').textContent='Who I’m becoming'; $('today').textContent=`Week ${w.n} of ${w.total} · ${w.left} left`; }
