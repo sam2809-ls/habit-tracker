@@ -322,6 +322,12 @@
   .flstrip i{font-style:normal;display:grid;place-items:center;height:30px;border-radius:10px;font-size:16px;background:var(--bg);color:var(--muted)}
   .fl textarea{width:100%;font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;min-height:90px;resize:vertical}
   .fl textarea:focus{outline:none;border-color:var(--me);box-shadow:0 0 0 4px var(--me-soft)}
+  .flinfo{display:flex;gap:10px;align-items:center;border:1.5px solid var(--zc);background:var(--zb);border-radius:16px;padding:8px 12px;font-size:14px}
+  .fltray{display:grid;gap:4px;padding:10px;border-radius:16px;background:var(--bg)}
+  .fltag{display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 10px;border-radius:999px;border:1.5px solid var(--zc);background:var(--zb);font-weight:600}
+  .fltag button{background:transparent;border:0;padding:2px 6px;color:var(--muted);font-size:16px;line-height:1}
+  .fltag button[aria-pressed=true]{color:var(--gold)}
+  .flalso{display:grid;gap:2px;font-size:14px}
   @media (prefers-reduced-motion: no-preference){ .flbub{animation:flpop .4s cubic-bezier(.2,1.4,.4,1)} }
   @keyframes flpop{from{transform:scale(.6);opacity:0;transform-origin:100% 100%}}
 </style>
@@ -1172,7 +1178,7 @@ function feedItems(){
     if(!f.at) continue;
     let t=null;
     if(f.kind==='nudge'&&f.to===me.uid) t=[`${who} sent you a nudge 💌`,f.text];
-    else if(f.kind==='mood'&&f.uid===pid) t=[`${who} is feeling ${f.w} ${f.e}`,''];
+    else if(f.kind==='mood'&&f.uid===pid) t=[`${who} is feeling ${f.w} ${f.e}${Array.isArray(f.more)&&f.more.length?` +${f.more.length}`:''}`,''];
     else if(f.kind==='status'&&f.uid===pid) t=[`${who} is now ${f.emoji}`,f.text];
     else if(f.kind==='problem'&&f.by===pid) t=[`${who} added a problem`,f.title];
     else if(f.kind==='solution'&&f.by===pid) t=[`${who} suggested a solution`,f.text];
@@ -1984,26 +1990,28 @@ const ZONES={
   r:{n:'Tense',d:'high energy · unpleasant',c:'#e0586b',bg:'rgba(224,88,107,.17)'},
   b:{n:'Low',d:'low energy · unpleasant',c:'#5a7fd8',bg:'rgba(90,127,216,.17)'}
 };
-/* Word|emoji|other words people might type */
+/* Word|emoji|other words people might type|what it means */
 const VOC_RAW={
-  y:'Happy|😊|glad pleased joyful;Excited|🤩|thrilled pumped happy;Joyful|😄|delighted happy;Cheerful|😁|bubbly happy;Thrilled|🥳|elated;Overjoyed|🥰|ecstatic happy;Energised|⚡|energetic charged;Playful|😜|silly fun;Silly|🤪|goofy;Giddy|🤭|;Inspired|✨|creative;Motivated|💪|driven;Determined|🔥|focused resolute;Confident|😎|sure bold;Proud|🥹|accomplished;Triumphant|🏆|victorious;Amazed|😲|wow astonished;Surprised|😮|;Curious|🧐|intrigued;Optimistic|🌞|positive;Hopeful|🌈|;Eager|🙌|keen;Enthusiastic|🎉|;Lively|💃|;Adventurous|🧭|;Radiant|🌟|glowing;Flirty|😘|romantic;Cheeky|😏|naughty;Fired up|🚀|;Free|🕊️|liberated;Lucky|🍀|;Alive|🌸|;Hyped|🎶|;Productive|✅|',
-  g:'Calm|😌|relaxed peaceful;Peaceful|🕊️|tranquil;Content|🙂|satisfied happy;Grateful|🙏|thankful;Thankful|🤲|appreciative;Blessed|✨|;Relaxed|😊|easy calm;Cozy|🧸|snug comfy;Safe|🛡️|secure;Secure|🏠|;Loved|🥰|adored cherished;Tender|💗|soft gentle;Serene|🌿|;Relieved|😮‍💨|phew;Satisfied|😋|;Fulfilled|🌻|;Mellow|🍃|;Chill|😎|laid-back;Comfortable|🛋️|;Balanced|⚖️|;Centered|🧘|grounded;Humble|🌱|;Touched|🥹|moved;Appreciated|💐|valued;Nostalgic|🍂|sentimental;Warm|☕|;Rested|🛌|refreshed;Sleepy|😴|drowsy tired;Spiritually connected|🕌|iman;Humbled|🌙|;Cuddly|🫂|;Settled|🪴|;Patient|⏳|;Trusting|🤝|;Understood|💞|',
-  r:'Angry|😠|mad furious;Furious|🤬|enraged angry;Frustrated|😤|angry;Irritated|😒|angry;Annoyed|🙄|angry;Anxious|😰|worried nervous uneasy;Nervous|😬|anxious;Worried|😟|anxious;Stressed|😖|anxious;Overwhelmed|🤯|swamped;Panicked|😱|anxious;Scared|😨|afraid frightened;Tense|😣|;Restless|🌀|fidgety anxious;Jittery|🫨|;Agitated|😾|;Embarrassed|😳|;Insecure|🫣|self-conscious;Jealous|😒|envious;Resentful|😡|bitter;Betrayed|🗡️|;Disgusted|🤢|;Shocked|😧|;Defensive|🛡️|;Impatient|⏳|;Pressured|🏋️|;Rushed|🏃|;Hangry|🍽️|hungry;Cranky|😫|grumpy;Dreading|😰|;Confused|😵‍💫|lost;Triggered|⚡|;Offended|😤|;Fed up|🙄|',
-  b:'Sad|😢|down blue unhappy upset;Tired|😩|exhausted;Exhausted|😫|tired;Drained|🪫|tired;Lonely|🥺|alone sad;Down|😞|sad low;Disappointed|😞|sad let-down;Heartbroken|💔|sad;Hurt|💔|sad;Homesick|🏠|;Bored|😑|;Numb|😶|;Empty|🕳️|;Gloomy|☁️|sad;Melancholy|🌧️|sad;Discouraged|😔|;Guilty|😔|;Ashamed|🙈|;Regretful|😔|sorry;Grieving|🖤|mourning;Missing you|🥺|miss;Unmotivated|🥱|;Burnt out|🪫|burnout tired;Stuck|🧱|;Weary|😪|tired;Fragile|🥀|;Apathetic|😐|;Wistful|🌫️|;Hopeless|🕯️|;Worthless|🥀|;Left out|🚪|excluded;Ignored|🔇|;Sick|🤒|ill unwell;Sore|🤕|achy pain;Longing|💭|yearning;Distant|🌫️|;Overlooked|🫥|;Sluggish|🐌|lazy;Foggy|🌁|;Low|🌑|'
+  y:`Happy|😊|glad pleased joyful|Feeling good and light, like things are right;Excited|🤩|thrilled pumped happy|Buzzing with anticipation for something good;Joyful|😄|delighted happy|Deep, bright happiness that spills out;Cheerful|😁|bubbly happy|Upbeat and sunny, easy to smile;Thrilled|🥳|elated|Very happy about something that just happened or is about to;Overjoyed|🥰|ecstatic happy|Happiness so big it is hard to hold in;Energised|⚡|energetic charged|Full of get-up-and-go;Playful|😜|silly fun|In a light, fun, teasing mood;Silly|🤪|goofy|Goofy and laughing at nothing much;Giddy|🤭||Lightheaded with excitement, can't stop smiling;Inspired|✨|creative|Sparked with ideas and the urge to create or do;Motivated|💪|driven|Ready to work toward something that matters;Determined|🔥|focused resolute|Set on getting it done, whatever it takes;Confident|😎|sure bold|Trusting yourself and what you can do;Proud|🥹|accomplished|Glad about something you or someone you love achieved;Triumphant|🏆|victorious|The joy of winning or finally getting through it;Amazed|😲|wow astonished|Struck with wonder at something unexpected;Surprised|😮||Caught off guard, for good or bad;Curious|🧐|intrigued|Wanting to find out more;Optimistic|🌞|positive|Expecting good things ahead;Hopeful|🌈||Believing things can still turn out well;Eager|🙌|keen|Can't wait to get started;Enthusiastic|🎉||Fully into it, with lots of energy;Lively|💃||Awake, active and full of spark;Adventurous|🧭||Up for something new and a little daring;Radiant|🌟|glowing|Glowing from the inside;Flirty|😘|romantic|Feeling playful and romantic;Cheeky|😏|naughty|Mischievous in a harmless, teasing way;Fired up|🚀||Pumped and charged to act;Free|🕊️|liberated|Unburdened, with room to breathe and choose;Lucky|🍀||Feeling that things worked out in your favour;Alive|🌸||Fully present and aware of being here;Hyped|🎶||Wound up with excitement and energy;Productive|✅||Getting things done and feeling good about it`,
+  g:`Calm|😌|relaxed peaceful|Quiet inside, nothing pulling at you;Peaceful|🕊️|tranquil|At ease, with no worry in the way;Content|🙂|satisfied happy|Okay with how things are right now;Grateful|🙏|thankful|Thankful for what you have or what someone did;Thankful|🤲|appreciative|Appreciating a kindness or a blessing;Blessed|✨||Feeling that good things were given to you;Relaxed|😊|easy calm|Body and mind have let go of tension;Cozy|🧸|snug comfy|Warm, snug and comfortable;Safe|🛡️|secure|Protected, with nothing to fear;Secure|🏠||Steady, sure that things are stable;Loved|🥰|adored cherished|Feeling cared for by someone;Tender|💗|soft gentle|Soft-hearted and gentle toward someone;Serene|🌿||Deeply still and peaceful;Relieved|😮‍💨|phew|The weight lifted after a worry ended;Satisfied|😋||Having had enough, in a good way;Fulfilled|🌻||Feeling your life or effort has meaning;Mellow|🍃||Smooth, soft and unhurried;Chill|😎|laid-back|Easygoing, nothing is bothering you;Comfortable|🛋️||At ease in your body and surroundings;Balanced|⚖️||Everything feels in fair proportion;Centered|🧘|grounded|Grounded and in touch with yourself;Humble|🌱||Quietly grateful, with nothing to prove;Touched|🥹|moved|Moved by someone's kindness or a sweet moment;Appreciated|💐|valued|Feeling seen and valued for what you do;Nostalgic|🍂|sentimental|A warm ache for a time that has passed;Warm|☕||A friendly, glowing feeling inside;Rested|🛌|refreshed|Refreshed after proper sleep or a break;Sleepy|😴|drowsy tired|Drowsy and ready for sleep;Spiritually connected|🕌|iman|Close to Allah and at peace in your faith;Humbled|🌙||Aware of how small you are and how great Allah is;Cuddly|🫂||Wanting closeness and warmth with someone;Settled|🪴||Things have fallen into place;Patient|⏳||Able to wait without getting upset;Trusting|🤝||Feeling you can rely on someone;Understood|💞||Feeling that someone truly gets you`,
+  r:`Angry|😠|mad furious|A hot feeling that something is unfair or wrong;Furious|🤬|enraged angry|Intense anger that is hard to hold in;Frustrated|😤|angry|Blocked from something and getting nowhere;Irritated|😒|angry|Small things are getting under your skin;Annoyed|🙄|angry|Mildly bothered by something or someone;Anxious|😰|worried nervous uneasy|Uneasy about what might happen;Nervous|😬|anxious|Jittery before something that matters;Worried|😟|anxious|Your mind keeps returning to what could go wrong;Stressed|😖|anxious|Too much to handle and not enough time or energy;Overwhelmed|🤯|swamped|So much at once that you can't sort it out;Panicked|😱|anxious|Sudden fear, racing heart, hard to think;Scared|😨|afraid frightened|Afraid of something real or imagined;Tense|😣||Tight in body and mind, on edge;Restless|🌀|fidgety anxious|Can't settle, need to move or do something;Jittery|🫨||Shaky and wired, often from nerves or caffeine;Agitated|😾||Stirred up and unable to calm down;Embarrassed|😳||Awkward after feeling exposed or silly;Insecure|🫣|self-conscious|Doubting yourself or your place;Jealous|😒|envious|Afraid of losing something to someone else;Resentful|😡|bitter|Holding on to anger about something unfair;Betrayed|🗡️||Hurt because trust was broken;Disgusted|🤢||Strong dislike or revulsion;Shocked|😧||Stunned by something sudden;Defensive|🛡️||Guarding yourself against blame or criticism;Impatient|⏳||Wanting it to happen now;Pressured|🏋️||Feeling pushed to deliver or decide;Rushed|🏃||Hurrying with no time to breathe;Hangry|🍽️|hungry|Cranky because you are hungry;Cranky|😫|grumpy|Short-tempered and easily bothered;Dreading|😰||Fearing something that is coming up;Confused|😵‍💫|lost|Can't make sense of things or what to do;Triggered|⚡||Something touched an old sore spot;Offended|😤||Hurt by something said or done;Fed up|🙄||Had enough and can't take any more of it`,
+  b:`Sad|😢|down blue unhappy upset|A heavy, low feeling, often after loss or disappointment;Tired|😩|exhausted|Low on energy and needing rest;Exhausted|😫|tired|Completely worn out, in body or mind;Drained|🪫|tired|Emptied out from giving or coping too much;Lonely|🥺|alone sad|Wanting connection and not feeling it;Down|😞|sad low|Low in mood, a bit flat;Disappointed|😞|sad let-down|Let down because things didn't go as hoped;Heartbroken|💔|sad|Deep pain from losing someone or something loved;Hurt|💔|sad|Pain from something someone said or did;Homesick|🏠||Missing home and what feels familiar;Bored|😑||Nothing is holding your interest;Numb|😶||Feeling nothing, as if emotions are switched off;Empty|🕳️||A hollow feeling, like something is missing inside;Gloomy|☁️|sad|A dark, heavy mood, like a grey day inside;Melancholy|🌧️|sad|A quiet, thoughtful sadness;Discouraged|😔||Losing confidence that effort will pay off;Guilty|😔||Feeling you did something wrong;Ashamed|🙈||Feeling there is something wrong with you, not just with what you did;Regretful|😔|sorry|Wishing you had done something differently;Grieving|🖤|mourning|Mourning a loss;Missing you|🥺|miss|Longing for someone who isn't near;Unmotivated|🥱||No push to start or keep going;Burnt out|🪫|burnout tired|Worn down by too much for too long;Stuck|🧱||Not moving forward and unsure how to;Weary|😪|tired|Deeply tired of carrying on;Fragile|🥀||Easily hurt right now, handle with care;Apathetic|😐||Not caring much either way;Wistful|🌫️||A soft sadness mixed with longing;Hopeless|🕯️||Feeling nothing will get better. It is worth sharing this with someone you trust;Worthless|🥀||Feeling you don't matter, which is not true. Please tell someone you trust;Left out|🚪|excluded|Feeling excluded from the group;Ignored|🔇||Feeling unseen or unheard;Sick|🤒|ill unwell|Unwell in body, which can weigh on your mood;Sore|🤕|achy pain|Aching or in pain;Longing|💭|yearning|A deep wish for something or someone;Distant|🌫️||Feeling far away from people or from yourself;Overlooked|🫥||Passed over when you deserved notice;Sluggish|🐌|lazy|Slow, heavy and low on drive;Foggy|🌁||Hard to think clearly;Low|🌑||Mood is down, with little energy`
 };
-const VOC=[]; for(const z of Object.keys(VOC_RAW)) for(const row of VOC_RAW[z].split(';')){ const [w,e,s]=row.split('|'); VOC.push({w,e,z,s:s||''}); }
+const VOC=[]; for(const z of Object.keys(VOC_RAW)) for(const row of VOC_RAW[z].split(';')){ const [w,e,s,t]=row.split('|'); VOC.push({w,e,z,s:s||'',t:t||''}); }
 const FL_TAGS=['🕌 Prayer','😴 Sleep','📚 Study','👨‍👩‍👧 Family','💞 Us','🏃 Body','🍽️ Food','💼 Work','👯 Friends','🌫️ Nothing specific'];
 const FL_EMOJI=['😊','😄','🥰','😌','🥹','😎','🤔','😮‍💨','😢','😔','😞','😰','😠','😤','😴','🤒','🥱','💗','✨','🌧️','🌈','🔥','🫠','😶‍🌫️'];
-const FL_TTL=24*3600*1000;
+const FL_TTL=24*3600*1000, FL_MAX=3;
 const nz=s=>String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}\s-]/gu,'').replace(/\s+/g,' ').trim();
 const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
 const lev=(a,b)=>{ const m=a.length,n=b.length; if(Math.abs(m-n)>2) return 9; let p=Array.from({length:n+1},(_,j)=>j); for(let i=1;i<=m;i++){ const c=[i]; for(let j=1;j<=n;j++) c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1)); p=c; } return p[n]; };
 const firstEmoji=v=>{ v=(v||'').trim(); if(!v) return ''; try{ return [...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(v)][0].segment; }catch(e){ return Array.from(v)[0]||''; } };
 const moodsOf=uid=>fun.filter(f=>f.kind==='mood'&&f.uid===uid).sort((a,b)=>b.at-a.at);
 const curMood=uid=>{ const m=moodsOf(uid)[0]; return m&&Date.now()-m.at<FL_TTL?m:null; };
-const customFeels=()=>fun.filter(f=>f.kind==='feeling').map(f=>({w:f.w,e:f.e,z:f.z,s:'',c:1}));
+const customFeels=()=>fun.filter(f=>f.kind==='feeling').map(f=>({w:f.w,e:f.e,z:f.z,s:'',t:f.t||'',c:1}));
 function allFeels(){ const seen=new Set(VOC.map(f=>nz(f.w))), out=[...VOC]; for(const c of customFeels()){ const k=nz(c.w); if(!seen.has(k)){ seen.add(k); out.push(c); } } return out; }
-function feelUse(){ const m=new Map(); for(const x of moodsOf(me.uid)){ const k=nz(x.w); m.set(k,(m.get(k)||0)+1); } return m; }
+const feelOf=w=>allFeels().find(f=>nz(f.w)===nz(w));
+const feelText=w=>(feelOf(w)||{}).t||'';
+function feelUse(){ const m=new Map(); for(const x of moodsOf(me.uid)){ for(const f of [x,...(x.more||[])]){ const k=nz(f.w); m.set(k,(m.get(k)||0)+1); } } return m; }
 function matchFeels(q0){
   const q=nz(q0); if(!q) return [];
   const use=feelUse(), out=[];
@@ -2027,19 +2035,21 @@ const flRd=k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 const flWr=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} };
 const flZ=z=>ZONES[z]||ZONES.g;
 const flVars=z=>`--zc:${flZ(z).c};--zb:${flZ(z).bg}`;
+const flMore=m=>Array.isArray(m.more)?m.more:[];
 
 /* the little box in the header: my feeling as the icon, the partner's feeling as a bubble */
 function renderMoodChip(){
   const b=$('moodbtn'); if(!b||!couple||!me) return;
   const pid=partnerId(), mine=curMood(me.uid), th=pid?curMood(pid):null, show=th||(!pid?mine:null);
-  const unread=th&&th.at>Number(flRd('rr_mood_seen_'+me.uid)||0);
-  b.innerHTML=`${show?`<span class="flbub" style="${flVars(show.z)}">${show.e} ${esc(show.w)}</span>`:''}<span aria-hidden="true">${mine?mine.e:'💭'}</span>${unread?'<i class="fldot"></i>':''}`;
-  b.setAttribute('aria-label',`Feelings${show?`: ${show.w}`:''}${unread?', new':''}`);
+  const unread=th&&th.at>Number(flRd('rr_mood_seen_'+me.uid)||0), extra=show?flMore(show).length:0;
+  b.innerHTML=`${show?`<span class="flbub" style="${flVars(show.z)}">${show.e} ${esc(show.w)}${extra?` +${extra}`:''}</span>`:''}<span aria-hidden="true">${mine?mine.e:'💭'}</span>${unread?'<i class="fldot"></i>':''}`;
+  b.setAttribute('aria-label',`Feelings${show?`: ${show.w}${extra?` and ${extra} more`:''}`:''}${unread?', new':''}`);
 }
 
-let MS={v:'home',q:'',z:'y',sel:null,tags:[],why:'',nf:null};
-const flReset=()=>{ MS={v:'home',q:'',z:'y',sel:null,tags:[],why:'',nf:null}; };
-const flChip=f=>`<button class="flchip" style="${flVars(f.z)}" data-m="pick" data-k="${esc(nz(f.w))}">${f.e} ${esc(f.w)}</button>`;
+let MS={v:'home',q:'',z:'y',sel:[],main:0,info:null,tags:[],why:'',nf:null};
+const flReset=()=>{ MS={v:'home',q:'',z:'y',sel:[],main:0,info:null,tags:[],why:'',nf:null}; };
+const flChip=f=>`<button class="flchip" style="${flVars(f.z)}" data-m="pick" data-k="${esc(nz(f.w))}" aria-pressed="${MS.sel.some(x=>nz(x.w)===nz(f.w))}">${f.e} ${esc(f.w)}</button>`;
+const flAbout=f=>`<div class="flinfo" style="${flVars(f.z)}"><span class="flbig" style="font-size:30px">${f.e}</span><div><b>${esc(f.w)}</b> <small class="muted">· ${flZ(f.z).n}</small><div>${f.t?esc(f.t):'<span class="muted">No description yet.</span>'}</div></div></div>`;
 function flStrip(uid){
   const ms=moodsOf(uid);
   return `<div class="flstrip" aria-label="Last 7 days">${lastDays(7).map(d=>{ const m=ms.find(x=>x.date===d); return m?`<i title="${esc(d)}: ${esc(m.w)}" style="background:${flZ(m.z).bg}">${m.e}</i>`:`<i title="${esc(d)}">·</i>`; }).join('')}</div>`;
@@ -2047,9 +2057,11 @@ function flStrip(uid){
 function flCard(uid,title){
   const m=moodsOf(uid)[0];
   if(!m) return `<div class="flcard"><b>${title}</b><span class="muted">No feeling shared yet</span></div>`;
-  const old=Date.now()-m.at>=FL_TTL;
+  const old=Date.now()-m.at>=FL_TTL, more=flMore(m), mean=feelText(m.w);
   return `<div class="flcard" style="${flVars(m.z)}"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>${title}</b><small class="muted">${old?'last felt ':''}${ago(m.at)}</small></div>
     <div class="row" style="flex-wrap:nowrap;gap:12px"><span class="flbig">${m.e}</span><div><div style="font-family:var(--head);font-size:22px;font-weight:600">${esc(m.w)}</div><small class="muted">${flZ(m.z).n} · ${flZ(m.z).d}</small></div></div>
+    ${mean?`<div class="muted" style="font-size:14px">${esc(mean)}</div>`:''}
+    ${more.length?`<div class="flalso"><small class="muted">Also feeling</small>${more.map(f=>`<div>${f.e} <b>${esc(f.w)}</b>${feelText(f.w)?` <span class="muted">· ${esc(feelText(f.w))}</span>`:''}</div>`).join('')}</div>`:''}
     ${(m.tags||[]).length?`<div class="row" style="gap:6px">${m.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`:''}
     ${m.why?`<div class="flwhy">${esc(m.why)}</div>`:''}
     ${flStrip(uid)}</div>`;
@@ -2062,7 +2074,7 @@ function renderMood(){
     el.innerHTML=`<div class="fl"><div class="row" style="justify-content:space-between"><h2>Feelings 💭</h2><button class="btn ghost small" data-m="close">Close</button></div>
       ${pid?flCard(pid,esc(nameOf(pid))):''}${flCard(me.uid,pid?'Me':'How I feel')}
       <button class="btn" data-m="new">How are you feeling? 💗</button>
-      ${all.length?`<div><h3 style="font-size:16px;margin-bottom:4px">Recent</h3>${all.map(m=>`<div class="flrow"><span class="em">${m.e}</span><div style="flex:1;min-width:0"><b>${m.uid===me.uid?'Me':esc(nameOf(m.uid))}</b> felt <b style="color:${flZ(m.z).c}">${esc(m.w)}</b> <small class="muted">· ${ago(m.at)}</small>${(m.tags||[]).length?`<div><small class="muted">${m.tags.map(esc).join(' · ')}</small></div>`:''}${m.why?`<div class="flwhy" style="margin-top:4px">${esc(m.why)}</div>`:''}</div>${m.uid===me.uid?`<button class="x flx" data-m="del" data-id="${esc(m.id)}" aria-label="Delete this entry">×</button>`:''}</div>`).join('')}</div>`:''}</div>`;
+      ${all.length?`<div><h3 style="font-size:16px;margin-bottom:4px">Recent</h3>${all.map(m=>`<div class="flrow"><span class="em">${m.e}</span><div style="flex:1;min-width:0"><b>${m.uid===me.uid?'Me':esc(nameOf(m.uid))}</b> felt <b style="color:${flZ(m.z).c}">${esc(m.w)}</b>${flMore(m).map(f=>` <span class="muted">+</span> <b style="color:${flZ(f.z).c}">${esc(f.w)}</b>`).join('')} <small class="muted">· ${ago(m.at)}</small>${(m.tags||[]).length?`<div><small class="muted">${m.tags.map(esc).join(' · ')}</small></div>`:''}${m.why?`<div class="flwhy" style="margin-top:4px">${esc(m.why)}</div>`:''}</div>${m.uid===me.uid?`<button class="x flx" data-m="del" data-id="${esc(m.id)}" aria-label="Delete this entry">×</button>`:''}</div>`).join('')}</div>`:''}</div>`;
   }else if(MS.v==='pick'){
     el.innerHTML=`<div class="fl"><div class="row" style="justify-content:space-between"><button class="btn ghost small" data-m="home">← Back</button><h2 style="font-size:20px">How are you feeling?</h2></div>
       <input id="flq" type="text" placeholder="Type a feeling…" autocomplete="off" maxlength="28" value="${esc(MS.q)}"><div id="flres"></div></div>`;
@@ -2072,14 +2084,15 @@ function renderMood(){
     el.innerHTML=`<div class="fl"><div class="row" style="justify-content:space-between"><button class="btn ghost small" data-m="pick-back">← Back</button><h2 style="font-size:20px">New feeling ➕</h2></div>
       <p class="muted" style="margin:0">Name it, give it an emoji and say where it sits. Then it’s saved for both of you. 💗</p>
       <input id="nfw" type="text" maxlength="28" placeholder="Feeling name" value="${esc(n.w)}">
+      <input id="nfm" type="text" maxlength="90" placeholder="What does it mean to you? (optional)" value="${esc(n.t||'')}">
       <div><small class="muted">Emoji</small><div class="flgrid">${FL_EMOJI.map(e=>`<button class="flchip" data-m="nfe" data-e="${e}" aria-pressed="${n.e===e}" style="--zc:var(--me);--zb:transparent">${e}</button>`).join('')}</div>
       <div class="row" style="margin-top:8px"><input id="nfet" type="text" placeholder="…or type your own" style="max-width:190px" value="${FL_EMOJI.includes(n.e)?'':esc(n.e)}"><span id="nfprev" class="flbig" style="font-size:30px">${n.e||''}</span></div></div>
       <div><small class="muted">Where does it sit?</small><div class="flzones">${Object.keys(ZONES).map(z=>`<button class="flzone" data-m="nfz" data-z="${z}" aria-pressed="${n.z===z}" style="${flVars(z)}"><b>${ZONES[z].n}</b><small>${ZONES[z].d}</small></button>`).join('')}</div></div>
       <button class="btn" data-m="nfsave" ${n.w.trim()&&n.e&&n.z?'':'disabled style="opacity:.45"'}>Save feeling</button></div>`;
   }else if(MS.v==='why'){
-    const f=MS.sel;
+    const main=MS.sel[MS.main]||MS.sel[0];
     el.innerHTML=`<div class="fl"><div class="row" style="justify-content:space-between"><button class="btn ghost small" data-m="chg">← Change</button><h2 style="font-size:20px">Why? <small class="muted">(optional)</small></h2></div>
-      <div class="flcard" style="${flVars(f.z)}"><div class="row" style="flex-wrap:nowrap;gap:12px"><span class="flbig">${f.e}</span><div><div style="font-family:var(--head);font-size:22px;font-weight:600">${esc(f.w)}</div><small class="muted">${flZ(f.z).n} · ${flZ(f.z).d}</small></div></div></div>
+      ${[main,...MS.sel.filter(f=>f!==main)].map(f=>`<div class="flcard" style="${flVars(f.z)}"><div class="row" style="flex-wrap:nowrap;gap:12px"><span class="flbig">${f.e}</span><div><div style="font-family:var(--head);font-size:20px;font-weight:600">${esc(f.w)}${MS.sel.length>1&&f===main?' <small class="muted">· main</small>':''}</div><small class="muted">${f.t?esc(f.t):`${flZ(f.z).n} · ${flZ(f.z).d}`}</small></div></div></div>`).join('')}
       <div class="flgrid">${FL_TAGS.map(t=>`<button class="flchip" data-m="tag" data-t="${esc(t)}" aria-pressed="${MS.tags.includes(t)}" style="--zc:var(--me);--zb:transparent">${esc(t)}</button>`).join('')}</div>
       <textarea id="flwhy" maxlength="600" placeholder="Want to say more? Only if you like…">${esc(MS.why)}</textarea>
       <button class="btn" data-m="save">Share how I feel 💗</button></div>`;
@@ -2088,10 +2101,16 @@ function renderMood(){
 function renderPickRes(){
   const el=$('flres'); if(!el) return;
   const q=MS.q.trim(); let h='';
+  /* what you've picked so far (up to 3, tap the star to choose the main one) */
+  if(MS.sel.length){
+    h+=`<div class="fltray"><small class="muted">${MS.sel.length>1?'Your feelings (★ = main)':'Your feeling'}</small><div class="flgrid">${MS.sel.map((f,i)=>`<span class="fltag" style="${flVars(f.z)}">${MS.sel.length>1?`<button data-m="main" data-i="${i}" aria-label="Make ${esc(f.w)} the main feeling" aria-pressed="${i===MS.main}">${i===MS.main?'★':'☆'}</button>`:''}${f.e} ${esc(f.w)}<button data-m="rm" data-i="${i}" aria-label="Remove ${esc(f.w)}">×</button></span>`).join('')}</div><button class="btn" data-m="next" style="margin-top:8px;width:100%">Next →</button></div>`;
+  }
+  const info=MS.info&&feelOf(MS.info);
+  h+=info?flAbout(info):`<p class="muted" style="margin:0;font-size:14px">Tap a feeling to see what it means ✨ You can pick up to ${FL_MAX}.</p>`;
   if(q){
     const ms=matchFeels(q), exact=ms.some(f=>nz(f.w)===nz(q));
     h+=ms.length?`<div class="flgrid">${ms.map(flChip).join('')}</div>`:`<p class="muted" style="margin:4px 0">No feeling with that name yet.</p>`;
-    if(!exact&&nz(q).length>=2) h+=`<button class="flchip" data-m="addnew" style="margin-top:10px;border-style:dashed;--zc:var(--me);--zb:transparent">➕ Add “${esc(q)}” as a new feeling</button>`;
+    if(!exact&&nz(q).length>=2) h+=`<button class="flchip" data-m="addnew" style="margin-top:6px;border-style:dashed;--zc:var(--me);--zb:transparent">➕ Add “${esc(q)}” as a new feeling</button>`;
   }else{
     const use=feelUse(), all=allFeels(), rec=[...use.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k])=>all.find(f=>nz(f.w)===k)).filter(Boolean);
     const cu=customFeels();
@@ -2102,23 +2121,34 @@ function renderPickRes(){
   }
   el.innerHTML=h;
 }
+/* add or remove a feeling from the picked list (max 3) */
+function flToggle(f){
+  const i=MS.sel.findIndex(x=>nz(x.w)===nz(f.w));
+  MS.info=f.w;
+  if(i>=0){ MS.sel.splice(i,1); if(MS.main>=MS.sel.length) MS.main=0; else if(i<MS.main) MS.main--; }
+  else if(MS.sel.length>=FL_MAX){ toast(`Up to ${FL_MAX} feelings. Remove one first.`); }
+  else MS.sel.push(f);
+}
+const flClearQ=()=>{ MS.q=''; const q=$('flq'); if(q) q.value=''; };
 async function saveFeeling(){
   const n=MS.nf, w=(n.w||'').trim().slice(0,28); if(!w||!n.e||!n.z) return;
-  const ex=allFeels().find(x=>nz(x.w)===nz(w));
-  if(ex) MS.sel=ex;
-  else{
-    try{ await setDoc(doc(cref(),'fun','feel_'+(nz(w).replace(/\s+/g,'-')||'x')),{kind:'feeling',w,e:n.e,z:n.z,by:me.uid,at:Date.now()}); }
+  const ex=allFeels().find(x=>nz(x.w)===nz(w)); let f=ex;
+  if(!ex){
+    const t=(n.t||'').trim().slice(0,90);
+    try{ await setDoc(doc(cref(),'fun','feel_'+(nz(w).replace(/\s+/g,'-')||'x')),{kind:'feeling',w,e:n.e,z:n.z,t,by:me.uid,at:Date.now()}); }
     catch(e){ toast('Could not save that feeling. Try again.'); return; }
-    MS.sel={w,e:n.e,z:n.z,s:'',c:1};
+    f={w,e:n.e,z:n.z,s:'',t,c:1};
   }
-  MS.v='why'; renderMood();
+  flToggle(f); if(!MS.sel.some(x=>nz(x.w)===nz(f.w))&&MS.sel.length<FL_MAX) MS.sel.push(f);
+  MS.v='pick'; flClearQ(); renderMood();
 }
 async function saveMood(){
-  const f=MS.sel; if(!f) return;
+  if(!MS.sel.length) return;
+  const main=MS.sel[MS.main]||MS.sel[0], rest=MS.sel.filter(f=>f!==main).map(f=>({w:f.w,e:f.e,z:f.z}));
   const at=Date.now();
-  try{ await setDoc(doc(cref(),'fun',`mood_${at}_${me.uid}`),{kind:'mood',uid:me.uid,at,date:todayStr(),w:f.w,e:f.e,z:f.z,tags:MS.tags,why:MS.why.trim().slice(0,600)}); }
+  try{ await setDoc(doc(cref(),'fun',`mood_${at}_${me.uid}`),{kind:'mood',uid:me.uid,at,date:todayStr(),w:main.w,e:main.e,z:main.z,more:rest,tags:MS.tags,why:MS.why.trim().slice(0,600)}); }
   catch(e){ toast('Could not save. Try again.'); return; }
-  toast(`Shared: ${f.e} ${f.w}`);
+  toast(`Shared: ${[main,...rest].map(f=>f.e).join(' ')} ${main.w}${rest.length?` +${rest.length}`:''}`);
   flReset(); renderMood(); renderMoodChip();
 }
 async function deleteMood(id){
@@ -2132,11 +2162,14 @@ $('moodbody').onclick=e=>{
   const t=e.target.closest('[data-m]'); if(!t) return;
   const a=t.dataset.m;
   if(a==='close') closeMood();
-  else if(a==='home'){ MS.v='home'; renderMood(); }
+  else if(a==='home'){ flReset(); renderMood(); }
   else if(a==='new'){ flReset(); MS.v='pick'; renderMood(); setTimeout(()=>{ const q=$('flq'); if(q) q.focus(); },60); }
   else if(a==='zone'){ MS.z=t.dataset.z; renderPickRes(); }
-  else if(a==='pick'){ const f=allFeels().find(x=>nz(x.w)===t.dataset.k); if(f){ MS.sel=f; MS.v='why'; renderMood(); } }
-  else if(a==='addnew'){ MS.nf={w:cap(MS.q.trim()),e:'',z:''}; MS.v='newf'; renderMood(); }
+  else if(a==='pick'){ const f=allFeels().find(x=>nz(x.w)===t.dataset.k); if(f){ flToggle(f); if(MS.q){ flClearQ(); } renderPickRes(); } }
+  else if(a==='rm'){ const i=+t.dataset.i; MS.sel.splice(i,1); if(MS.main>=MS.sel.length) MS.main=0; else if(i<MS.main) MS.main--; renderPickRes(); }
+  else if(a==='main'){ MS.main=+t.dataset.i; renderPickRes(); }
+  else if(a==='next'){ if(MS.sel.length){ MS.v='why'; renderMood(); } }
+  else if(a==='addnew'){ MS.nf={w:cap(MS.q.trim()),e:'',z:'',t:''}; MS.v='newf'; renderMood(); }
   else if(a==='pick-back'){ MS.v='pick'; renderMood(); }
   else if(a==='nfe'){ MS.nf.e=t.dataset.e; renderMood(); }
   else if(a==='nfz'){ MS.nf.z=t.dataset.z; renderMood(); }
@@ -2147,15 +2180,19 @@ $('moodbody').onclick=e=>{
   else if(a==='del') deleteMood(t.dataset.id);
 };
 $('moodbody').addEventListener('input',e=>{
-  const id=e.target.id;
+  const id=e.target.id, okBtn=()=>{ const b=$('moodbody').querySelector('[data-m="nfsave"]'); if(b){ const ok=MS.nf.w.trim()&&MS.nf.e&&MS.nf.z; b.disabled=!ok; b.style.opacity=ok?'':'.45'; } };
   if(id==='flq'){ MS.q=e.target.value; renderPickRes(); }
   else if(id==='flwhy') MS.why=e.target.value;
-  else if(id==='nfw'){ MS.nf.w=e.target.value; const b=$('moodbody').querySelector('[data-m="nfsave"]'); if(b){ const ok=MS.nf.w.trim()&&MS.nf.e&&MS.nf.z; b.disabled=!ok; b.style.opacity=ok?'':'.45'; } }
-  else if(id==='nfet'){ MS.nf.e=firstEmoji(e.target.value); $('nfprev').textContent=MS.nf.e; const b=$('moodbody').querySelector('[data-m="nfsave"]'); if(b){ const ok=MS.nf.w.trim()&&MS.nf.e&&MS.nf.z; b.disabled=!ok; b.style.opacity=ok?'':'.45'; } }
+  else if(id==='nfw'){ MS.nf.w=e.target.value; okBtn(); }
+  else if(id==='nfm') MS.nf.t=e.target.value;
+  else if(id==='nfet'){ MS.nf.e=firstEmoji(e.target.value); $('nfprev').textContent=MS.nf.e; okBtn(); }
 });
 $('moodbody').addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&e.target.id==='flq'){ e.preventDefault(); const q=MS.q.trim(); if(!q) return; const ms=matchFeels(q);
-    if(ms.length){ MS.sel=ms[0]; MS.v='why'; renderMood(); } else { MS.nf={w:cap(q),e:'',z:''}; MS.v='newf'; renderMood(); } }
+  if(e.key==='Enter'&&e.target.id==='flq'){ e.preventDefault(); const q=MS.q.trim();
+    if(!q){ if(MS.sel.length){ MS.v='why'; renderMood(); } return; }
+    const ms=matchFeels(q);
+    if(ms.length){ flToggle(ms[0]); flClearQ(); renderPickRes(); }
+    else{ MS.nf={w:cap(q),e:'',z:'',t:''}; MS.v='newf'; renderMood(); } }
 });
 /* ===== FEELINGS: end ===== */
 
