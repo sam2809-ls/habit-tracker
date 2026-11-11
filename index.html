@@ -268,6 +268,35 @@
   @keyframes floatup{0%{opacity:1;transform:translate(-50%,-50%) scale(.6)}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.2)}}
   @keyframes wiggle{0%,92%,100%{transform:rotate(0)}94%{transform:rotate(-2deg)}97%{transform:rotate(2deg)}}
   @keyframes cardin{from{opacity:0;transform:translateY(8px)}}
+
+  /* Juju reactions + celebrations */
+  .kitbox{position:relative}
+  .jbub{position:absolute;left:2px;top:-12px;font-size:16px;background:var(--card);border:1.5px solid var(--line);border-radius:999px;padding:0 5px;line-height:1.35;box-shadow:0 3px 8px rgba(0,0,0,.12);z-index:2}
+  .erain{position:fixed;top:-30px;z-index:70;pointer-events:none}
+  .celeb{position:fixed;inset:0;z-index:65;background:rgba(36,32,59,.5);display:grid;place-items:center;padding:16px}
+  .celebcard{width:min(340px,100%);text-align:center;background:var(--card);border-radius:28px;padding:22px 20px 20px;box-shadow:0 20px 60px rgba(224,69,123,.35);display:grid;justify-items:center;gap:4px}
+  .celebn{font-family:var(--head);font-weight:700;font-size:72px;line-height:1;background:linear-gradient(135deg,#e0457b,#f2b134);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .celebd{color:var(--muted);font-weight:700;margin-top:-4px}
+  .celebcard h2{font-size:22px;margin-top:6px}
+  .celebcard p{margin:2px 0 4px;color:var(--muted)}
+  .celebj{font-size:40px;margin:4px 0 8px}
+  @media (prefers-reduced-motion: no-preference){
+    .erain{animation:confall var(--t,3s) linear forwards}
+    .celebcard{animation:celebin .55s cubic-bezier(.2,1.5,.4,1)}
+    .celebj{animation:hop .9s ease-in-out infinite}
+    .jr-party .kit{animation:dance .7s ease-in-out infinite}
+    .jr-party .jbub{animation:hop .9s ease-in-out infinite}
+    .jr-sleepy .kit{animation:snooze 3.2s ease-in-out infinite}
+    .jr-wait .kit{animation:peek 2.4s ease-in-out infinite}
+    .jr-nudge .kit{animation:peek 1.6s ease-in-out infinite}
+    .cheer .kit,.kit.cheer{animation:cheerhop .6s cubic-bezier(.3,1.7,.5,1) 1}
+  }
+  @keyframes confall{0%{transform:translateY(0) rotate(0);opacity:1}85%{opacity:1}100%{transform:translateY(110vh) rotate(var(--r,360deg));opacity:0}}
+  @keyframes celebin{from{transform:scale(.6) translateY(30px);opacity:0}}
+  @keyframes dance{0%,100%{transform:rotate(-7deg) translateY(0)}25%{transform:rotate(0) translateY(-6px)}50%{transform:rotate(7deg) translateY(0)}75%{transform:rotate(0) translateY(-6px)}}
+  @keyframes snooze{0%,100%{transform:scale(1) translateY(0)}50%{transform:scale(1.04,.96) translateY(1px)}}
+  @keyframes peek{0%,100%{transform:rotate(0)}30%{transform:rotate(-6deg)}60%{transform:rotate(6deg)}}
+  @keyframes cheerhop{0%{transform:translateY(0) scale(1)}35%{transform:translateY(-12px) scale(1.12) rotate(-6deg)}100%{transform:translateY(0) scale(1)}}
 </style>
 </head>
 <body>
@@ -393,7 +422,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
   onSnapshot, arrayUnion, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View, p25Look } from "./p25.js?v=11";
+import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View, p25Look } from "./p25.js?v=12";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -497,6 +526,7 @@ function show(which){ ['auth','pair','app'].forEach(k => $(k).classList.toggle('
 document.addEventListener('click',e=>{
   const t=e.target.closest('.tick:not(.ro)');
   if(!t||t.classList.contains('on')||matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const kb=document.getElementById('kitbtn'); if(kb){ kb.classList.add('cheer'); setTimeout(()=>kb.classList.remove('cheer'),800); }
   const r=t.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
   ['💗','✨','💖','🌸','💕'].forEach((c,i)=>{ const b=document.createElement('span'); b.className='burst'; b.textContent=c;
     b.style.cssText=`left:${x}px;top:${y}px;--dx:${(i-2)*24+(Math.random()*12-6)}px;--dy:${-40-Math.random()*30}px`;
@@ -1878,7 +1908,7 @@ function renderKitten(pid){
       ${kittenSVG(st.i,H,name,230)}
       <h2 style="margin-top:6px;font-size:28px">${esc(name)}</h2>
       <p style="margin:2px 0 0"><span class="tag">${hLabel(H.v)}</span> <span class="tag">${st.cur[1]}</span></p>
-      <div class="bubble in" style="--c:var(--gold);margin:14px auto 0;text-align:left"><small>${esc(name)} says · tap me to pet me</small><p>${esc(pokeMsg||kittySays(H))}</p></div>
+      <div class="bubble in" style="--c:var(--gold);margin:14px auto 0;text-align:left"><small>${esc(name)} says · tap me to pet me</small><p>${esc(pokeMsg||(jujuMood()||{}).t||kittySays(H))}</p></div>
       <div style="text-align:left;margin-top:16px"><b>Health</b> <span class="muted">${hp}%</span></div>
       <div class="track" style="margin:10px 0 30px" role="progressbar" aria-label="Kitten health" aria-valuenow="${hp}" aria-valuemin="0" aria-valuemax="100">
         <div class="fill" style="width:${hp}%;background:${hColor(H.v)}"></div>${marks}
@@ -1903,7 +1933,8 @@ function renderKitten(pid){
     <div class="card" style="margin-top:14px"><h3>Rename</h3>
       <div class="row" style="margin-top:8px"><input id="pn" style="flex:1;min-width:160px" maxlength="20" placeholder="Kitten’s name" value="${esc(name)}"><button class="btn small" id="pns">Save</button></div></div>`;
   const el=$('v-kitten');
-  el.querySelector('.kit').onclick=()=>{ const a=POKE[hTier(H.v)]; pokeMsg=a[Math.floor(Math.random()*a.length)]; renderKitten(pid); };
+  { const jm=jujuMood(); el.className=jm?'jr-'+jm.k:''; }
+  el.querySelector('.kit').onclick=()=>{ const a=POKE[hTier(H.v)]; pokeMsg=a[Math.floor(Math.random()*a.length)]; renderKitten(pid); const k=$('v-kitten').querySelector('.kit'); if(k) k.classList.add('cheer'); };
   el.querySelectorAll('[data-care]').forEach(b=>b.onclick=()=>toggleCare(b.dataset.care));
   el.querySelectorAll('[data-addcare]').forEach(b=>b.onclick=()=>{
     const k=b.dataset.addcare, def=CARE_DEFAULTS[k], mem=couple.members;
@@ -1915,13 +1946,61 @@ function renderKitten(pid){
   $('pn').onkeydown=e=>{ if(e.key==='Enter') $('pns').click(); };
 }
 
+/* ---------- Juju reacts to how you're doing ---------- */
+function jujuMood(){
+  if(!couple||!me) return null;
+  const d=todayStr(), pid=partnerId(), a=dayScore(me.uid,d), b=pid?dayScore(pid,d):null, hr=new Date().getHours();
+  const full=v=>v!==null&&v>=0.999;
+  if(full(a)&&(!pid||b===null||full(b))) return {k:'party',e:'🎉',t:pid?'We did it! Everything is done today. I’m SO proud of you both! 🥳':'Everything done today! I’m so proud of you! 🥳'};
+  if(pid&&full(a)&&b!==null) return {k:'wait',e:'👀',t:`You’re all done! Now I’m waiting for ${nameOf(pid)}… 🐾`};
+  if(pid&&full(b)&&a!==null) return {k:'nudge',e:'🥺',t:`${nameOf(pid)} finished everything. Your turn! I believe in you 💗`};
+  if(hr>=22||hr<5) return {k:'sleepy',e:'💤',t:'Zzz… it’s late. Sleep well so we’re strong tomorrow 🌙'};
+  return null;
+}
+
+/* ---------- confetti and streak celebrations ---------- */
+const MILES=[3,7,14,21,30,50,75,100,150,200,365];
+const CEL={3:['3 days in a row!','A cute little start 🌱'],7:['A whole week! 🔥','Seven days of showing up. Juju is so proud.'],14:['Two weeks strong! 💪','Look at you two go!'],21:['21 days: a habit is born ✨','They say this is when it starts to stick.'],30:['A whole month! 🏆','Thirty days of becoming who you want to be.'],50:['50 days! 👑','Royalty behavior, honestly.'],75:['75 days! 🌟','Nothing can stop you now.'],100:['100 DAYS!! 🎊','A hundred days. Unbelievable. Proud of you!'],150:['150 days! 💎','You’re unstoppable.'],200:['200 days! 🚀','Legend status unlocked.'],365:['A FULL YEAR! 🌍','Every single day. You did it.']};
+function emojiRain(list,n=36){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  for(let i=0;i<n;i++){
+    const c=document.createElement('span'); c.className='erain'; c.textContent=list[i%list.length];
+    c.style.cssText=`left:${Math.random()*100}vw;--r:${Math.round(Math.random()*720-360)}deg;--t:${(2.4+Math.random()*1.8).toFixed(2)}s;animation-delay:${(Math.random()*.9).toFixed(2)}s;font-size:${16+Math.floor(Math.random()*14)}px`;
+    document.body.appendChild(c); setTimeout(()=>c.remove(),5400);
+  }
+}
+function celebrate(n,together){
+  const c=CEL[n]||[`${n} days in a row!`,'You keep showing up 💗'];
+  emojiRain(['🎉','✨','💗','🌸','⭐','🎊'],46);
+  const el=document.createElement('div'); el.className='celeb'; el.setAttribute('role','dialog'); el.setAttribute('aria-label','Streak milestone');
+  el.innerHTML=`<div class="celebcard"><div class="celebn">${n}</div><div class="celebd">${together?'days in a row, together 💞':'days in a row'}</div><h2>${c[0]}</h2><p>${together?'Both of you, every day. Juju is so proud of you two.':c[1]}</p><div class="celebj" aria-hidden="true">🐱💗</div><button class="btn">Yay! 💗</button></div>`;
+  el.onclick=e=>{ if(e.target===el||e.target.closest('button')) el.remove(); };
+  document.body.appendChild(el);
+}
+function checkCelebrations(){
+  if(!couple||!me||!logs.size) return;
+  const rd=k=>{ try{ return localStorage.getItem(k); }catch{ return null; } }, wr=(k,v)=>{ try{ localStorage.setItem(k,v); }catch{} };
+  /* a milestone is celebrated once, the day the streak reaches it */
+  const chk=(key,s,tog)=>{
+    const seen=rd(key), top=Math.max(0,...MILES.filter(m=>m<=s));
+    if(seen===null){ wr(key,String(top)); if(MILES.includes(s)){ celebrate(s,tog); return true; } return false; }
+    if(MILES.includes(s)&&Number(seen)!==s){ wr(key,String(s)); celebrate(s,tog); return true; }
+    if(s<Number(seen)) wr(key,String(top));
+    return false;
+  };
+  const shown=chk('rtr_streak_'+me.uid,streak(me.uid),false);
+  if(!shown&&partnerId()) chk('rtr_tstreak_'+me.uid,togetherStreak(),true);
+}
+
 /* ---------- header kitten box and hamburger menu ---------- */
 function renderKitBox(){
   const b=$('kitbtn'); if(!b||!couple) return;
   ensureKittenStart();
   bankPetDays();
   const H=kittyHealth(), st=petStage(petXP()), name=petName(), hp=Math.round(H.v*100);
-  b.innerHTML=`${kittenSVG(st.i,H,name,44)}<span class="kl"><b>${esc(name)}</b><small>${hLabel(H.v)} · ${hp}%</small><span class="mb"><i style="width:${hp}%;background:${hColor(H.v)}"></i></span></span>`;
+  const jm=jujuMood(), keep=b.classList.contains('cheer')?' cheer':'';
+  b.className='btn ghost small kitbox'+(jm?' jr-'+jm.k:'')+keep;
+  b.innerHTML=`${jm?`<span class="jbub" aria-hidden="true">${jm.e}</span>`:''}${kittenSVG(st.i,H,name,44)}<span class="kl"><b>${esc(name)}</b><small>${hLabel(H.v)} · ${hp}%</small><span class="mb"><i style="width:${hp}%;background:${hColor(H.v)}"></i></span></span>`;
   b.setAttribute('aria-label',`Visit ${name}, ${hLabel(H.v)}`);
 }
 $('kitbtn').onclick=()=>{ pokeMsg=null; renderKitten(partnerId()); $('kitmodal').classList.remove('hidden'); };
@@ -2016,6 +2095,7 @@ function render(){
   if(tab==='jar') renderJar(pid);
   renderKitBox();
   updateBadge();
+  try{ checkCelebrations(); }catch(e){ console.warn(e); }
   if(!$('kitmodal').classList.contains('hidden')) renderKitten(pid);
 }
 
