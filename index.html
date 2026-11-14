@@ -460,7 +460,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
   onSnapshot, arrayUnion, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View, p25Look } from "./p25.js?v=13";
-import { initStudy, renderStudy } from "./study.js?v=1";
+import { initStudy, renderStudy, stopStudyAmb } from "./study.js?v=3";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -2367,7 +2367,7 @@ function render(){
   if(tab==='sleep') renderSleep(pid);
   if(tab==='fun') renderFun(pid);
   if(tab==='jar') renderJar(pid);
-  if(tab==='study') renderStudy();
+  if(tab==='study') renderStudy(); else stopStudyAmb();
   renderKitBox();
   renderMoodChip();
   if(!$('moodmodal').classList.contains('hidden')&&MS.v==='home') renderMood();
