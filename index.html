@@ -213,7 +213,7 @@
   body.in25 #v-p25 .ch[aria-pressed=true]{color:#1b1405}
   /* side rail (Goals, Problems, Fun, Love jar) + Quran slide-over inside Prayers */
   .edge{position:fixed;z-index:14;border:0;display:grid;place-items:center;box-shadow:0 6px 18px rgba(36,32,59,.28)}
-  .edge-l{left:0;top:46%;width:26px;height:78px;border-radius:0 18px 18px 0;background:var(--ink);color:var(--bg);font-size:22px;font-weight:800;line-height:1}
+  .edge-l{left:0;top:46%;width:34px;height:78px;padding:0;overflow:hidden;border-radius:0 18px 18px 0;background:var(--ink);color:var(--bg);font-size:18px;font-weight:800;line-height:1}
   .edge-l.on{background:var(--gold);color:#1b1405}
   .edge-r{right:0;top:40%;width:36px;padding:12px 0;gap:8px;border-radius:18px 0 0 18px;background:#1f9d8f;color:#fff}
   .edge-r .vt{writing-mode:vertical-rl;font-weight:800;font-size:13px}
@@ -401,7 +401,6 @@
       <button class="tab rl" data-tab="goals" style="--t:#e0457b"><span class="ic">🎯</span>Goals</button>
       <button class="tab rl" data-tab="problems" style="--t:#f2b134"><span class="ic">🧩</span>Problems</button>
       <button class="tab rl" data-tab="fun" style="--t:#3b82f6"><span class="ic">🎈</span>Fun together</button>
-      <button class="tab rl" data-tab="study" style="--t:#1f9d8f"><span class="ic">📚</span>Study room</button>
       <button class="tab rl" data-tab="jar" style="--t:#ff7a90"><span class="ic">💌</span>Love jar</button>
     </aside>
 
@@ -461,7 +460,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
   onSnapshot, arrayUnion, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View, p25Look } from "./p25.js?v=13";
-import { initStudy, renderStudy, stopStudyAmb, renderBubble } from "./study.js?v=6";
+import { initStudy, renderStudy, stopStudyAmb, renderBubble } from "./study.js?v=7";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -2306,7 +2305,7 @@ railBg.onclick=()=>setRail(false);
 $('qedge').onclick=()=>setQ(true);
 $('qbg').onclick=()=>setQ(false);
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ $('avmodal').classList.add('hidden'); if(!$('moodmodal').classList.contains('hidden')) closeMood(); setRail(false); if(qopen) setQ(false); } });
-const RAIL_INFO={goals:['🎯','Goals'],problems:['🧩','Problems'],fun:['🎈','Fun'],jar:['💌','Love jar'],study:['📚','Study']};
+const RAIL_INFO={goals:['🎯','Goals'],problems:['🧩','Problems'],fun:['🎈','Fun'],jar:['💌','Love jar']};
 const avSm={}; let avU=null;
 function renderAv(){
   const sm=avSm[avU]; if(!sm){ $('avmodal').classList.add('hidden'); return; }
