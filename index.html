@@ -371,6 +371,7 @@
       <div class="row">
         <button class="btn ghost small kitbox" id="kitbtn" aria-label="Visit our kitten"></button>
         <button class="btn ghost small moodbtn" id="moodbtn" aria-label="Feelings">💭</button>
+        <button class="btn ghost small" id="musicbtn" aria-label="Our songs on Telegram">🎵</button>
         <button class="btn ghost small" id="bell" aria-label="Updates">🔔<span id="bellcount"></span></button>
         <div class="menuwrap">
           <button class="btn ghost small" id="menubtn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">☰</button>
@@ -460,7 +461,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
   onSnapshot, arrayUnion, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View, p25Look } from "./p25.js?v=13";
-import { initStudy, renderStudy, stopStudyAmb } from "./study.js?v=3";
+import { initStudy, renderStudy, stopStudyAmb, renderBubble } from "./study.js?v=4";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -2370,6 +2371,7 @@ function render(){
   if(tab==='study') renderStudy(); else stopStudyAmb();
   renderKitBox();
   renderMoodChip();
+  try{ renderBubble(); }catch(e){ console.warn(e); }
   if(!$('moodmodal').classList.contains('hidden')&&MS.v==='home') renderMood();
   updateBadge();
   try{ checkCelebrations(); }catch(e){ console.warn(e); }
@@ -2577,7 +2579,7 @@ function renderGoals(){
 }
 
 initP25({db,doc,getDoc,updateDoc,me:()=>me,habits:()=>hOf(me.uid),logs:()=>logs,goals:()=>goals,logKey,lastDays,todayStr,fmt,esc,toggle,bumpGoal,badge:updateBadge,prayers:d=>prayN(me.uid,d),ready:()=>couple?readiness():0,shareChar:sm=>{ if(!profile||!profile.coupleId||!me) return; const r=doc(cref(),'fun',`char_${me.uid}`); return sm ? setDoc(r,{kind:'char',uid:me.uid,...sm,at:Date.now()}) : deleteDoc(r); }});
-initStudy({db,doc,setDoc,updateDoc,collection,onSnapshot,me:()=>me,couple:()=>couple,cid:()=>profile&&profile.coupleId,pid:partnerId,nameOf,av:u=>avSm[u]&&avSm[u].av,esc,$,render,tab:()=>tab});
+initStudy({db,doc,setDoc,updateDoc,collection,onSnapshot,me:()=>me,couple:()=>couple,cid:()=>profile&&profile.coupleId,pid:partnerId,nameOf,av:u=>avSm[u]&&avSm[u].av,esc,$,render,goTab,tab:()=>tab});
 setInterval(()=>{ if(couple&&me) render(); },60000);
   { const orig=renderKitBox;
   renderKitBox=function(){
