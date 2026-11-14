@@ -445,3 +445,5 @@ export function p25Look(sm){const a=(sm&&sm.av)||{},r=[];
  return r}
 export function initP25(c){ctx=c}
 export function renderP25(){if(!ctx)return;if(loaded&&uidK!=='p25_'+uid()){loaded=false;P=null;uidK=''}if(!loaded){if(!uidK){uidK='x';load()}draw();return}draw()}
+
+export const P25C={SK,HC,OC};
