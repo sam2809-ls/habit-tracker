@@ -328,6 +328,49 @@
   .fltag button{background:transparent;border:0;padding:2px 6px;color:var(--muted);font-size:16px;line-height:1}
   .fltag button[aria-pressed=true]{color:var(--gold)}
   .flalso{display:grid;gap:2px;font-size:14px}
+
+  /* study together */
+  .stpill .stic{font-size:26px;line-height:1;width:44px;height:44px;display:grid;place-items:center;border-radius:50%;background:var(--bg);flex:none}
+  .stpill.live{border-color:#3aa57a;box-shadow:0 4px 14px rgba(58,165,122,.3)}
+  .stpill.live b{font-variant-numeric:tabular-nums}
+  .st{display:grid;gap:12px}
+  .stscene{position:relative;border-radius:22px;padding:18px 10px 0;background:linear-gradient(#26264a,#3b2f5e);overflow:hidden;color:#fff;transition:background .6s}
+  .stscene.break{background:linear-gradient(#244f55,#3b6b5e)}
+  .stlamp{position:absolute;left:12px;top:5px;font-size:24px;filter:drop-shadow(0 0 10px #ffd479)}
+  .stnames{display:flex;justify-content:space-around;gap:8px;font-size:14px;margin-top:-4px}
+  .stnames span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+  .stnames .out{opacity:.5}
+  .stseats{display:flex;align-items:flex-end;justify-content:center;gap:8px;position:relative;z-index:1}
+  .stseat{position:relative;display:grid;justify-items:center;gap:4px;transition:opacity .4s,filter .4s;min-width:0}
+  .stseat.out{opacity:.4;filter:grayscale(.7)}
+  .stseat svg,.stfb{width:84px;height:84px;border-radius:50%;border:3px solid rgba(255,255,255,.35);background:#fff2}
+  .stfb{display:grid;place-items:center;font-size:34px;font-weight:800}
+  .stbub{position:absolute;top:-8px;right:-6px;font-size:28px;line-height:1}
+  .stjuju{position:relative;width:56px;margin-bottom:34px;flex:none}
+  .stjuju::after{content:'💤';position:absolute;top:-10px;right:-6px;font-size:14px}
+  .stjuju svg{width:56px;height:auto}
+  .stdesk{position:relative;z-index:2;height:34px;margin:-28px -10px 0;background:linear-gradient(#b0793f,#7d5129);border-top:3px solid #c9935a;display:flex;justify-content:space-around;align-items:flex-start;font-size:22px}
+  .stdesk>span{position:relative;margin-top:-20px}
+  .stmug .steam{position:absolute;left:50%;top:-12px;width:6px;height:14px;border-radius:50%;background:rgba(255,255,255,.55);filter:blur(2px);opacity:0}
+  .stclock{position:relative;width:170px;height:170px;margin:0 auto}
+  .stclock .rtrack{fill:none;stroke:var(--line);stroke-width:10}
+  .stclock .rbar{fill:none;stroke:var(--me);stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset 1s linear}
+  .stclock.break .rbar{stroke:#3aa57a}
+  .stct{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+  .stct b{font-family:var(--head);font-size:40px;font-variant-numeric:tabular-nums;line-height:1}
+  .stct span{color:var(--muted);font-weight:700;margin-top:4px}
+  .stcall{text-align:center;text-decoration:none}
+  @media (prefers-reduced-motion: no-preference){
+    .stscene.focus .stseat.in svg{animation:stype 1.8s ease-in-out infinite}
+    .stscene.break .stseat.in svg{animation:stretch 2.6s ease-in-out infinite}
+    .stjuju::after{animation:snooze 3s ease-in-out infinite}
+    .stmug .steam{animation:steam 3s ease-in-out infinite}
+    .stbub{animation:flpop .4s cubic-bezier(.2,1.4,.4,1)}
+    .stpill.live .stic{animation:hop 2.4s ease-in-out infinite}
+  }
+  @keyframes stype{0%,100%{transform:translateY(0)}50%{transform:translateY(3px)}}
+  @keyframes stretch{0%,100%{transform:scale(1)}50%{transform:scale(1.06) translateY(-3px)}}
+  @keyframes steam{0%{transform:translate(-50%,0) scale(.6);opacity:0}30%{opacity:.7}100%{transform:translate(-30%,-18px) scale(1.2);opacity:0}}
   @media (prefers-reduced-motion: no-preference){ .flbub{animation:flpop .4s cubic-bezier(.2,1.4,.4,1)} }
   @keyframes flpop{from{transform:scale(.6);opacity:0;transform-origin:100% 100%}}
 </style>
@@ -433,6 +476,7 @@
     <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost small" id="nickclose">Done</button></div>
   </div>
 </div>
+<div id="studymodal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Study together"><div class="card"><div id="studybody"></div></div></div>
 <div id="moodmodal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Feelings"><div class="card"><div id="moodbody"></div></div></div>
 <div id="avmodal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Avatar"><div class="card"><div id="avbody" class="avm"></div><div class="row" id="avact" style="justify-content:flex-end;margin-top:14px"></div></div></div>
 <div id="kitmodal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Our kitten">
@@ -1178,6 +1222,7 @@ function feedItems(){
     if(!f.at) continue;
     let t=null;
     if(f.kind==='nudge'&&f.to===me.uid) t=[`${who} sent you a nudge 💌`,f.text];
+    else if(f.kind==='studysess'&&f.by===pid&&f.on&&Date.now()-f.start<6*3600e3) t=[`${who} is studying 📚`,f.subject||'Join them?'];
     else if(f.kind==='mood'&&f.uid===pid) t=[`${who} is feeling ${f.w} ${f.e}${Array.isArray(f.more)&&f.more.length?` +${f.more.length}`:''}`,''];
     else if(f.kind==='status'&&f.uid===pid) t=[`${who} is now ${f.emoji}`,f.text];
     else if(f.kind==='problem'&&f.by===pid) t=[`${who} added a problem`,f.title];
@@ -2216,6 +2261,222 @@ $('moodbody').addEventListener('keydown',e=>{
     else{ MS.nf={w:cap(q),e:'',z:'',t:''}; MS.v='newf'; renderMood(); } }
 });
 /* ===== FEELINGS: end ===== */
+/* ===== STUDY: start ===== */
+/* ---------- study together ---------- */
+const ST_PRE=[[25,5],[50,10],[90,15]];
+const ST={pre:ST_PRE[0],sub:'',joined:false,hbT:null,lastTick:0,me:null,sound:'off',wake:null,phKey:'',ctx:null,src:null,last:0};
+const stFmt=ms=>{ const s=Math.max(0,Math.ceil(ms/1000)); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); };
+const stDur=sec=>{ const m=Math.round(sec/60); return m<60?`${m}m`:`${Math.floor(m/60)}h${m%60?` ${m%60}m`:''}`; };
+const stDoc=uid=>fun.find(f=>f.id==='study_'+uid);
+const stSess=()=>fun.find(f=>f.id==='study_session');
+const stDocOf=uid=>uid===me.uid&&ST.joined&&ST.me?ST.me:stDoc(uid);
+const stHere=uid=>{ const d=stDocOf(uid); return !!(d&&d.on&&Date.now()-d.hb<90e3); };
+function stPhase(s,now=Date.now()){
+  if(!s||!s.on) return null;
+  const f=s.focus*6e4, b=s.brk*6e4, cyc=f+b, el=Math.max(0,now-s.start), pos=el%cyc, n=Math.floor(el/cyc);
+  return pos<f?{ph:'focus',left:f-pos,total:f,n}:{ph:'break',left:cyc-pos,total:b,n};
+}
+/* a session counts as live while someone is in the room (with a short grace period after it starts) */
+function stLive(){
+  const s=stSess(); if(!s||!s.on) return null;
+  const any=[me.uid,partnerId()].filter(Boolean).some(stHere);
+  return (any||Date.now()-s.start<2*60e3)?s:null;
+}
+const stDay=(uid,d)=>{ const x=stDocOf(uid); return (x&&x.days&&x.days[d])||{m:0,t:0}; };
+function stStreak(){
+  let n=0; const d=new Date(); const key=o=>{ const x=new Date(d); x.setDate(x.getDate()-o); return x.toISOString().slice(0,10); };
+  for(let o=0;o<60;o++){ const e=stDay(me.uid,o===0?todayStr():key(o)); if(e.t>=600) n++; else if(o===0) continue; else break; }
+  return n;
+}
+/* quiet little sounds: all generated in the browser, nothing to download */
+function stAudioInit(){ try{ if(!ST.ctx) ST.ctx=new (window.AudioContext||window.webkitAudioContext)(); if(ST.ctx.state==='suspended') ST.ctx.resume(); }catch(e){} }
+function stSound(k){
+  ST.sound=k;
+  try{ if(ST.src){ ST.src.stop(); ST.src.disconnect(); ST.src=null; } }catch(e){}
+  if(k==='off'||!ST.ctx) return;
+  try{
+    const c=ST.ctx, len=c.sampleRate*3, buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0); let last=0;
+    for(let i=0;i<len;i++){ const w=Math.random()*2-1; if(k==='hum'){ last=(last+.02*w)/1.02; d[i]=last*3.2; } else d[i]=w; }
+    const src=c.createBufferSource(); src.buffer=buf; src.loop=true;
+    const g=c.createGain(); g.gain.value=k==='rain'?.1:.35;
+    if(k==='rain'){ const hp=c.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=900; const lp=c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=7000; src.connect(hp); hp.connect(lp); lp.connect(g); }
+    else src.connect(g);
+    g.connect(c.destination); src.start(); ST.src=src;
+  }catch(e){}
+}
+function stChime(){
+  try{ if(!ST.ctx) return; const c=ST.ctx, t=c.currentTime;
+    [660,880].forEach((f,i)=>{ const o=c.createOscillator(), g=c.createGain(); o.type='sine'; o.frequency.value=f;
+      g.gain.setValueAtTime(0,t+i*.18); g.gain.linearRampToValueAtTime(.07,t+i*.18+.03); g.gain.exponentialRampToValueAtTime(.001,t+i*.18+.5);
+      o.connect(g); g.connect(c.destination); o.start(t+i*.18); o.stop(t+i*.18+.55); }); }catch(e){}
+}
+async function stWake(on){
+  try{ if(on&&'wakeLock' in navigator){ ST.wake=await navigator.wakeLock.request('screen'); }
+       else if(ST.wake){ await ST.wake.release(); ST.wake=null; } }catch(e){}
+}
+async function stSave(){ if(!ST.me) return; try{ await setDoc(doc(cref(),'fun','study_'+me.uid),ST.me); }catch(e){ console.warn('study save',e); } }
+function stAdd(sec,withPartner){
+  const d=todayStr(), D=ST.me.days||(ST.me.days={}), e=D[d]||(D[d]={m:0,t:0});
+  e.m=Math.round(e.m+sec); if(withPartner) e.t=Math.round(e.t+sec);
+  const keys=Object.keys(D).sort(); while(keys.length>60) delete D[keys.shift()];
+}
+/* every 30 seconds: say "I'm still here" and count the focus time */
+function stTick(){
+  if(!ST.me) return;
+  const now=Date.now(), dt=Math.min((now-ST.lastTick)/1000,45), pid=partnerId(), ph=stPhase(stSess(),now);
+  ST.lastTick=now;
+  if(dt>0&&ph&&ph.ph==='focus'&&document.visibilityState==='visible') stAdd(dt,!!(pid&&stHere(pid)));
+  ST.me.hb=now; stSave();
+}
+async function stJoin(subject){
+  if(ST.joined) return;
+  const {id,...rest}=stDoc(me.uid)||{}, s=stSess(), now=Date.now();
+  ST.me={...rest,kind:'study',uid:me.uid,on:true,hb:now,joinedAt:now,subject:((subject||'').trim()||(s&&s.subject)||'').slice(0,40),days:rest.days||{}};
+  ST.joined=true; ST.lastTick=now; ST.phKey='';
+  stAudioInit(); stWake(true);
+  clearInterval(ST.hbT); ST.hbT=setInterval(stTick,30000);
+  await stSave();
+}
+async function stEnd(){
+  const s=stSess(); if(!s||!s.on) return;
+  const {id,...r}=s; try{ await setDoc(doc(cref(),'fun','study_session'),{...r,on:false}); }catch(e){}
+}
+async function stLeave(endIfAlone=true){
+  if(!ST.joined) return;
+  const now=Date.now(), dt=Math.min((now-ST.lastTick)/1000,45), pid=partnerId(), ph=stPhase(stSess(),now);
+  if(ph&&ph.ph==='focus') stAdd(dt,!!(pid&&stHere(pid)));
+  ST.me.on=false; ST.me.hb=now; ST.joined=false;
+  clearInterval(ST.hbT); ST.hbT=null; stWake(false); stSound('off');
+  await stSave();
+  if(endIfAlone&&!(pid&&stHere(pid))) await stEnd();
+}
+async function stStart(){
+  const sub=(ST.sub||'').trim().slice(0,40), at=Date.now();
+  try{ await setDoc(doc(cref(),'fun','study_session'),{kind:'studysess',on:true,start:at,focus:ST.pre[0],brk:ST.pre[1],by:me.uid,subject:sub,at}); }
+  catch(e){ toast('Could not start. Try again.'); return; }
+  if(sub){ try{ const l=JSON.parse(flRd('rr_study_subs')||'[]').filter(x=>x!==sub); l.unshift(sub); flWr('rr_study_subs',JSON.stringify(l.slice(0,5))); }catch(e){} }
+  /* the session doc is local-first, so wait for it to show up before joining */
+  const s=fun.find(f=>f.id==='study_session'); if(s){ s.on=true; s.start=at; s.focus=ST.pre[0]; s.brk=ST.pre[1]; s.by=me.uid; s.subject=sub; }
+  await stJoin(sub); renderStudy(); updateStudyPill();
+}
+function stNudge(e){
+  if(!ST.joined||!ST.me) return;
+  if(Date.now()-(ST.me.nudge&&ST.me.nudge.at||0)<3000) return;
+  ST.me.nudge={e,at:Date.now()}; stSave(); stBubbles();
+}
+const stBubble=uid=>{ const d=stDocOf(uid), n=d&&d.nudge; return n&&Date.now()-n.at<8000?n.e:''; };
+function stBubbles(){ const a=$('stbub-me'), b=$('stbub-you'); if(a) a.textContent=stBubble(me.uid); if(b) b.textContent=partnerId()?stBubble(partnerId()):''; }
+
+/* the pill on the home screen */
+function stPillText(){
+  const pid=partnerId(), s=stLive(), ph=stPhase(s);
+  if(!s||!ph) return {main:'Study together',sub:'Tap to start',live:false};
+  const there=pid&&stHere(pid), main=`${stFmt(ph.left)} · ${ph.ph==='focus'?'Focus':'Break'}`;
+  return {main,sub:ST.joined?(there?`With ${nameOf(pid)}`:'You’re studying'):(there?`${nameOf(pid)} is studying · Join?`:'Session open'),live:true};
+}
+function studyPill(){
+  const t=stPillText();
+  return `<button class="dcard stpill${t.live?' live':''}" data-study="1" aria-label="Study together"><span class="stic" aria-hidden="true">📚</span><span class="dl"><b id="stl">${esc(t.main)}</b><small id="sts">${esc(t.sub)}</small></span></button>`;
+}
+function updateStudyPill(){
+  const b=$('stl'); if(!b||!couple||!me) return;
+  const t=stPillText(); b.textContent=t.main; $('sts').textContent=t.sub; b.closest('.stpill').classList.toggle('live',t.live);
+}
+
+/* the room */
+const stOpen=()=>!$('studymodal').classList.contains('hidden');
+function stAvatar(uid,size){
+  const sm=avSm[uid];
+  if(sm){ try{ return p25View(sm,size,{mini:true}).svg; }catch(e){} }
+  return `<div class="stfb">${esc((nameOf(uid)||'?').charAt(0).toUpperCase())}</div>`;
+}
+function stKitten(){ try{ return kittenSVG(petStage(petXP()).i,kittyHealth(),petName(),56); }catch(e){ return '😺'; } }
+function renderStudy(){
+  const el=$('studybody'); if(!el||!couple||!me) return;
+  if(document.activeElement&&document.activeElement.id==='stsub') return;
+  const pid=partnerId(), pn=pid?esc(nameOf(pid)):'', s=stLive(), ph=stPhase(s), here=ST.joined, there=!!(pid&&stHere(pid)), pd=pid&&stDoc(pid);
+  const subs=(()=>{ try{ return JSON.parse(flRd('rr_study_subs')||'[]'); }catch(e){ return []; } })();
+  const today=todayStr(), mine=stDay(me.uid,today), theirs=pid?stDay(pid,today):{m:0,t:0};
+  let week=0; for(let o=0;o<7;o++){ const x=new Date(); x.setDate(x.getDate()-o); week+=stDay(me.uid,x.toISOString().slice(0,10)).t; }
+  const streak=stStreak();
+  const scene=`<div class="stscene ${ph?ph.ph:'idle'}"><div class="stlamp" aria-hidden="true">💡</div>
+    <div class="stseats">
+      <div class="stseat me ${here?'in':'out'}">${stAvatar(me.uid,84)}<span class="stbub" id="stbub-me" aria-hidden="true"></span></div>
+      <div class="stjuju" aria-hidden="true">${stKitten()}</div>
+      ${pid?`<div class="stseat you ${there?'in':'out'}">${stAvatar(pid,84)}<span class="stbub" id="stbub-you" aria-hidden="true"></span></div>`:''}
+    </div>
+    <div class="stdesk" aria-hidden="true"><span>📖</span><span class="stmug">☕<i class="steam"></i></span><span>💻</span>${pid?'<span class="stmug">🍵<i class="steam"></i></span>':''}<span>✏️</span></div></div>
+    <div class="stnames"><span class="${here?'':'out'}"><b>You</b>${here?(ST.me.subject?` · ${esc(ST.me.subject)}`:' · here'):' · not here'}</span>${pid?`<span class="${there?'':'out'}"><b>${pn}</b>${there?(pd&&pd.subject?` · ${esc(pd.subject)}`:' · here'):' · not here'}</span>`:''}</div>`;
+  let ctl='';
+  if(s&&ph){
+    const C=2*Math.PI*66;
+    ctl+=`<div class="stclock ${ph.ph}"><svg viewBox="0 0 160 160" width="170" height="170" role="timer" aria-label="Study timer"><circle cx="80" cy="80" r="66" class="rtrack"/><circle id="string" cx="80" cy="80" r="66" class="rbar" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-(ph.total-ph.left)/ph.total)).toFixed(1)}" transform="rotate(-90 80 80)"/></svg>
+      <div class="stct"><b id="stt">${stFmt(ph.left)}</b><span id="stph">${ph.ph==='focus'?'Focus':'Break ☕'}</span></div></div>
+      <div class="muted" style="text-align:center;font-size:14px">${s.subject?`📖 ${esc(s.subject)} · `:''}${s.focus} min focus / ${s.brk} min break · round ${ph.n+1}</div>`;
+  }
+  if(!s){
+    ctl+=`<div><small class="muted">How long?</small><div class="flgrid" style="margin-top:4px">${ST_PRE.map((p,i)=>`<button class="flchip" data-st="pre" data-i="${i}" aria-pressed="${ST.pre===p}" style="--zc:var(--me);--zb:transparent">${p[0]} / ${p[1]} min</button>`).join('')}</div></div>
+      <input id="stsub" type="text" maxlength="40" placeholder="What are you studying?" value="${esc(ST.sub)}">
+      ${subs.length?`<div class="flgrid">${subs.map(x=>`<button class="flchip" data-st="sub" data-v="${esc(x)}" style="--zc:var(--line);--zb:transparent">${esc(x)}</button>`).join('')}</div>`:''}
+      <button class="btn" data-st="start">${pid&&there?`Start together with ${pn}`:'Start studying 📚'}</button>`;
+  }else if(!here){
+    ctl+=`<button class="btn" data-st="join">${there?`Join ${pn}`:'Join the session'} 📚</button>`;
+  }else{
+    ctl+=`<div class="flgrid" style="justify-content:center">${['💪','☕','💗','🎉','😴'].map(e=>`<button class="flchip" data-st="nudge" data-e="${e}" aria-label="Send ${e}" style="--zc:var(--line);--zb:transparent;font-size:20px;padding:6px 14px">${e}</button>`).join('')}</div>
+      <div class="flgrid" style="justify-content:center"><small class="muted" style="align-self:center">Sound</small>${[['off','Off'],['rain','🌧️ Rain'],['hum','🌫️ Hum']].map(([k,l])=>`<button class="flchip" data-st="snd" data-k="${k}" aria-pressed="${ST.sound===k}" style="--zc:var(--me);--zb:transparent">${l}</button>`).join('')}</div>
+      <div class="row" style="justify-content:center;gap:8px"><button class="btn ghost small" data-st="leave">Leave</button>${there?'<button class="btn ghost small" data-st="end">End for both</button>':''}</div>`;
+  }
+  const callUrl=`https://meet.jit.si/rtr-study-${encodeURIComponent(couple.id||'room')}#config.startWithVideoMuted=true`;
+  el.innerHTML=`<div class="st"><div class="row" style="justify-content:space-between"><h2>Study together 📚</h2><button class="btn ghost small" data-st="min">${here?'Minimise':'Close'}</button></div>
+    ${scene}${ctl}
+    <a class="btn ghost small stcall" href="${callUrl}" target="_blank" rel="noopener">🎧 Talk while we study (voice / video)</a>
+    <div class="flcard"><b style="font-size:15px">Studied today</b><div class="row" style="justify-content:space-between"><span>You <b>${stDur(mine.m)}</b></span>${pid?`<span>${pn} <b>${stDur(theirs.m)}</b></span>`:''}${pid?`<span>Together <b>${stDur(mine.t)}</b></span>`:''}</div>
+      <small class="muted">This week together: ${stDur(week)}${streak?` · 🔥 ${streak} day${streak>1?'s':''} in a row`:''}</small></div></div>`;
+  stBubbles();
+}
+/* update only the moving parts each second, so typing is never interrupted */
+function stPaint(ph){
+  if(!ph) return;
+  const t=$('stt'); if(t) t.textContent=stFmt(ph.left);
+  const r=$('string'); if(r){ const C=2*Math.PI*66; r.setAttribute('stroke-dashoffset',(C*(1-(ph.total-ph.left)/ph.total)).toFixed(1)); }
+  stBubbles();
+}
+function stSecond(){
+  if(!couple||!me) return;
+  updateStudyPill();
+  const s=stLive(), ph=stPhase(s), open=stOpen();
+  if(ST.joined){
+    if(!s){ stLeave(false); toast('The study session ended 📚'); if(open) renderStudy(); return; }
+    const key=ph.n+ph.ph;
+    if(ST.phKey&&ST.phKey!==key){
+      stChime();
+      if(ph.ph==='break'){ toast('Focus block done 🎉 Break time ☕'); emojiRain(['🎉','☕','✨'],14); } else toast('Break over. Back to it 💪');
+      if(open) renderStudy();
+    }
+    ST.phKey=key;
+  }
+  if(open) stPaint(ph);
+}
+function openStudy(){ renderStudy(); $('studymodal').classList.remove('hidden'); }
+function closeStudy(){ $('studymodal').classList.add('hidden'); }
+$('studymodal').onclick=e=>{ if(e.target===$('studymodal')) closeStudy(); };
+$('studybody').onclick=async e=>{
+  const t=e.target.closest('[data-st]'); if(!t) return;
+  const a=t.dataset.st;
+  if(a==='min') closeStudy();
+  else if(a==='pre'){ ST.pre=ST_PRE[+t.dataset.i]; renderStudy(); }
+  else if(a==='sub'){ ST.sub=t.dataset.v; renderStudy(); }
+  else if(a==='start') stStart();
+  else if(a==='join'){ await stJoin(); renderStudy(); updateStudyPill(); }
+  else if(a==='nudge') stNudge(t.dataset.e);
+  else if(a==='snd'){ stAudioInit(); stSound(t.dataset.k); renderStudy(); }
+  else if(a==='leave'){ await stLeave(); renderStudy(); updateStudyPill(); }
+  else if(a==='end'){ await stLeave(false); await stEnd(); renderStudy(); updateStudyPill(); }
+};
+$('studybody').addEventListener('input',e=>{ if(e.target.id==='stsub') ST.sub=e.target.value; });
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&ST.joined){ stTick(); stWake(true); } });
+setInterval(stSecond,1000);
+/* ===== STUDY: end ===== */
 
 /* ---------- Juju reacts to how you're doing ---------- */
 function jujuMood(){
@@ -2294,14 +2555,14 @@ const applyQ=()=>{ const on=tab==='pray'&&qopen; $('v-quran').classList.toggle('
 const setQ=o=>{ qopen=o; applyQ(); if(o) setTimeout(()=>{ const c=$('qclose'); c&&c.focus(); },380); };
 const goTab=t=>{ if(t==='p25' && tab!=='p25') prevTab=tab; tab=t; qopen=false; setRail(false); window.scrollTo({top:0}); render(); };
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => goTab(b.dataset.tab));
-$('duo').onclick=e=>{ const c=e.target.closest('.dcard'); if(!c) return; if(c.dataset.setup){ goTab('p25'); return; } if(c.dataset.u){ avU=c.dataset.u; renderAv(); $('avmodal').classList.remove('hidden'); } };
+$('duo').onclick=e=>{ const c=e.target.closest('.dcard'); if(!c) return; if(c.dataset.study){ openStudy(); return; } if(c.dataset.setup){ goTab('p25'); return; } if(c.dataset.u){ avU=c.dataset.u; renderAv(); $('avmodal').classList.remove('hidden'); } };
 $('avmodal').onclick=e=>{ if(e.target===$('avmodal')) $('avmodal').classList.add('hidden'); };
 $('p25back').onclick=()=>goTab(prevTab||'dash');
 railBtn.onclick=()=>setRail(!railEl.classList.contains('open'));
 railBg.onclick=()=>setRail(false);
 $('qedge').onclick=()=>setQ(true);
 $('qbg').onclick=()=>setQ(false);
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ $('avmodal').classList.add('hidden'); if(!$('moodmodal').classList.contains('hidden')) closeMood(); setRail(false); if(qopen) setQ(false); } });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ $('avmodal').classList.add('hidden'); if(!$('moodmodal').classList.contains('hidden')) closeMood(); if(stOpen()) closeStudy(); setRail(false); if(qopen) setQ(false); } });
 const RAIL_INFO={goals:['🎯','Goals'],problems:['🧩','Problems'],fun:['🎈','Fun'],jar:['💌','Love jar']};
 const avSm={}; let avU=null;
 function renderAv(){
@@ -2329,7 +2590,8 @@ function updateBadge(){
     return `<button class="dcard${mine?' me':''}" data-u="${esc(u)}" aria-label="Open ${nm}’s avatar">${inner}</button>`;
   };
   const mine=p25Summary(true), th=pid&&fun.find(f=>f.kind==='char'&&f.uid===pid);
-  d.innerHTML=card(mine,me.uid,true)+(pid?card(th||null,pid,false):`<div class="dcard"><span class="dl"><b>Partner</b><small>will show here once they join</small></span></div>`);
+  d.innerHTML=card(mine,me.uid,true)+(pid?card(th||null,pid,false):`<div class="dcard"><span class="dl"><b>Partner</b><small>will show here once they join</small></span></div>`)+studyPill();
+  updateStudyPill();
   if(!$('avmodal').classList.contains('hidden')) renderAv();
 }
 function updateNav(){
@@ -2367,6 +2629,7 @@ function render(){
   renderKitBox();
   renderMoodChip();
   if(!$('moodmodal').classList.contains('hidden')&&MS.v==='home') renderMood();
+  if(stOpen()) renderStudy();
   updateBadge();
   try{ checkCelebrations(); }catch(e){ console.warn(e); }
   if(!$('kitmodal').classList.contains('hidden')) renderKitten(pid);
