@@ -1,18 +1,18 @@
 import { P25C } from "./p25.js?v=13";
-import { mkRooms } from "./rooms.js?v=1";
+import { mkRooms } from "./rooms.js?v=2";
 const {SK,HC,OC}=P25C; let C=null, sess=[], subCid=null, endOpen=false, endBrk=0, focus=0, pick='', pickK='study', tm=null;
 const LONG=['wolf','long','curly'], DEF={s:1,h:1,o:6,hs:'wolf'};
 const mins=ms=>Math.max(0,Math.round(ms/60000)), dur=m=>m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`;
 const hm=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
 const KI={study:['📚','Study','Studying','study'],work:['💻','Work','Working','study'],read:['📖','Read','Reading','study'],
- watch:['🎬','Movie','Watching','chill'],chill:['🛋️','Chill','Chilling','chill','chilling on the sofa'],game:['🎮','Game','Playing','chill'],lie:['🛌','Lie down','Lying down','chill','lying down'],sleep:['😴','Sleep','Sleeping','chill','sleeping'],
+ watch:['🎬','Movie','Watching','chill'],chill:['🛋️','Sofa','Chilling','chill','chilling on the sofa'],game:['🎮','Game','Playing','chill'],slie:['🛋️','Lie on sofa','Lounging','chill','lying on the sofa'],ssleep:['💤','Sofa nap','Napping','chill','napping on the sofa'],bsit:['🛏️','Sit on bed','Sitting','chill','sitting on the bed'],lie:['🛌','Lie on bed','Lying down','chill','lying down'],bwatch:['📺','TV in bed','Watching','chill','watching TV in bed'],sleep:['😴','Sleep','Sleeping','chill','sleeping'],balc:['🌙','Balcony','Chilling','chill','chilling on the balcony'],tea:['🍵','Herbal tea','Sipping','chill','sipping herbal tea'],desk:['💻','Desk','Sitting','chill','sitting at the little desk'],
  lift:['🏋️','Lift','Lifting','gym','lifting weights'],run:['🏃','Run','Running','gym','running on the treadmill'],yoga:['🧘','Yoga','Yoga','gym','doing yoga'],stretch:['🤸','Stretch','Stretching','gym','stretching']};
-const ROOMK={study:['study','work','read'],gym:['lift','run','yoga','stretch'],chill:['chill','watch','game','lie','sleep']};
+const ROOMK={study:['study','work','read'],gym:['lift','run','yoga','stretch'],chill:['chill','watch','game','slie','ssleep','bsit','lie','bwatch','sleep','balc','tea','desk']};
 const ROOMN={study:'Workroom',gym:'Gym',chill:'Chill room'};
 const roomOf=k=>(KI[k]||KI.study)[3];
 const GO=k=>k==='study'?'Start studying':k==='work'?'Start working':roomOf(k)==='gym'?'Start workout':roomOf(k)==='chill'?'Settle in':'Start reading';
 const PK={praying:['🕌','praying'],quran:['📖','reading Quran'],sit:['📿','sitting for dhikr']};
-const JOIN=/prayin|Quran|^(sitting|studying|working|watching|playing|lifting|running|doing yoga|stretching|chilling)/;
+const JOIN=/prayin|Quran|^(sitting|studying|working|watching|playing|lifting|running|doing yoga|stretching|chilling|sipping|napping|lounging)/;
 const FOCUSK=['study','work'], LISTK=['study','work'];
 const subKey=k=>'sr_subj_'+(k==='work'?'work_':'')+C.me().uid;
 const subs=k=>{try{return JSON.parse(localStorage.getItem(subKey(k||'study'))||'[]')}catch(e){return[]}};
@@ -124,6 +124,9 @@ let mode='study';
 export const studyMode=()=>mode;
 const LYS=[['across','Across'],['side','Side by side'],['cornerL','Corner left'],['cornerR','Corner right'],['corners','Far corners'],['same','Same way']];
 const LYP={across:[[112,'s',1],[268,'s',-1]],side:[[168,'f',1],[228,'f',1]],cornerL:[[100,'s',1],[156,'f',1]],cornerR:[[214,'f',1],[280,'s',-1]],corners:[[100,'f',1],[270,'f',1]],same:[[100,'s',1],[172,'s',1]]};
+const CPS=[['apart','Apart'],['side','Hand in hand'],['lean','Leaning 🤍'],['shoulder','Head on shoulder'],['cuddle','Cuddle 🫶'],['lap','Head in lap'],['spoon','Spooning']];
+const cpGet=()=>{ const d=C.couple().cp; return d&&CPS.some(q=>q[0]===d.k)?d:{k:'apart',lead:''}; };
+const poseRow=()=>{ const d=cpGet(), p=C.pid(); return `<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">Together (shared)</span>${CPS.map(([k,n])=>`<button class="btn small ${d.k===k?'':'ghost'}" data-cp="${k}">${n}</button>`).join('')}${['shoulder','spoon'].includes(d.k)&&p?`<button class="btn ghost small" id="cpswap">↔ Swap who</button>`:''}</div><div class="muted" style="font-size:12px;margin-top:4px">Poses show when you’re both in the same spot (same sofa, same bed, same balcony).</div>`; };
 const lyGet=()=>{ const d=C.couple().ly; if(d&&LYP[d.k]) return d.k; const v=localStorage.getItem('sr_ly_'+C.me().uid)||'across'; return LYP[v]?v:v==='corner'?'cornerL':'across'; };
 const lyFlip=()=>{ const d=C.couple().ly; return !!(d&&d.by&&d.by!==C.me().uid); };
 const leaf=(x,y,k,r,c)=>`<g transform="translate(${x} ${y}) rotate(${r}) scale(${k})"><path d="M0 0 C10 2 24 -6 26 -20 L15 -21 L27 -31 C25 -42 12 -47 0 -50 C-12 -47 -25 -42 -27 -31 L-15 -21 L-26 -20 C-24 -6 -10 2 0 0Z" fill="${c}"/><path d="M0 0 V-46 M0 -14 L-16 -22 M0 -14 L16 -22 M0 -28 L-14 -36 M0 -28 L14 -36" stroke="#1d4a31" stroke-width="1" fill="none"/><ellipse cx="-10" cy="-12" rx="2.2" ry="3.5" fill="#1d4a31" opacity=".55"/><ellipse cx="10" cy="-12" rx="2.2" ry="3.5" fill="#1d4a31" opacity=".55"/><ellipse cx="-8" cy="-31" rx="2" ry="3" fill="#1d4a31" opacity=".55"/><ellipse cx="8" cy="-31" rx="2" ry="3" fill="#1d4a31" opacity=".55"/></g>`;
@@ -208,7 +211,7 @@ export function renderStudy(){
   else { const fk=LISTK.includes(pickK);
     ctl=`<b>What are you up to?</b><div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0">${(ROOMK[mode]||ROOMK.study).map(k=>`<button class="btn small ${pickK===k?'':'ghost'}" data-k="${k}">${KI[k][0]} ${KI[k][1]}</button>`).join('')}</div>${fk?`<div class="muted" style="font-size:13px">${pickK==='work'?'Working on (optional)':'Subject'}</div><div style="margin-top:6px">${S.map(s=>chip(s,s===pick)).join('')}</div><div class="row" style="gap:8px;margin:2px 0 10px"><input id="srnew" placeholder="${pickK==='work'?'Add a project':'Add a subject'}" style="flex:1"><button class="btn ghost small" id="sradd">Add</button></div>`:`<input id="srtxt" placeholder="${pickK==='read'?'What are you reading? (optional)':pickK==='watch'?'What are you watching? (optional)':pickK==='game'?'What are you playing? (optional)':'Anything on your mind? (optional)'}" style="width:100%;margin:6px 0 10px">`}<button class="btn" id="srstart" ${pickK==='study'&&!pick?'disabled style="opacity:.5"':''}>${GO(pickK)}</button>`; }
   const join=p&&pt.st==='break'&&me.st==='studying'?`<button class="btn ghost small" id="srjoin" style="margin-top:8px">${C.esc(C.nameOf(p))} is on a break, take one too?</button>`:'';
-  if(mode!=='study') el.innerHTML=`${head}${(mode==='gym'?gymSvg:chillSvg)({me:meLeft?me:pt,pt:meLeft?pt:me,ma:meLeft?C.av(my):p&&C.av(p),pa:meLeft?p&&C.av(p):C.av(my),meLeft:true,kOf,roomOf})}<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;text-align:center;font-size:13px"><span class="card" style="padding:8px">${C.esc(label('You',me))}</span><span class="card" style="padding:8px">${C.esc(label(p?C.nameOf(p):'Partner',pt))}</span></div><div class="card" style="margin-top:12px">${ctl}${join}</div>${rstat(mode)}`;
+  if(mode!=='study') el.innerHTML=`${head}${(mode==='gym'?gymSvg:chillSvg)({me:meLeft?me:pt,pt:meLeft?pt:me,ma:meLeft?C.av(my):p&&C.av(p),pa:meLeft?p&&C.av(p):C.av(my),meLeft:true,kOf,roomOf,pose:{k:cpGet().k,leadMe:cpGet().lead?cpGet().lead===my:true}})}${mode==='chill'?poseRow():''}<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;text-align:center;font-size:13px"><span class="card" style="padding:8px">${C.esc(label('You',me))}</span><span class="card" style="padding:8px">${C.esc(label(p?C.nameOf(p):'Partner',pt))}</span></div><div class="card" style="margin-top:12px">${ctl}${join}</div>${rstat(mode)}`;
   else el.innerHTML=`${head}${room(me,pt,C.av(my),p&&C.av(p),wxGet(),lyGet(),lyFlip())}<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">My sky</span>${WX.map(([k,e,n])=>`<button class="btn small ${wxGet()===k?'':'ghost'}" data-wx="${k}">${e} ${n}</button>`).join('')}</div><div class="row" style="margin-top:6px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">Seats (shared)</span>${LYS.map(([k,n])=>`<button class="btn small ${lyGet()===k?'':'ghost'}" data-ly="${k}">${n}</button>`).join('')}</div><div class="row" style="margin-top:6px;gap:8px;align-items:center"><button class="btn small ${amb.on?'':'ghost'}" id="sramb">🔈 Ambience ${amb.on?'on':'off'}</button><input id="srvol" type="range" min="0" max="1" step="0.05" value="${vol}" style="width:110px;padding:0" aria-label="Ambience volume"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;text-align:center;font-size:13px"><span class="card" style="padding:8px">${C.esc(label('You',me))}</span><span class="card" style="padding:8px">${C.esc(label(p?C.nameOf(p):'Partner',pt))}</span></div><div class="card" style="margin-top:12px">${ctl}${join}</div>${checklist()}${summary()}`;
   bindM();
   const q=s=>el.querySelector(s), on=(s,f)=>{const n=q(s); if(n) n.onclick=f;};
@@ -220,6 +223,8 @@ export function renderStudy(){
   el.querySelectorAll('[data-cd]').forEach(c=>c.onclick=()=>upd({chk:chk().filter(i=>i.id!==c.dataset.cd)}));
   on('#chkadd',()=>{ const v=q('#chkin').value.trim(); if(v) upd({chk:[...chk(),{id:String(Date.now()),t:v,u:my,d:false}]}); });
   let pt0; const pd=q('#pad'); if(pd) pd.oninput=()=>{ clearTimeout(pt0); pt0=setTimeout(()=>upd({pad:pd.value}),700); };
+  el.querySelectorAll('[data-cp]').forEach(b=>b.onclick=()=>upd({cp:{k:b.dataset.cp,lead:my}}));
+  on('#cpswap',()=>{ const d=cpGet(); upd({cp:{k:d.k,lead:(d.lead&&d.lead!==my)?my:p}}); });
   el.querySelectorAll('[data-ly]').forEach(b=>b.onclick=()=>upd({ly:{k:b.dataset.ly,by:my}}));
   on('#sramb',()=>{ if(!AC){ AC=new (window.AudioContext||window.webkitAudioContext)(); master=AC.createGain(); master.gain.value=vol*.5; master.connect(AC.destination); nb=nbuf(); } AC.resume(); amb.on=!amb.on; if(!amb.on) stopAmb(); renderStudy(); });
   const vl=q('#srvol'); if(vl) vl.oninput=()=>{ vol=+vl.value; localStorage.setItem('sr_vol',vol); if(master) master.gain.value=vol*.5; };
