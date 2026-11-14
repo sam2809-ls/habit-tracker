@@ -460,7 +460,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
   onSnapshot, arrayUnion, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View, p25Look } from "./p25.js?v=13";
-import { initStudy, renderStudy, stopStudyAmb, renderBubble } from "./study.js?v=9";
+import { initStudy, renderStudy, stopStudyAmb, renderBubble, openStudy, studyMode } from "./study.js?v=11";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -786,8 +786,9 @@ function bindTicks(el){ el.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=
 const waitingCard='<div class="card muted">Your partner’s stats will show here once they join.</div>';
 
 function renderPray(pid){
+  const host=$('prlog'); if(!host) return;
   const taha=uid=>`<div><span class="big">${lastDays(7).filter(x=>has('prayer_','tahajjud',uid,x)).length}/7</span><small>tahajjud nights</small></div>`;
-  $('v-pray').innerHTML=`
+  host.innerHTML=`
     <div class="card"><h3>Today’s prayers</h3>
       <p class="muted" style="margin:4px 0 8px">Tap your circle when you have prayed. 🥰 means you both prayed, 😢 means only one of you has.</p>
       ${theadRow(pid)}${togetherRows('prayer_',PRAYERS,pid,'🥰')}
@@ -798,7 +799,7 @@ function renderPray(pid){
       ${pid?statsCard(pid,'var(--you)','prayer_',PRAYERS,taha(pid)):waitingCard}</div>
     <button class="btn ghost" id="qopen" style="margin-top:14px;width:100%">📖 Open Quran &amp; duas</button>
     <p class="muted" style="margin-top:12px">Prayers and Quran count toward your readiness bar, and they fill your characters’ world with light, or let the darkness in when you miss them.</p>`;
-  bindTicks($('v-pray'));
+  bindTicks(host);
   $('qopen').onclick=()=>setQ(true);
 }
 const teaStat=uid=>`<div><span class="big">${lastDays(7).reduce((a,x)=>a+cnt('tea_',TEA,uid,x),0)}/14</span><small>teas this week</small></div>`;
@@ -1409,7 +1410,7 @@ function renderQuran(pid){
   $('v-quran').innerHTML=`
     <div class="qhead"><h2>📖 Quran &amp; duas</h2><button class="btn ghost small" id="qclose">Close ✕</button></div>
     <div class="card"><h3>Quran today</h3>
-      <p class="muted" style="margin:4px 0 0">${bothToday?'You both read today 🤍':(mine||theirs?'One of you has read today. 😢':'Write what you read today, like “Surah Al-Kahf, ayah 1 to 10”.')}</p>
+      ${quranRead>=1?`<p style="margin:6px 0 0">You read for <b>${quranRead} min</b> ⏱️ What did you read?</p>`:''}<p class="muted" style="margin:4px 0 0">${bothToday?'You both read today 🤍':(mine||theirs?'One of you has read today. 😢':'Write what you read today, like “Surah Al-Kahf, ayah 1 to 10”.')}</p>
       <div class="row" style="margin-top:12px"><input id="qw" style="flex:1;min-width:200px" placeholder="What did you read?" value="${mine?esc(mine.what):''}">
         <input id="qp" type="number" min="0" style="width:110px" placeholder="Ayahs" aria-label="Ayahs read" value="${mine&&mine.ayahs?mine.ayahs:''}">
         <button class="btn" id="qs">Save</button>${mine?'<button class="btn ghost" id="qc">Remove</button>':''}</div>
@@ -2294,9 +2295,11 @@ let prevTab='dash';
 const railEl=$('rail'), railBg=$('railbg'), railBtn=$('railbtn');
 let qopen=false;
 const setRail=o=>{ railEl.classList.toggle('open',o); railBg.classList.toggle('hidden',!o); railBtn.setAttribute('aria-expanded',String(o)); if(o){ const f=railEl.querySelector('.rl'); f&&f.focus(); } };
-const applyQ=()=>{ const on=tab==='pray'&&qopen; $('v-quran').classList.toggle('open',on); $('qbg').classList.toggle('hidden',!on); $('qedge').classList.toggle('hidden',tab!=='pray'||on); };
-const setQ=o=>{ qopen=o; applyQ(); if(o) setTimeout(()=>{ const c=$('qclose'); c&&c.focus(); },380); };
-const goTab=t=>{ if(t==='p25' && tab!=='p25') prevTab=tab; tab=t; qopen=false; setRail(false); window.scrollTo({top:0}); render(); };
+let quranRead=null;
+const prayRoom=()=>tab==='study'&&studyMode()==='pray';
+const applyQ=()=>{ const on=prayRoom()&&qopen; $('v-quran').classList.toggle('open',on); $('qbg').classList.toggle('hidden',!on); $('qedge').classList.toggle('hidden',!prayRoom()||on); };
+const setQ=o=>{ qopen=o; if(!o) quranRead=null; applyQ(); if(o) setTimeout(()=>{ const c=$(quranRead!=null?'qw':'qclose'); c&&c.focus(); },380); };
+const goTab=t=>{ if(t==='pray'){ openStudy('pray'); return; } if(t==='p25' && tab!=='p25') prevTab=tab; tab=t; qopen=false; setRail(false); window.scrollTo({top:0}); render(); };
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => goTab(b.dataset.tab));
 $('duo').onclick=e=>{ const c=e.target.closest('.dcard'); if(!c) return; if(c.dataset.setup){ goTab('p25'); return; } if(c.dataset.u){ avU=c.dataset.u; renderAv(); $('avmodal').classList.remove('hidden'); } };
 $('avmodal').onclick=e=>{ if(e.target===$('avmodal')) $('avmodal').classList.add('hidden'); };
@@ -2337,7 +2340,7 @@ function updateBadge(){
   if(!$('avmodal').classList.contains('hidden')) renderAv();
 }
 function updateNav(){
-  document.querySelectorAll('.tab').forEach(b => b.dataset.tab===tab ? b.setAttribute('aria-current','page') : b.removeAttribute('aria-current'));
+  document.querySelectorAll('.tab').forEach(b => (b.dataset.tab===tab||(b.dataset.tab==='pray'&&prayRoom())) ? b.setAttribute('aria-current','page') : b.removeAttribute('aria-current'));
   const ri=RAIL_INFO[tab]; railBtn.classList.toggle('on',!!ri); $('railico').textContent=ri?ri[0]:'›';
   document.body.classList.toggle('in25',tab==='p25');
   $('duo').classList.toggle('hidden',tab!=='dash');
@@ -2362,13 +2365,13 @@ function render(){
   if(tab==='habits') renderHabits(pid);
   if(tab==='goals') renderGoals();
   if(tab==='problems') renderProblems(pid);
-  if(tab==='pray'){ renderPray(pid); const q=$('v-quran'),st=q.scrollTop; renderQuran(pid); q.scrollTop=st; }
-  applyQ();
   if(tab==='meals') renderMeals(pid);
   if(tab==='sleep') renderSleep(pid);
   if(tab==='fun') renderFun(pid);
   if(tab==='jar') renderJar(pid);
   if(tab==='study') renderStudy(); else stopStudyAmb();
+  if(prayRoom()){ renderPray(pid); const q=$('v-quran'),st=q.scrollTop; renderQuran(pid); q.scrollTop=st; }
+  applyQ();
   renderKitBox();
   renderMoodChip();
   try{ renderBubble(); }catch(e){ console.warn(e); }
@@ -2579,7 +2582,7 @@ function renderGoals(){
 }
 
 initP25({db,doc,getDoc,updateDoc,me:()=>me,habits:()=>hOf(me.uid),logs:()=>logs,goals:()=>goals,logKey,lastDays,todayStr,fmt,esc,toggle,bumpGoal,badge:updateBadge,prayers:d=>prayN(me.uid,d),ready:()=>couple?readiness():0,shareChar:sm=>{ if(!profile||!profile.coupleId||!me) return; const r=doc(cref(),'fun',`char_${me.uid}`); return sm ? setDoc(r,{kind:'char',uid:me.uid,...sm,at:Date.now()}) : deleteDoc(r); }});
-initStudy({db,doc,setDoc,updateDoc,deleteDoc,collection,onSnapshot,status:u=>statusOf(u),todayStr,logged:id=>has('prayer_',id,me.uid,todayStr()),toast,me:()=>me,couple:()=>couple,cid:()=>profile&&profile.coupleId,pid:partnerId,nameOf,av:u=>avSm[u]&&avSm[u].av,esc,$,render,goTab,tab:()=>tab});
+initStudy({openQuran:m=>{ quranRead=m; setQ(true); render(); },db,doc,setDoc,updateDoc,deleteDoc,collection,onSnapshot,status:u=>statusOf(u),todayStr,logged:id=>has('prayer_',id,me.uid,todayStr()),toast,me:()=>me,couple:()=>couple,cid:()=>profile&&profile.coupleId,pid:partnerId,nameOf,av:u=>avSm[u]&&avSm[u].av,esc,$,render,goTab,tab:()=>tab});
 setInterval(()=>{ if(couple&&me) render(); },60000);
   { const orig=renderKitBox;
   renderKitBox=function(){
