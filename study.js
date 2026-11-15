@@ -1,5 +1,5 @@
 import { P25C } from "./p25.js?v=13";
-import { mkRooms } from "./rooms.js?v=2";
+import { mkRooms } from "./rooms.js?v=3";
 const {SK,HC,OC}=P25C; let C=null, sess=[], subCid=null, endOpen=false, endBrk=0, focus=0, pick='', pickK='study', tm=null;
 const LONG=['wolf','long','curly'], DEF={s:1,h:1,o:6,hs:'wolf'};
 const mins=ms=>Math.max(0,Math.round(ms/60000)), dur=m=>m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`;
@@ -48,7 +48,7 @@ const GOLD='#d9a93f';
 const flower=(fx,fy,k=1)=>`<g transform="translate(${fx} ${fy}) scale(${k})"><circle r="1.8" fill="#c0392b"/>${[0,72,144,216,288].map(r=>`<ellipse cy="-3.6" rx="1.5" ry="2.7" fill="${GOLD}" transform="rotate(${r})"/>`).join('')}</g>`;
 const plOf=u=>{ const p=(C.couple().pl&&C.couple().pl[u])||{}; return {c:/^#[0-9a-f]{6}$/i.test(p.c||'')?p.c:'#f1eadc',s:p.s||''}; };
 const okS=(list,s,d)=>list.some(q=>q[0]===s)?s:d;
-const {gymSvg,chillSvg}=mkRooms({col,shade});
+const {gymSvg,chillSvg,ACC,pos:lpos}=mkRooms({col,shade});
 function cap(st,c,cx,by,hw){ const d=shade(c,-.22), t=by-19, a=`stroke="${d}" stroke-width="1"`;
   if(st==='kufi'){ const k=by-25; return `<path d="M${cx-hw+1} ${by} L${cx-hw+3} ${k+4} Q${cx} ${k-3} ${cx+hw-3} ${k+4} L${cx+hw-1} ${by} Q${cx} ${by-4} ${cx-hw+1} ${by}Z" fill="${c}" ${a}/><path d="M${cx-hw+1} ${by-6} Q${cx} ${by-10} ${cx+hw-1} ${by-6}" fill="none" ${a}/>`; }
   const dome=`<path d="M${cx-hw} ${by} Q${cx-hw} ${t} ${cx} ${t} Q${cx+hw} ${t} ${cx+hw} ${by} Q${cx} ${by-4} ${cx-hw} ${by}Z" fill="${c}" ${a}/>`;
@@ -127,6 +127,32 @@ const LYP={across:[[112,'s',1],[268,'s',-1]],side:[[168,'f',1],[228,'f',1]],corn
 const CPS=[['apart','Apart'],['side','Hand in hand'],['lean','Leaning 🤍'],['shoulder','Head on shoulder'],['cuddle','Cuddle 🫶'],['lap','Head in lap'],['spoon','Spooning']];
 const cpGet=()=>{ const d=C.couple().cp; return d&&CPS.some(q=>q[0]===d.k)?d:{k:'apart',lead:''}; };
 const poseRow=()=>{ const d=cpGet(), p=C.pid(); return `<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">Together (shared)</span>${CPS.map(([k,n])=>`<button class="btn small ${d.k===k?'':'ghost'}" data-cp="${k}">${n}</button>`).join('')}${['shoulder','spoon'].includes(d.k)&&p?`<button class="btn ghost small" id="cpswap">↔ Swap who</button>`:''}</div><div class="muted" style="font-size:12px;margin-top:4px">Poses show when you’re both in the same spot (same sofa, same bed, same balcony).</div>`; };
+const caGet=()=>{ const k=C.couple().ca; return ACC[k]?k:'rose'; };
+const accRow=()=>`<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">Room color (shared)</span>${Object.entries(ACC).map(([k,v])=>`<button class="btn small ${caGet()===k?'':'ghost'}" data-ca="${k}"><span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:${v[1]};vertical-align:-2px;margin-right:4px"></span>${v[0]}</button>`).join('')}</div>`;
+const NQ=['love you 🤍','you got this ✨','proud of you 🥹','come cuddle? 🫶','tea time? 🍵','miss you 🥺','you’re my favorite 🧡','sending a hug 🤗','take it easy, baby 🌷','you’re doing amazing 💫'];
+let noteOpen=false, ntKeep='';
+const noteOf=u=>{ const n=(C.couple().note||{})[u]; return n&&n.t&&Date.now()-n.at<18e5?n:null; };
+function addNotes(el,room){
+  const my=C.me().uid, p=C.pid(), sv=el.querySelector('svg');
+  if(!document.getElementById('lnst')) document.head.insertAdjacentHTML('beforeend','<style id="lnst">.lnote{position:absolute;transform:translate(-50%,-100%);max-width:44%;background:#fff6f8;color:#5a3345;border:1.5px solid #f2bccb;padding:5px 10px;border-radius:16px;font-size:12.5px;line-height:1.25;text-align:center;box-shadow:0 4px 12px rgba(120,40,70,.22);pointer-events:none;animation:lnf 3.2s ease-in-out infinite,lnp .35s ease-out;z-index:3}.lnote i{position:absolute;left:50%;bottom:-6px;width:9px;height:9px;background:#fff6f8;border-right:1.5px solid #f2bccb;border-bottom:1.5px solid #f2bccb;transform:translateX(-50%) rotate(45deg)}.lnote:before{content:"♡";position:absolute;top:-9px;right:-3px;font-size:12px;color:#e0698c}@keyframes lnf{0%,100%{margin-top:0}50%{margin-top:-4px}}@keyframes lnp{from{opacity:0;transform:translate(-50%,-80%) scale(.7)}to{opacity:1;transform:translate(-50%,-100%) scale(1)}}</style>');
+  let anchor=null;
+  if(sv){ let w=sv.parentNode; if(!w.classList.contains('lnw')){ w=document.createElement('div'); w.className='lnw'; w.style.cssText='position:relative;max-width:'+(sv.style.maxWidth||'560px')+';margin:0 auto'; sv.parentNode.insertBefore(w,sv); w.appendChild(sv); }
+    const lp=(room==='chill'||room==='gym')?lpos():null, D=[[26,16],[74,16]];
+    const B=[[my,0],[p,1]].filter(([u])=>u&&noteOf(u)).map(([u,i])=>{ let x=D[i][0], y=D[i][1]; const q=lp&&lp.p[i]; if(q){ x=q.x/lp.vb[0]*100; y=q.y/lp.vb[1]*100; } return {u,x,y}; });
+    if(B.length===2&&Math.abs(B[0].x-B[1].x)<36){ const m=(B[0].x+B[1].x)/2; B[0].x=m-19; B[1].x=m+19; B[1].y-=13; }
+    B.forEach(o=>{ const n=noteOf(o.u), x=Math.max(23,Math.min(77,o.x)), y=Math.max(14,o.y);
+      w.insertAdjacentHTML('beforeend',`<div class="lnote" style="left:${x}%;top:${y}%">${C.esc(n.t)}<i></i></div>`); });
+    anchor=w; }
+  const mine=noteOf(my);
+  const html=`<div style="margin:10px auto 0;max-width:640px"><button class="btn ghost small" id="nton">💌 Say something sweet ${noteOpen?'▴':'▾'}</button>${noteOpen?`<div class="row" style="gap:6px;flex-wrap:wrap;margin:10px 0 8px">${NQ.map(t=>`<button class="btn ghost small" data-nq="${C.esc(t)}">${C.esc(t)}</button>`).join('')}</div><div class="row" style="gap:8px;align-items:center"><input id="ntin" maxlength="60" placeholder="Write your own… 🤍" style="flex:1"><button class="btn small" id="ntgo">Send</button></div>${mine?`<div class="muted" style="font-size:12px;margin-top:6px">Showing: “${C.esc(mine.t)}” <button class="btn ghost small" id="ntclr">Clear</button></div>`:''}`:''}</div>`;
+  if(anchor) anchor.insertAdjacentHTML('afterend',html); else el.insertAdjacentHTML('beforeend',html);
+  const send=t=>{ t=(t||'').trim(); if(!t) return; ntKeep=''; C.updateDoc(C.doc(C.db,'couples',C.cid()),{[`note.${my}`]:{t:t.slice(0,60),at:Date.now()}}); };
+  const q=x=>el.querySelector(x), inp=q('#ntin'); if(inp){ inp.value=ntKeep; inp.oninput=()=>{ ntKeep=inp.value; }; inp.onkeydown=e=>{ if(e.key==='Enter') send(inp.value); }; }
+  q('#nton').onclick=()=>{ noteOpen=!noteOpen; renderStudy(); };
+  el.querySelectorAll('[data-nq]').forEach(b=>b.onclick=()=>send(b.dataset.nq));
+  const go=q('#ntgo'); if(go) go.onclick=()=>send(inp.value);
+  const cl=q('#ntclr'); if(cl) cl.onclick=()=>C.updateDoc(C.doc(C.db,'couples',C.cid()),{[`note.${my}`]:null});
+}
 const lyGet=()=>{ const d=C.couple().ly; if(d&&LYP[d.k]) return d.k; const v=localStorage.getItem('sr_ly_'+C.me().uid)||'across'; return LYP[v]?v:v==='corner'?'cornerL':'across'; };
 const lyFlip=()=>{ const d=C.couple().ly; return !!(d&&d.by&&d.by!==C.me().uid); };
 const leaf=(x,y,k,r,c)=>`<g transform="translate(${x} ${y}) rotate(${r}) scale(${k})"><path d="M0 0 C10 2 24 -6 26 -20 L15 -21 L27 -31 C25 -42 12 -47 0 -50 C-12 -47 -25 -42 -27 -31 L-15 -21 L-26 -20 C-24 -6 -10 2 0 0Z" fill="${c}"/><path d="M0 0 V-46 M0 -14 L-16 -22 M0 -14 L16 -22 M0 -28 L-14 -36 M0 -28 L14 -36" stroke="#1d4a31" stroke-width="1" fill="none"/><ellipse cx="-10" cy="-12" rx="2.2" ry="3.5" fill="#1d4a31" opacity=".55"/><ellipse cx="10" cy="-12" rx="2.2" ry="3.5" fill="#1d4a31" opacity=".55"/><ellipse cx="-8" cy="-31" rx="2" ry="3" fill="#1d4a31" opacity=".55"/><ellipse cx="8" cy="-31" rx="2" ry="3" fill="#1d4a31" opacity=".55"/></g>`;
@@ -184,6 +210,7 @@ function rstat(room){ const my=C.me().uid, p=C.pid(), wk=Date.now()-6*864e5, f=u
   return `<div class="card" style="margin-top:12px"><b>This week</b><p style="margin:6px 0 0">You: ${f(my)}</p>${p?`<p style="margin:4px 0 0">${C.esc(C.nameOf(p))}: ${f(p)}</p>`:''}</div>`; }
 export function renderStudy(){
   const el=C.$('v-study'); if(!el||!C.couple()) return;
+  { const k0=el.querySelector('#ntin'); if(k0) ntKeep=k0.value; }
   const my=C.me().uid, p=C.pid(), cid=C.cid();
   if(cid&&subCid!==cid){ subCid=cid; C.onSnapshot(C.collection(C.db,'couples',cid,'study'),s=>{ sess=s.docs.map(d=>d.data()); if(C.tab()==='study') C.render(); }); }
   if(!tm) tm=setInterval(()=>{ if(C.tab()==='study'&&!endOpen) C.render(); },30000);
@@ -200,18 +227,20 @@ export function renderStudy(){
     el.querySelectorAll('[data-plc]').forEach(b=>b.onclick=()=>upd({[`pl.${my}`]:{c:b.dataset.plc,s:cur0}}));
     el.querySelectorAll('[data-lp]').forEach(b=>b.onclick=async()=>{ const id=b.dataset.lp, dt=C.todayStr(); await C.setDoc(C.doc(C.db,'couples',C.cid(),'logs',`prayer_${id}_${my}_${dt}`),{habitId:'prayer_'+id,uid:my,date:dt}); prPick=false; await endPray(); C.toast('Logged '+(PR.find(x=>x[0]===id)||[0,id])[1]+' ✓'); });
     const sk=el.querySelector('#prskip'); if(sk) sk.onclick=async()=>{ prPick=false; await endPray(); };
-    return; }
+    addNotes(el,'pray'); return; }
   let ctl;
   if(endOpen){ const el0=mins(Date.now()-me.since)-endBrk;
     ctl=`<b>How did it go?</b>${FOCUSK.includes(kOf(me))?`<div style="margin:8px 0">${[1,2,3,4,5].map(n=>`<button class="btn small ${focus===n?'':'ghost'}" data-f="${n}" style="margin-right:6px">${n}</button>`).join('')}<span class="muted" style="font-size:13px"> focus</span></div>`:'<div style="height:8px"></div>'}<textarea id="srnote" rows="2" placeholder="A few words…" style="width:100%"></textarea><div class="row" style="margin-top:8px;align-items:center;gap:8px"><span class="muted" style="font-size:13px">Minutes</span><input id="srmin" type="number" min="1" value="${Math.max(1,el0)}" style="width:90px"><button class="btn small" id="srsave">Save</button><button class="btn ghost small" id="srcancel">Back</button></div>`;
   } else if((me.st==='studying'||me.st==='break')&&roomOf(kOf(me))!==mode) ctl=`<b>${KI[kOf(me)][0]} You’re in the ${ROOMN[roomOf(kOf(me))]}</b><p class="muted" style="margin:6px 0 10px">One place at a time. End that session first, or go back to it.</p><button class="btn small" id="srtoroom">Go to the ${ROOMN[roomOf(kOf(me))]}</button> <button class="btn ghost small" id="srend">End session</button>`;
+  else if(mode==='chill'&&!acK(my)){ const cur=me.st==='studying'&&roomOf(kOf(me))==='chill'?kOf(me):'';
+    ctl=`<b>${cur?KI[cur][0]+' '+C.esc(what(me)):'What are you up to?'}</b><div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0 4px">${ROOMK.chill.map(k=>`<button class="btn small ${cur===k?'':'ghost'}" data-cs="${k}">${KI[k][0]} ${KI[k][1]}</button>`).join('')}</div><div class="muted" style="font-size:12px">Just tap, no start or end. Tap again to get up.</div>`; }
   else if(me.st==='studying') ctl=`<b>${KI[kOf(me)][0]} ${C.esc(me.sub)}</b> <span class="muted">since ${hm(me.since)}</span><div class="row" style="margin-top:10px;gap:8px">${roomOf(kOf(me))==='chill'?'':`<button class="btn small" id="srbreak">${roomOf(kOf(me))==='gym'?'💧 Rest':'☕ Break'}</button>`}<button class="btn ghost small" id="srend">End session</button></div>`;
   else if(me.st==='break') ctl=`<b>${roomOf(kOf(me))==='gym'?'Resting':'On a break'}</b><div class="row" style="margin-top:10px;gap:8px"><button class="btn small" id="srback">I’m back</button><button class="btn ghost small" id="srend">End session</button></div>`;
   else if(acK(my)) ctl=`<b>${PK[acK(my)][0]} You’re ${PK[acK(my)][1]}</b><p class="muted" style="margin:6px 0 10px">Finish in the Pray corner first, then you can start here.</p><button class="btn small" id="srtopray">Go to the Pray corner</button>`;
   else { const fk=LISTK.includes(pickK);
     ctl=`<b>What are you up to?</b><div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0">${(ROOMK[mode]||ROOMK.study).map(k=>`<button class="btn small ${pickK===k?'':'ghost'}" data-k="${k}">${KI[k][0]} ${KI[k][1]}</button>`).join('')}</div>${fk?`<div class="muted" style="font-size:13px">${pickK==='work'?'Working on (optional)':'Subject'}</div><div style="margin-top:6px">${S.map(s=>chip(s,s===pick)).join('')}</div><div class="row" style="gap:8px;margin:2px 0 10px"><input id="srnew" placeholder="${pickK==='work'?'Add a project':'Add a subject'}" style="flex:1"><button class="btn ghost small" id="sradd">Add</button></div>`:`<input id="srtxt" placeholder="${pickK==='read'?'What are you reading? (optional)':pickK==='watch'?'What are you watching? (optional)':pickK==='game'?'What are you playing? (optional)':'Anything on your mind? (optional)'}" style="width:100%;margin:6px 0 10px">`}<button class="btn" id="srstart" ${pickK==='study'&&!pick?'disabled style="opacity:.5"':''}>${GO(pickK)}</button>`; }
   const join=p&&pt.st==='break'&&me.st==='studying'?`<button class="btn ghost small" id="srjoin" style="margin-top:8px">${C.esc(C.nameOf(p))} is on a break, take one too?</button>`:'';
-  if(mode!=='study') el.innerHTML=`${head}${(mode==='gym'?gymSvg:chillSvg)({me:meLeft?me:pt,pt:meLeft?pt:me,ma:meLeft?C.av(my):p&&C.av(p),pa:meLeft?p&&C.av(p):C.av(my),meLeft:true,kOf,roomOf,pose:{k:cpGet().k,leadMe:cpGet().lead?cpGet().lead===my:true}})}${mode==='chill'?poseRow():''}<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;text-align:center;font-size:13px"><span class="card" style="padding:8px">${C.esc(label('You',me))}</span><span class="card" style="padding:8px">${C.esc(label(p?C.nameOf(p):'Partner',pt))}</span></div><div class="card" style="margin-top:12px">${ctl}${join}</div>${rstat(mode)}`;
+  if(mode!=='study') el.innerHTML=`${head}${(mode==='gym'?gymSvg:chillSvg)({me:meLeft?me:pt,pt:meLeft?pt:me,ma:meLeft?C.av(my):p&&C.av(p),pa:meLeft?p&&C.av(p):C.av(my),meLeft:true,kOf,roomOf,pose:{k:cpGet().k,leadMe:cpGet().lead?cpGet().lead===my:true},accent:caGet()})}${mode==='chill'?poseRow()+accRow():''}<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;text-align:center;font-size:13px"><span class="card" style="padding:8px">${C.esc(label('You',me))}</span><span class="card" style="padding:8px">${C.esc(label(p?C.nameOf(p):'Partner',pt))}</span></div><div class="card" style="margin-top:12px">${ctl}${join}</div>${rstat(mode)}`;
   else el.innerHTML=`${head}${room(me,pt,C.av(my),p&&C.av(p),wxGet(),lyGet(),lyFlip())}<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">My sky</span>${WX.map(([k,e,n])=>`<button class="btn small ${wxGet()===k?'':'ghost'}" data-wx="${k}">${e} ${n}</button>`).join('')}</div><div class="row" style="margin-top:6px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">Seats (shared)</span>${LYS.map(([k,n])=>`<button class="btn small ${lyGet()===k?'':'ghost'}" data-ly="${k}">${n}</button>`).join('')}</div><div class="row" style="margin-top:6px;gap:8px;align-items:center"><button class="btn small ${amb.on?'':'ghost'}" id="sramb">🔈 Ambience ${amb.on?'on':'off'}</button><input id="srvol" type="range" min="0" max="1" step="0.05" value="${vol}" style="width:110px;padding:0" aria-label="Ambience volume"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;text-align:center;font-size:13px"><span class="card" style="padding:8px">${C.esc(label('You',me))}</span><span class="card" style="padding:8px">${C.esc(label(p?C.nameOf(p):'Partner',pt))}</span></div><div class="card" style="margin-top:12px">${ctl}${join}</div>${checklist()}${summary()}`;
   bindM();
   const q=s=>el.querySelector(s), on=(s,f)=>{const n=q(s); if(n) n.onclick=f;};
@@ -223,6 +252,7 @@ export function renderStudy(){
   el.querySelectorAll('[data-cd]').forEach(c=>c.onclick=()=>upd({chk:chk().filter(i=>i.id!==c.dataset.cd)}));
   on('#chkadd',()=>{ const v=q('#chkin').value.trim(); if(v) upd({chk:[...chk(),{id:String(Date.now()),t:v,u:my,d:false}]}); });
   let pt0; const pd=q('#pad'); if(pd) pd.oninput=()=>{ clearTimeout(pt0); pt0=setTimeout(()=>upd({pad:pd.value}),700); };
+  el.querySelectorAll('[data-ca]').forEach(b=>b.onclick=()=>upd({ca:b.dataset.ca}));
   el.querySelectorAll('[data-cp]').forEach(b=>b.onclick=()=>upd({cp:{k:b.dataset.cp,lead:my}}));
   on('#cpswap',()=>{ const d=cpGet(); upd({cp:{k:d.k,lead:(d.lead&&d.lead!==my)?my:p}}); });
   el.querySelectorAll('[data-ly]').forEach(b=>b.onclick=()=>upd({ly:{k:b.dataset.ly,by:my}}));
@@ -234,10 +264,15 @@ export function renderStudy(){
   el.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ focus=+b.dataset.f; const n=q('#srnote').value; renderStudy(); q('#srnote').value=n; });
   on('#sradd',()=>{ const v=q('#srnew').value.trim(); if(!v) return; const L=[...new Set([...S,v])]; localStorage.setItem(subKey(pickK),JSON.stringify(L)); pick=v; renderStudy(); });
   on('#srstart',async()=>{ if(acK(my)){ C.toast('Finish your prayer first'); return; } const t=q('#srtxt'), sub=LISTK.includes(pickK)?(pick||KI[pickK][2]):((t&&t.value.trim())||KI[pickK][2]), ns={st:'studying',k:pickK,sub,since:Date.now(),brk:0}; await save(ns); await setSt(KI[pickK][0],what(ns),'workroom'); });
+  el.querySelectorAll('[data-cs]').forEach(b=>b.onclick=async()=>{ if(acK(my)){ C.toast('Finish your prayer first'); return; } const k=b.dataset.cs, cur=me.st==='studying'&&roomOf(kOf(me))==='chill'?kOf(me):'';
+    if(cur&&Date.now()-me.since>=60000) await C.setDoc(C.doc(C.db,'couples',C.cid(),'study',`${my}_${me.since}`),{uid:my,sub:me.sub||'',k:cur,start:me.since,end:Date.now(),brk:0,focus:0,note:''});
+    if(cur===k){ await save({st:''}); await clearSt(); return; }
+    const ns={st:'studying',k,sub:KI[k][2],since:Date.now(),brk:0}; await save(ns); await setSt(KI[k][0],what(ns),'workroom'); });
+  addNotes(el,mode);
   on('#srbreak',async()=>{ await save({...me,st:'break',bs:Date.now()}); await setSt(...brkS(),'workroom',true); });
   on('#srjoin',async()=>{ await save({...me,st:'break',bs:Date.now()}); await setSt(...brkS(),'workroom',true); });
   on('#srback',async()=>{ if(acK(my)){ C.toast('Finish your prayer first'); return; } await save({...me,st:'studying',brk:(me.brk||0)+mins(Date.now()-me.bs)}); await setSt(KI[kOf(me)][0],what(me),'workroom',true); });
-  on('#srend',()=>{ endBrk=(me.brk||0)+(me.st==='break'?mins(Date.now()-me.bs):0); endOpen=true; C.render(); });
+  on('#srend',()=>{ if(roomOf(kOf(me))==='chill'){ endBrk=0; finish('',Math.max(1,mins(Date.now()-me.since))); return; } endBrk=(me.brk||0)+(me.st==='break'?mins(Date.now()-me.bs):0); endOpen=true; C.render(); });
   on('#srcancel',()=>{ endOpen=false; renderStudy(); });
   on('#srsave',()=>finish(q('#srnote').value.trim(),Math.max(1,+q('#srmin').value||1)));
 }
