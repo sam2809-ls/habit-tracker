@@ -51,12 +51,13 @@ export function mkRooms({col,shade}){
   // kind -> [place, posture]
   const PL={chill:['sofa','sit'],watch:['sofa','sit'],game:['sofa','sit'],slie:['sofa','lie'],ssleep:['sofa','lie'],bsit:['bed','sit'],lie:['bed','lie'],bwatch:['bed','lie'],sleep:['bed','lie'],balc:['balc','sit'],tea:['balc','sit'],desk:['desk','sit']};
   const SITX={sofa:[350,406],bed:[60,136],balc:[488,530],desk:[232,270]}, SITC={sofa:378,bed:98,balc:509,desk:256}, SITY={sofa:296,bed:310,balc:296,desk:292};
+  const LAPS=['lap','shoulder','cuddle','lean','spoon','chest','hug'];
   const LAPX={bed:132,sofa:408};
   const LIEC={sofa:{ox:[428,432],oy:[292,306],flip:true},bed:{ox:[40,52],oy:[314,332],flip:false}};
   const STEAM=(x,y)=>`<path d="M${x-2} ${y} q-3 -4 0 -8 q3 -4 0 -8 M${x+3} ${y} q-3 -4 0 -8 q3 -4 0 -8" stroke="#fff" stroke-width="1.2" fill="none" stroke-linecap="round" opacity=".7">${anim('opacity','.2;.85;.2','2.6s')}</path>`;
 
   function sitP(a,x,by,o={}){ const {sk,ot}=col(a), k=o.k||'', rot=o.rot||0, py=by-12;
-    const legs=o.legs==='cross'
+    const legs=o.legs==='none'?'':o.legs==='cross'
       ?`<ellipse cx="${x}" cy="${by+6}" rx="28" ry="10" fill="${PANTS}"/><ellipse cx="${x-13}" cy="${by+13}" rx="9" ry="4.5" fill="#f1ece4"/><ellipse cx="${x+13}" cy="${by+13}" rx="9" ry="4.5" fill="#f1ece4"/>`
       :`<ellipse cx="${x}" cy="${by}" rx="22" ry="8" fill="${PANTS}"/><rect x="${x-14}" y="${by-2}" width="11" height="26" rx="4.5" fill="${PANTS}"/><rect x="${x+3}" y="${by-2}" width="11" height="26" rx="4.5" fill="${PANTS}"/><ellipse cx="${x-9}" cy="${by+26}" rx="8" ry="3.5" fill="#f1ece4"/><ellipse cx="${x+9}" cy="${by+26}" rx="8" ry="3.5" fill="#f1ece4"/>`;
     const sh=by-44, hand=(hx,hy)=>`<circle cx="${hx}" cy="${hy}" r="3.8" fill="${sk}"/>`;
@@ -89,8 +90,15 @@ export function mkRooms({col,shade}){
     const arms=sl?'':(o.k==='lie'?AR(`M${x-14} ${hy+14} Q${x-29} ${hy+9} ${x-12} ${hy-3}`)+AR(`M${x+14} ${hy+14} Q${x+29} ${hy+9} ${x+12} ${hy-3}`):AR(`M${x-15} ${hy+13} Q${x-20} ${hy+24} ${x-5} ${hy+27}`)+AR(`M${x+15} ${hy+13} Q${x+20} ${hy+24} ${x+5} ${hy+27}`)+`<circle cx="${x-4}" cy="${hy+27}" r="3.3" fill="${sk}"/><circle cx="${x+4}" cy="${hy+27}" r="3.3" fill="${sk}"/>`);
     const glow=o.k==='bwatch'?`<ellipse cx="${x+6}" cy="${hy+1}" rx="9" ry="10" fill="#9ec8ff" opacity=".18"><animate attributeName="opacity" values=".1;.25;.12" dur="3s" repeatCount="indefinite"/></ellipse>`:'';
     const zs=sl?[0,.9,1.8].map((b,i)=>`<text x="${x+22+i*8}" y="${hy-12}" font-size="${10+i*2}" font-weight="800" fill="#c9b8e8" opacity="0" font-family="system-ui,sans-serif">z${anim('y',`${hy-12};${hy-46}`,'2.7s',`begin="${b}s"`)}${anim('opacity','0;1;0','2.7s',`begin="${b}s"`)}</text>`).join(''):'';
-    const top=`<g${rot?` transform="rotate(${rot} ${x} ${hy+14})"`:''}>${sl?'':`<rect x="${x-16}" y="${hy+9}" width="32" height="19" rx="9" fill="${ot}"/>`}${arms}${headF(a,x,hy,12,sl)}${glow}</g>`;
+    const top=`<g${rot?` transform="rotate(${rot} ${x} ${hy+14})"`:''}>${sl?'':`<rect x="${x-16}" y="${hy+9}" width="32" height="19" rx="9" fill="${ot}"/>`}${arms}${o.hrot?`<g transform="translate(${o.hdx} ${o.hdy}) rotate(${o.hrot} ${x} ${hy})">${headF(a,x,hy,12,sl)}</g>`:headF(a,x,hy,12,sl)}${glow}</g>`;
     return {top,duv,zs}; }
+
+  function lieS(a,hx,oy,o={}){ const {sk,ot}=col(a), sl=!!o.sleep, c2=o.duvet||AX.duv, pc=o.pc||AX.sofa, cy=oy-17, dd=shade(c2,-.22);
+    const zs=sl?[0,.9,1.8].map((b,i)=>`<text x="${hx-10+i*8}" y="${oy-34}" font-size="${10+i*2}" font-weight="800" fill="#c9b8e8" opacity="0" font-family="system-ui,sans-serif">z${anim('y',`${oy-34};${oy-70}`,'2.7s',`begin="${b}s"`)}${anim('opacity','0;1;0','2.7s',`begin="${b}s"`)}</text>`).join(''):'';
+    const base=`<ellipse cx="${hx-52}" cy="${oy+2}" rx="62" ry="4.5" fill="#000" opacity=".12"/><rect x="${hx-22}" y="${oy-24}" width="32" height="21" rx="9" fill="${pc}" stroke="${shade(pc,-.15)}" stroke-width=".8"/>`;
+    const awake=sl?'':`<rect x="${hx-108}" y="${oy-24}" width="52" height="20" rx="10" fill="${PANTS}"/><ellipse cx="${hx-110}" cy="${oy-14}" rx="5" ry="7" fill="#f1ece4"/><rect x="${hx-66}" y="${oy-27}" width="52" height="24" rx="12" fill="${ot}"/><path d="M${hx-24} ${oy-14} Q${hx-42} ${oy-5} ${hx-54} ${oy-11}" fill="none" stroke="${ot}" stroke-width="7" stroke-linecap="round"/><circle cx="${hx-54}" cy="${oy-11}" r="3.4" fill="${sk}"/>`;
+    const bl=sl?`<path d="M${hx-18} ${oy-23} Q${hx-60} ${oy-37} ${hx-106} ${oy-23} L${hx-106} ${oy+1} L${hx-18} ${oy+1}Z" fill="${c2}" stroke="${dd}" stroke-width="1"/><path d="M${hx-18} ${oy-23} Q${hx-60} ${oy-37} ${hx-106} ${oy-23}" fill="none" stroke="#fff" stroke-width="3.2" opacity=".4"/><path d="M${hx-45} ${oy-30} V${oy} M${hx-75} ${oy-28} V${oy}" stroke="${dd}" stroke-width="1.1" opacity=".5"/>`:'';
+    return base+awake+bl+`<g transform="rotate(78 ${hx} ${cy})">${headF(a,hx,cy,12,sl)}</g>`+zs; }
 
   function chillSvg({me,pt,ma,pa,meLeft,kOf,roomOf,pose,accent}){
     AX=mkAX(accent);
@@ -101,11 +109,11 @@ export function mkRooms({col,shade}){
     const at=(pl,po)=>items.filter(t=>t.pl===pl&&(!po||t.po===po));
     const tv=items.some(t=>['watch','game','bwatch'].includes(t.k)), sleeping=items.some(t=>t.k==='sleep'||t.k==='ssleep');
     const pk=P.k||'apart';
-    LP={vb:[560,360],p:[null,null]}; items.forEach(t=>{ if(t.po==='lie'&&t.pl==='bed'){ LP.p[t.i]={x:[66,128][t.i],y:272}; } else if(t.po==='lie'){ const Cc=LIEC[t.pl]; LP.p[t.i]={x:Cc.ox[t.i]+(Cc.flip?-40:40),y:Cc.oy[t.i]-60}; } else LP.p[t.i]={x:SITX[t.pl][t.i],y:SITY[t.pl]-108}; });
+    LP={vb:[560,360],p:[null,null]}; items.forEach(t=>{ if(t.po==='lie'&&t.pl==='bed'){ LP.p[t.i]={x:[66,128][t.i],y:272}; } else if(t.po==='lie'){ LP.p[t.i]={x:392,y:[258,274][t.i]}; } else { const S0={sofa:.84,balc:.86,desk:.82,bed:1}[t.pl]; LP.p[t.i]={x:SITC[t.pl]+(SITX[t.pl][t.i]-SITC[t.pl])*S0,y:SITY[t.pl]-108*S0}; } });
     // ---- people layers ----
     let pSofa='', pSofaLie='', pBed='', pBedLie='', pDesk='', pBalc='', xBalc='', xBed='';
-    const sitGroup=(pl,mk)=>{ const L=at(pl,'sit'); if(!L.length) return ''; const c=SITC[pl], by=SITY[pl], legs=pl==='bed'?'cross':'hang';
-      if(L.length===2&&pk!=='apart'&&pl!=='desk'){ const ld=L.find(t=>t.lead)||L[0], ot=L.find(t=>t!==ld), mp=pk==='lap'?'shoulder':pk==='spoon'?'cuddle':pk;
+    const sitG0=(pl,mk)=>{ const L=at(pl,'sit'); if(!L.length) return ''; const c=SITC[pl], by=SITY[pl], legs=pl==='bed'?'cross':pl==='desk'?'none':'hang';
+      if(L.length===2&&pk!=='apart'&&pl!=='desk'){ const ld=L.find(t=>t.lead)||L[0], ot=L.find(t=>t!==ld), mp=pk==='lap'||pk==='chest'?'shoulder':pk==='spoon'||pk==='hug'?'cuddle':pk;
         const cfg={side:{d:42,r:[0,0],hold:true},lean:{d:46,r:[7,-7]},shoulder:{d:40,r:[0,0]},cuddle:{d:34,r:[5,-5]}}[mp]||{d:42,r:[0,0]};
         const xs=[c-cfg.d/2,c+cfg.d/2]; let rot=cfg.r.slice(), ex=['',''];
         if(mp==='shoulder'){ const li=L.indexOf(ld), dir=li===0?1:-1; rot[li]=dir*15; rot[1-li]=-dir*2; }
@@ -119,26 +127,34 @@ export function mkRooms({col,shade}){
         else if(mp==='lean') ex2='';
         if(cfg.hold) ex2=`<rect x="${c-5}" y="${by-14}" width="10" height="7" rx="3.5" fill="${col(L[0].a).sk}"/><circle cx="${c+1}" cy="${by-10}" r="2.6" fill="${col(L[1].a).sk}"/>`;
         return out.join('')+ex2; }
-      const lapCase=(pl==='bed'||pl==='sofa')&&L.length===1&&at(pl,'lie').length===1&&['lap','shoulder','cuddle','lean','spoon'].includes(pk);
+      const lapCase=(pl==='bed'||pl==='sofa')&&L.length===1&&at(pl,'lie').length===1&&LAPS.includes(pk);
       return L.map(t=>sitP(t.a,lapCase?LAPX[pl]:SITX[pl][t.i],by,{k:t.k,legs})).join(''); };
+    const SS={sofa:.84,balc:.86,desk:.82,bed:1};
+    const sitGroup=(pl)=>{ const g=sitG0(pl); if(!g) return ''; const lap=(pl==='bed'||pl==='sofa')&&at(pl,'sit').length===1&&at(pl,'lie').length===1&&LAPS.includes(pk); const S=lap?1:SS[pl]; return S===1?g:`<g transform="translate(${SITC[pl]} ${SITY[pl]}) scale(${S}) translate(${-SITC[pl]} ${-SITY[pl]})">${g}</g>`; };
     pSofa=sitGroup('sofa'); pBed=sitGroup('bed'); pBalc=sitGroup('balc'); pDesk=sitGroup('desk');
     const lieGroup=(pl)=>{ const L=at(pl,'lie'); if(!L.length) return ''; const C=LIEC[pl], sit=at(pl,'sit'), by=SITY[pl];
       const duv=(t,i)=>t.k==='sleep'||t.k==='ssleep';
       const dcol=['#7ea0d6',AX.duv];
       // head-in-lap: one sits, one lies
-      if(L.length===1&&sit.length===1&&['lap','shoulder','cuddle','lean','spoon'].includes(pk)){ const t=L[0], sx=LAPX[pl], sy=by+8, hx=sx-14, sc=col(sit[0].a);
+      if(L.length===1&&sit.length===1&&LAPS.includes(pk)){ const t=L[0], sx=LAPX[pl], sy=by+8, hx=sx-14, sc=col(sit[0].a);
         return lieP(t.a,sx+14,sy+2,{flip:true,sleep:duv(t),duvet:dcol[t.i],pc:pl==='sofa'?'#e0a93f':'#fbf1e2'})+`<path d="M${sx-8} ${by-44} Q${sx-24} ${by-26} ${hx} ${sy-14}" fill="none" stroke="${sc.ot}" stroke-width="7.5" stroke-linecap="round"/><circle cx="${hx}" cy="${sy-14}" r="3.6" fill="${sc.sk}"/>`; }
       if(pl==='bed'){ let xs=[66,128], rots=[0,0]; const two=L.length===2;
         if(!two&&!sit.length) xs[L[0].i]=98;
-        if(two&&['side','lean','shoulder'].includes(pk)){ xs=[80,116]; rots=[pk==='side'?0:5,pk==='side'?0:-5]; }
-        if(two&&['cuddle','lap','spoon'].includes(pk)){ xs=[83,113]; rots=[9,-9]; }
-        const dcol2=['#7ea0d6',AX.duv], both=two&&L.every(duv);
-        const F=L.map(t=>lieF(t.a,xs[t.i],{sleep:duv(t),k:t.k,rot:rots[t.i],duvet:dcol2[t.i],nod:both}));
-        let out=F.map(f=>f.top).join('')+F.map(f=>f.duv).join('');
-        if(both){ const x1=Math.min(...L.map(t=>xs[t.i]))-19, x2=Math.max(...L.map(t=>xs[t.i]))+19; out+=`<path d="M${x1} 312 Q${(x1+x2)/2-14} 303 ${(x1+x2)/2} 308 Q${(x1+x2)/2+14} 303 ${x2} 312 L${x2+1} 336 Q${(x1+x2)/2} 346 ${x1-1} 336Z" fill="${AX.cu}" stroke="${AX.cuS}" stroke-width="1"/><path d="M${x1+2} 313 Q${(x1+x2)/2-14} 305 ${(x1+x2)/2} 309 Q${(x1+x2)/2+14} 305 ${x2-2} 313" fill="none" stroke="#fff" stroke-width="3" opacity=".4"/>`; }
-        if(two&&['cuddle','lap','spoon'].includes(pk)){ const ld=L.find(t=>t.lead)||L[0], od=L.find(t=>t!==ld), dir=xs[od.i]>xs[ld.i]?1:-1, c2=col(ld.a); out+=`<path d="M${xs[ld.i]+dir*13} 313 Q${xs[ld.i]+dir*26} 326 ${xs[od.i]+dir*(-3)} 322" fill="none" stroke="${c2.ot}" stroke-width="6.5" stroke-linecap="round"/><circle cx="${xs[od.i]-dir*3}" cy="322" r="3.4" fill="${c2.sk}"/>`; }
+        if(two){ if(pk==='side') xs=[80,116]; else if(pk==='lean'||pk==='shoulder'){ xs=[80,116]; rots=[5,-5]; } else if(pk==='cuddle'||pk==='lap'){ xs=[83,113]; rots=[9,-9]; } else if(pk==='hug'){ xs=[85,111]; rots=[10,-10]; } else if(pk==='spoon'){ xs=[83,113]; rots=[8,8]; } else if(pk==='chest') xs=[78,116]; }
+        const ld=two?(L.find(t=>t.lead)||L[0]):null, od=two?L.find(t=>t!==ld):null, dcol2=['#7ea0d6',AX.duv], both=two&&L.every(duv), chest=two&&pk==='chest';
+        const F={}; L.forEach(t=>{ const o={sleep:duv(t),k:t.k,rot:rots[t.i],duvet:dcol2[t.i],nod:both}; if(chest&&t===ld){ const dir=xs[od.i]>xs[ld.i]?1:-1; o.hdx=dir*20; o.hdy=13; o.hrot=dir*22; o.rot=0; } F[t.i]=lieF(t.a,xs[t.i],o); });
+        const ord=chest?[od,ld]:L; let out=ord.map(t=>F[t.i].top).join('')+ord.map(t=>F[t.i].duv).join('');
+        if(both){ const x1=Math.min(...L.map(t=>xs[t.i]))-19, x2=Math.max(...L.map(t=>xs[t.i]))+19, yt=chest?319:312, m=(x1+x2)/2; out+=`<path d="M${x1} ${yt} Q${m-14} ${yt-9} ${m} ${yt-4} Q${m+14} ${yt-9} ${x2} ${yt} L${x2+1} 336 Q${m} 346 ${x1-1} 336Z" fill="${AX.cu}" stroke="${AX.cuS}" stroke-width="1"/><path d="M${x1+2} ${yt+1} Q${m-14} ${yt-7} ${m} ${yt-3} Q${m+14} ${yt-7} ${x2-2} ${yt+1}" fill="none" stroke="#fff" stroke-width="3" opacity=".4"/>`; }
+        const arm=(from,to,c2,y0)=>{ const d=to>from?1:-1; return `<path d="M${from+d*13} ${y0} Q${from+d*27} ${y0+13} ${to-d*3} ${y0+9}" fill="none" stroke="${c2.ot}" stroke-width="6.5" stroke-linecap="round"/><circle cx="${to-d*3}" cy="${y0+9}" r="3.4" fill="${c2.sk}"/>`; };
+        if(two&&(pk==='cuddle'||pk==='lap'||pk==='spoon')) out+=arm(xs[ld.i],xs[od.i],col(ld.a),313);
+        if(two&&pk==='hug') out+=arm(xs[ld.i],xs[od.i],col(ld.a),313)+arm(xs[od.i],xs[ld.i],col(od.a),317);
+        if(chest){ const dir=xs[od.i]>xs[ld.i]?1:-1; out+=arm(xs[od.i]-dir*0,xs[ld.i]+dir*8,col(od.a),314).replace(/M[\d.]+/,m=>'M'+(xs[od.i]-dir*13)); }
         if(two&&pk==='side'&&!both) out+=`<circle cx="98" cy="326" r="3.4" fill="${col(L[0].a).sk}"/>`;
-        return out+F.map(f=>f.zs).join(''); }
+        return out+L.map(t=>F[t.i].zs).join(''); }
+      if(pl==='sofa'){ const hx=[424,424], oy=[290,306], two=L.length===2, sp=['cuddle','lap','spoon','chest','hug'].includes(pk), cl=['side','lean','shoulder'].includes(pk);
+        if(!two) oy[L[0].i]=300;
+        if(two&&(sp||cl)){ oy[0]=296; oy[1]=306; if(sp){ hx[1]=hx[0]-30; oy[1]=309; } }
+        const dc=['#7ea0d6',AX.duv]; return L.map(t=>lieS(t.a,hx[t.i],oy[t.i],{sleep:duv(t),duvet:dc[t.i],pc:t.i?AX.sofa:'#e0a93f'})).join(''); }
       const draw=(t,ox,oy)=>lieP(t.a,ox,oy,{flip:C.flip,sleep:duv(t),duvet:dcol[t.i],pc:pl==='sofa'?(t.i?AX.sofa:'#e0a93f'):'#fbf1e2'});
       if(L.length===2){ const close=['side','lean','shoulder','cuddle','lap','spoon'].includes(pk), sp=['cuddle','lap','spoon'].includes(pk);
         const oyA=C.oy[0]+(close?3:0), oyB=C.oy[1]-(close?(sp?9:4):0), sg=C.flip?-1:1;
@@ -173,12 +189,12 @@ export function mkRooms({col,shade}){
     const frames=`<rect x="212" y="50" width="34" height="44" rx="2" fill="#f6efe2" stroke="#9b7b62" stroke-width="3"/><circle cx="229" cy="68" r="8" fill="#e5b04e"/><path d="M216 92 Q229 70 242 92Z" fill="#4d7a78"/><rect x="254" y="58" width="30" height="34" rx="2" fill="#f6efe2" stroke="#9b7b62" stroke-width="3"/><path d="M258 88 Q268 62 280 88Z" fill="${AX.sofa}"/><circle cx="276" cy="68" r="4" fill="#f3d9a0"/>`;
     const shelf=`<g transform="translate(208 196)"><rect width="78" height="5" rx="2" fill="#9b6f4c"/>${[['#c0504d',8],['#4f81bd',7],['#9bbb59',9],['#e5b04e',7]].map(([c,w],i,ar)=>`<rect x="${4+ar.slice(0,i).reduce((s,q)=>s+q[1]+1,0)}" y="${-24+(i%2)*3}" width="${w}" height="${24-(i%2)*3}" fill="${c}"/>`).join('')}<path d="M48 0 h14 l-2 -9 h-10Z" fill="#e9e1d2"/>${[-30,0,30].map(r=>`<ellipse cx="55" cy="-15" rx="2.6" ry="7.5" fill="#6bbf8a" transform="rotate(${r} 55 -9)"/>`).join('')}<rect x="66" y="-12" width="8" height="12" rx="2" fill="#f6efe2" stroke="#b79a7c" stroke-width=".7"/><circle cx="70" cy="-15" r="2" fill="#ffc86a">${anim('opacity','.6;1;.7','1.7s')}</circle></g>`;
     const deskP=at('desk','sit');
-    const lid=(x)=>`<rect x="${x-15}" y="234" width="30" height="19" rx="3" fill="#b8bcc6" stroke="#9aa0ac" stroke-width=".8"/><circle cx="${x}" cy="243.5" r="2" fill="#e8ebf2" opacity=".8"/>`;
-    const lapOpen=`<path d="M222 246 L226 240 H248 L252 246Z" fill="#c8ccd6"/><rect x="226" y="219" width="22" height="21" rx="2" fill="#2e2b36"/><rect x="228" y="221" width="18" height="17" rx="1" fill="#f2e6cf"/><path d="M230 226 h10 M230 230 h13 M230 234 h8" stroke="#c9a878" stroke-width="1.2"/>`;
+    const lid=(x)=>`<rect x="${x-14}" y="241" width="28" height="18" rx="3" fill="#b8bcc6" stroke="#9aa0ac" stroke-width=".8"/><circle cx="${x}" cy="250" r="2" fill="#e8ebf2" opacity=".8"/>`;
+    const lapOpen=`<g transform="translate(0 12)"><path d="M222 246 L226 240 H248 L252 246Z" fill="#c8ccd6"/><rect x="226" y="219" width="22" height="21" rx="2" fill="#2e2b36"/><rect x="228" y="221" width="18" height="17" rx="1" fill="#f2e6cf"/><path d="M230 226 h10 M230 230 h13 M230 234 h8" stroke="#c9a878" stroke-width="1.2"/></g>`;
     const lamp=`<rect x="195" y="206" width="5" height="24" rx="2.5" fill="#6b4429"/><path d="M197.5 210 Q190 204 190 196" stroke="#6b4429" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M183 196 L199 196 L196 184 L186 184Z" fill="#f2b95a"/>`;
     const stool=`<ellipse cx="256" cy="282" rx="17" ry="5" fill="${AX.sofa}"/><rect x="254" y="284" width="4" height="8" fill="#6b4429"/>`;
-    const desk=`<rect x="203" y="246" width="88" height="6" rx="3" fill="#dcb68c"/><rect x="205" y="252" width="5" height="40" fill="#b88c62"/><rect x="286" y="252" width="5" height="40" fill="#b88c62"/><rect x="205" y="280" width="86" height="3" fill="#c9a074"/>`;
-    const deskTop=(deskP.length?'':lapOpen)+lamp+`<g transform="translate(212 246)"><path d="M0 0 h11 l-1.5 -8 h-8Z" fill="#e9e1d2"/><ellipse cx="5.5" cy="-13" rx="2.4" ry="6" fill="#6bbf8a" transform="rotate(-22 5.5 -8)"/><ellipse cx="5.5" cy="-13" rx="2.4" ry="6" fill="#58a878" transform="rotate(24 5.5 -8)"/></g><g transform="translate(262 246)"><rect x="-5" y="-9" width="10" height="9" rx="2" fill="#fbf7ef" stroke="#d9cdb8" stroke-width=".6"/><path d="M5 -7 q4 0 4 3 q0 3 -4 3" fill="none" stroke="#fbf7ef" stroke-width="1.5"/>${STEAM(0,-10)}</g>`;
+    const desk=`<rect x="203" y="258" width="88" height="6" rx="3" fill="#dcb68c"/><rect x="205" y="264" width="86" height="28" fill="#c9a074"/><rect x="205" y="264" width="86" height="4" fill="#000" opacity=".12"/><rect x="205" y="288" width="86" height="4" fill="#b88c62"/><circle cx="248" cy="277" r="1.6" fill="#7a5638"/>`;
+    const deskTop=(deskP.length?'':lapOpen)+lamp+`<g transform="translate(212 258)"><path d="M0 0 h11 l-1.5 -8 h-8Z" fill="#e9e1d2"/><ellipse cx="5.5" cy="-13" rx="2.4" ry="6" fill="#6bbf8a" transform="rotate(-22 5.5 -8)"/><ellipse cx="5.5" cy="-13" rx="2.4" ry="6" fill="#58a878" transform="rotate(24 5.5 -8)"/></g><g transform="translate(262 258)"><rect x="-5" y="-9" width="10" height="9" rx="2" fill="#fbf7ef" stroke="#d9cdb8" stroke-width=".6"/><path d="M5 -7 q4 0 4 3 q0 3 -4 3" fill="none" stroke="#fbf7ef" stroke-width="1.5"/>${STEAM(0,-10)}</g>`;
     // sofa
     const sofaA=`<ellipse cx="378" cy="320" rx="90" ry="9" fill="#3a2418" opacity=".15"/><rect x="302" y="212" width="154" height="90" rx="26" fill="#4f7f7c"/><rect x="302" y="212" width="154" height="30" rx="20" fill="#5b8c89"/><g transform="rotate(-12 344 250)"><rect x="330" y="234" width="30" height="30" rx="9" fill="#e5a93f"/><path d="M336 240 L354 258 M354 240 L336 258" stroke="#c98d2a" stroke-width="1" opacity=".6"/></g><g transform="rotate(10 414 250)"><rect x="400" y="234" width="30" height="30" rx="9" fill="${AX.sofa}"/><circle cx="415" cy="249" r="2" fill="${AX.dk}"/></g><rect x="326" y="262" width="52" height="38" rx="11" fill="#5f9390"/><rect x="378" y="262" width="52" height="38" rx="11" fill="#5f9390"/><path d="M378 264 V298" stroke="#4a7774" stroke-width="2"/><path d="M332 270 H372 M384 270 H424" stroke="#6ea5a2" stroke-width="1.3" opacity=".7"/>`;
     const sofaB=`<rect x="298" y="234" width="32" height="72" rx="15" fill="#43706d"/><rect x="426" y="234" width="32" height="72" rx="15" fill="#43706d"/><rect x="300" y="300" width="156" height="12" rx="5" fill="#365a58"/><rect x="310" y="310" width="6" height="12" fill="#6b4429"/><rect x="438" y="310" width="6" height="12" fill="#6b4429"/><path d="M426 240 Q452 252 448 296 L430 296Z" fill="#f1e4cc" stroke="#d8c6a4" stroke-width=".8"/><path d="M432 296 v6 M438 296 v6 M444 296 v6" stroke="#d8c6a4" stroke-width="1.2"/>`;

@@ -1,5 +1,5 @@
 import { P25C } from "./p25.js?v=13";
-import { mkRooms } from "./rooms.js?v=4";
+import { mkRooms } from "./rooms.js?v=6";
 const {SK,HC,OC}=P25C; let C=null, sess=[], subCid=null, endOpen=false, endBrk=0, focus=0, pick='', pickK='study', tm=null;
 const LONG=['wolf','long','curly'], DEF={s:1,h:1,o:6,hs:'wolf'};
 const mins=ms=>Math.max(0,Math.round(ms/60000)), dur=m=>m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`;
@@ -124,9 +124,9 @@ let mode='study';
 export const studyMode=()=>mode;
 const LYS=[['across','Across'],['side','Side by side'],['cornerL','Corner left'],['cornerR','Corner right'],['corners','Far corners'],['same','Same way']];
 const LYP={across:[[112,'s',1],[268,'s',-1]],side:[[168,'f',1],[228,'f',1]],cornerL:[[100,'s',1],[156,'f',1]],cornerR:[[214,'f',1],[280,'s',-1]],corners:[[100,'f',1],[270,'f',1]],same:[[100,'s',1],[172,'s',1]]};
-const CPS=[['apart','Apart'],['side','Hand in hand'],['lean','Leaning 🤍'],['shoulder','Head on shoulder'],['cuddle','Cuddle 🫶'],['lap','Head in lap'],['spoon','Spooning']];
+const CPS=[['apart','Apart'],['side','Hand in hand'],['lean','Leaning 🤍'],['shoulder','Head on shoulder'],['chest','Head on chest'],['cuddle','Cuddle 🫶'],['hug','Big hug'],['spoon','Spooning'],['lap','Head in lap']];
 const cpGet=()=>{ const d=C.couple().cp; return d&&CPS.some(q=>q[0]===d.k)?d:{k:'apart',lead:''}; };
-const poseRow=()=>{ const d=cpGet(), p=C.pid(); return `<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">Together (shared)</span>${CPS.map(([k,n])=>`<button class="btn small ${d.k===k?'':'ghost'}" data-cp="${k}">${n}</button>`).join('')}${['shoulder','spoon'].includes(d.k)&&p?`<button class="btn ghost small" id="cpswap">↔ Swap who</button>`:''}</div><div class="muted" style="font-size:12px;margin-top:4px">Poses show when you’re both in the same spot (same sofa, same bed, same balcony).</div>`; };
+const poseRow=()=>{ const d=cpGet(), p=C.pid(); return `<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">Together (shared)</span>${CPS.map(([k,n])=>`<button class="btn small ${d.k===k?'':'ghost'}" data-cp="${k}">${n}</button>`).join('')}${['shoulder','spoon','chest','cuddle'].includes(d.k)&&p?`<button class="btn ghost small" id="cpswap">↔ Swap who</button>`:''}</div><div class="muted" style="font-size:12px;margin-top:4px">Poses show when you’re both in the same spot (same sofa, same bed, same balcony).</div>`; };
 const caGet=()=>{ const k=C.couple().ca; return ACC[k]?k:'rose'; };
 const accRow=()=>`<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">Room color (shared)</span>${Object.entries(ACC).map(([k,v])=>`<button class="btn small ${caGet()===k?'':'ghost'}" data-ca="${k}"><span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:${v[1]};vertical-align:-2px;margin-right:4px"></span>${v[0]}</button>`).join('')}</div>`;
 const NQ=['love you 🤍','you got this ✨','proud of you 🥹','come cuddle? 🫶','tea time? 🍵','miss you 🥺','you’re my favorite 🧡','sending a hug 🤗','take it easy, baby 🌷','you’re doing amazing 💫'];
