@@ -1,13 +1,13 @@
 import { P25C } from "./p25.js?v=13";
-import { mkRooms } from "./rooms.js?v=7";
+import { mkRooms } from "./rooms.js?v=8";
 const {SK,HC,OC}=P25C; let C=null, sess=[], subCid=null, endOpen=false, endBrk=0, focus=0, pick='', pickK='study', tm=null;
 const LONG=['wolf','long','curly'], DEF={s:1,h:1,o:6,hs:'wolf'};
 const mins=ms=>Math.max(0,Math.round(ms/60000)), dur=m=>m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`;
 const hm=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
 const KI={study:['📚','Study','Studying','study'],work:['💻','Work','Working','study'],read:['📖','Read','Reading','study'],
- watch:['🎬','Movie','Watching','chill'],chill:['🛋️','Sofa','Chilling','chill','chilling on the sofa'],game:['🎮','Game','Playing','chill'],slie:['🛋️','Lie on sofa','Lounging','chill','lying on the sofa'],ssleep:['💤','Sofa nap','Napping','chill','napping on the sofa'],bsit:['🛏️','Sit on bed','Sitting','chill','sitting on the bed'],lie:['🛌','Lie on bed','Lying down','chill','lying down'],bwatch:['📺','TV in bed','Watching','chill','watching TV in bed'],sleep:['😴','Sleep','Sleeping','chill','sleeping'],balc:['🌙','Balcony','Chilling','chill','chilling on the balcony'],tea:['🍵','Herbal tea','Sipping','chill','sipping herbal tea'],desk:['💻','Desk','Sitting','chill','sitting at the little desk'],
+ watch:['🎬','Movie','Watching','chill'],chill:['🛋️','Sofa','Chilling','chill','chilling on the sofa'],game:['🎮','Game','Playing','chill'],slie:['🛋️','Lie on sofa','Lounging','chill','lying on the sofa'],ssleep:['💤','Sofa nap','Napping','chill','napping on the sofa'],bsit:['🛏️','Sit on bed','Sitting','chill','sitting on the bed'],lie:['🛌','Lie on bed','Lying down','chill','lying down'],bwatch:['📺','TV in bed','Watching','chill','watching TV in bed'],sleep:['😴','Sleep','Sleeping','chill','sleeping'],sick:['🤒','Feeling sick','Resting','chill','feeling unwell and resting'],balc:['🌙','Balcony','Chilling','chill','chilling on the balcony'],tea:['🍵','Herbal tea','Sipping','chill','sipping herbal tea'],desk:['💻','Desk','Sitting','chill','sitting at the little desk'],
  lift:['🏋️','Lift','Lifting','gym','lifting weights'],run:['🏃','Run','Running','gym','running on the treadmill'],yoga:['🧘','Yoga','Yoga','gym','doing yoga'],stretch:['🤸','Stretch','Stretching','gym','stretching']};
-const ROOMK={study:['study','work','read'],gym:['lift','run','yoga','stretch'],chill:['chill','watch','game','slie','ssleep','bsit','lie','bwatch','sleep','balc','tea','desk']};
+const ROOMK={study:['study','work','read'],gym:['lift','run','yoga','stretch'],chill:['chill','watch','game','slie','ssleep','bsit','lie','bwatch','sleep','sick','balc','tea','desk']};
 const ROOMN={study:'Workroom',gym:'Gym',chill:'Chill room'};
 const roomOf=k=>(KI[k]||KI.study)[3];
 const GO=k=>k==='study'?'Start studying':k==='work'?'Start working':roomOf(k)==='gym'?'Start workout':roomOf(k)==='chill'?'Settle in':'Start reading';
@@ -129,7 +129,7 @@ const cpGet=()=>{ const d=C.couple().cp; return d&&CPS.some(q=>q[0]===d.k)?d:{k:
 const poseRow=()=>{ const d=cpGet(), p=C.pid(); return `<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">Together (shared)</span>${CPS.map(([k,n])=>`<button class="btn small ${d.k===k?'':'ghost'}" data-cp="${k}">${n}</button>`).join('')}${['shoulder','spoon','chest','cuddle'].includes(d.k)&&p?`<button class="btn ghost small" id="cpswap">↔ Swap who</button>`:''}</div><div class="muted" style="font-size:12px;margin-top:4px">Poses show when you’re both in the same spot (same sofa, same bed, same balcony).</div>`; };
 const caGet=()=>{ const k=C.couple().ca; return ACC[k]?k:'rose'; };
 const accRow=()=>`<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">Room color (shared)</span>${Object.entries(ACC).map(([k,v])=>`<button class="btn small ${caGet()===k?'':'ghost'}" data-ca="${k}"><span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:${v[1]};vertical-align:-2px;margin-right:4px"></span>${v[0]}</button>`).join('')}</div>`;
-const NQ=['love you 🤍','you got this ✨','proud of you 🥹','come cuddle? 🫶','tea time? 🍵','miss you 🥺','you’re my favorite 🧡','sending a hug 🤗','take it easy, baby 🌷','you’re doing amazing 💫'];
+const NQ=['love you 🤍','you got this ✨','proud of you 🥹','come cuddle? 🫶','tea time? 🍵','miss you 🥺','you’re my favorite 🧡','sending a hug 🤗','take it easy, baby 🌷','you’re doing amazing 💫','get well soon 🤍','rest up, I’m here 🫶','drink some water 💧','soup later? 🍲'];
 let noteOpen=false, ntKeep='';
 const noteOf=u=>{ const n=(C.couple().note||{})[u]; return n&&n.t&&Date.now()-n.at<18e5?n:null; };
 function addNotes(el,room){
