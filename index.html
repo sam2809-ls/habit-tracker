@@ -460,7 +460,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
   onSnapshot, arrayUnion, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View, p25Look } from "./p25.js?v=13";
-import { initStudy, renderStudy, stopStudyAmb, renderBubble, openStudy, studyMode } from "./study.js?v=21";
+import { initStudy, renderStudy, stopStudyAmb, renderBubble, openStudy, studyMode } from "./study.js?v=23";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -482,6 +482,12 @@ let unsubs=[], tab='dash', editHabit=null, editGoal=null, duaIdx=0;
 /* ---------- dates ---------- */
 const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const todayStr = () => fmt(new Date());
+/* ---------- sick days: shared, pause streaks and scores without breaking anything ---------- */
+const sickKey=d=>String(d).replace(/-/g,'');
+const isSick=(uid,d)=>{ const s=couple&&couple.sick, k=s&&s[sickKey(d)]; return !!(k&&k[uid]); };
+const yesterdayStr=()=>{ const t=new Date(); t.setDate(t.getDate()-1); return fmt(t); };
+async function setSick(d,on){ await updateDoc(doc(db,'couples',profile.coupleId),{[`sick.${sickKey(d)}.${me.uid}`]:!!on}); toast(on?'Sick day on. Rest well 🤍 Your streaks are safe.':'Welcome back! 🤍'); }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-sick]'); if(b&&me&&profile) setSick(b.dataset.sick==='y'?yesterdayStr():todayStr(),b.dataset.on==='1'); });
 const lastDays = (n, offset=0) => { const out=[]; for(let i=n-1+offset;i>=offset;i--){ const d=new Date(); d.setDate(d.getDate()-i); out.push(fmt(d)); } return out; };
 
 /* ---------- scoring ---------- */
@@ -494,6 +500,7 @@ const hOf = uid => habits.filter(h => h.owner === uid || h.owner === 'both');
 const logKey = (hid, uid, d) => `${hid}_${uid}_${d}`;
 
 function dayScore(uid, d){
+  if(isSick(uid,d)) return null;
   let poss=0, done=0;
   for(const h of hOf(uid)){
     if(h.start > d) continue;
@@ -507,13 +514,14 @@ const rangeScore = (uid, ds) => avg(ds.map(d => dayScore(uid,d)));
 function catScore(uid, cat, ds){
   const hs = hOf(uid).filter(h => h.cat===cat);
   let poss=0, done=0;
-  for(const d of ds) for(const h of hs){ if(h.start>d) continue; poss+=h.weight; if(logs.has(logKey(h.id,uid,d))) done+=h.weight; }
+  for(const d of ds){ if(isSick(uid,d)) continue; for(const h of hs){ if(h.start>d) continue; poss+=h.weight; if(logs.has(logKey(h.id,uid,d))) done+=h.weight; } }
   return poss ? done/poss : null;
 }
 function streak(uid){
   let s=0;
   const days = lastDays(60).reverse();
   for(let i=0;i<days.length;i++){
+    if(isSick(uid,days[i])) continue;
     const v = dayScore(uid, days[i]);
     if(v===null){ if(i===0) continue; break; }
     if(v>=0.6) s++; else if(i===0) continue; else break;
@@ -533,7 +541,7 @@ const earliestLog=(uid,test)=>{ let m=null; for(const v of logs.values()){ if(v.
 const earliestFun=(uid,kind)=>{ let m=null; for(const f of fun){ if(f.kind===kind && f.uid===uid && (!m||f.date<m)) m=f.date; } return m; };
 function trackScore(uid,starts,dayFn){
   const st=starts.filter(Boolean).sort()[0]; if(!st) return null;
-  return avg(D30().filter(d=>d>=st).map(dayFn));
+  return avg(D30().filter(d=>d>=st&&!isSick(uid,d)).map(dayFn));
 }
 const spiritDay=(uid,d)=>Math.min(1, cnt('prayer_',PRAYERS,uid,d)/5*0.7 + (quranDoc(uid,d)?0.3:0) + (has('prayer_','tahajjud',uid,d)?0.1:0));
 const foodDay=(uid,d)=>{ const b=0.8*cnt('meal_',MEALS,uid,d)/3+0.2*cnt('tea_',TEA,uid,d)/2, ws=earliestLog(uid,id=>id.startsWith('water_'));
@@ -694,6 +702,7 @@ function togetherStreak(){
   const pid = partnerId(); if(!pid) return 0;
   const days = lastDays(60).reverse(); let s=0;
   for(let i=0;i<days.length;i++){
+    if(isSick(me.uid,days[i])||isSick(pid,days[i])) continue;
     const a=dayScore(me.uid,days[i]), b=dayScore(pid,days[i]);
     const ok = a!==null && b!==null && a>=0.6 && b>=0.6;
     if(ok) s++; else if(i===0) continue; else break;
@@ -742,7 +751,7 @@ const has=(pre,id,uid,d)=>logs.has(lk(pre,id,uid,d));
 const cnt=(pre,list,uid,d)=>list.filter(([id])=>has(pre,id,uid,d)).length;
 function fullStreak(pre,list,uid){
   const days=lastDays(60).reverse(); let n=0;
-  for(let i=0;i<days.length;i++){ if(cnt(pre,list,uid,days[i])===list.length) n++; else if(i===0) continue; else break; }
+  for(let i=0;i<days.length;i++){ if(isSick(uid,days[i])) continue; if(cnt(pre,list,uid,days[i])===list.length) n++; else if(i===0) continue; else break; }
   return n;
 }
 function listFor(pre,id){ return pre==='meal_'?MEALS:((pre==='tea_'||id==='tahajjud')?null:PRAYERS); }
@@ -1382,7 +1391,7 @@ async function saveQuran(what,ayahs){
 async function clearQuran(){ await deleteDoc(doc(cref(),'fun',`quran_${todayStr()}_${me.uid}`)); }
 function quranStreak(uid){
   const days=lastDays(60).reverse(); let n=0;
-  for(let i=0;i<days.length;i++){ if(quranDoc(uid,days[i])) n++; else if(i===0) continue; else break; }
+  for(let i=0;i<days.length;i++){ if(isSick(uid,days[i])) continue; if(quranDoc(uid,days[i])) n++; else if(i===0) continue; else break; }
   return n;
 }
 async function addDua(title,text){
@@ -1807,6 +1816,7 @@ function trackStarts(uid){
     spirit:first(earliestLog(uid,id=>id.startsWith('prayer_')),earliestFun(uid,'quran')) };
 }
 function dimDay(dim,uid,d,S){
+  if(isSick(uid,d)) return null;
   if(dim==='habits') return dayScore(uid,d);
   const s=S[uid][dim]; if(dim==='spirit'){ if(d>=S.start||(s&&d>=s)) return spiritDay(uid,d); return null; } if(!s||d<s) return null;
   return dim==='food'?foodDay(uid,d):(dim==='sleep'?sleepDay(uid,d):spiritDay(uid,d));
@@ -1825,7 +1835,8 @@ function dimHealth(dim,S,prior){
 function goalHealth(){
   const t=goals.filter(g=>g.touched); if(!t.length) return null;
   const open=t.filter(g=>goalProgress(g)<1); if(!open.length) return 1;
-  const days=(Date.now()-Math.max(...open.map(g=>g.touched)))/864e5;
+  const lt=Math.max(...open.map(g=>g.touched)), sk=new Set(); for(const dk in (couple&&couple.sick)||{}){ const m=(couple.sick[dk]||{}); if(Object.values(m).some(Boolean)&&dk>=sickKey(fmt(new Date(lt)))) sk.add(dk); }
+  const days=Math.max(0,(Date.now()-lt)/864e5-sk.size);
   return days<=2?1:Math.max(0.1,1-(days-2)/14*0.9);
 }
 const kittenStart=()=>{ const f=fun.find(x=>x.id==='kitten_start'); return (f&&f.date)||todayStr(); };
@@ -2222,11 +2233,20 @@ $('moodbody').addEventListener('keydown',e=>{
 });
 /* ===== FEELINGS: end ===== */
 
+function sickCardHTML(pid){
+  const d=todayStr(), y=yesterdayStr(), mine=isSick(me.uid,d), their=pid&&isSick(pid,d), my_y=isSick(me.uid,y);
+  const yb=my_y?'':'<button class="btn ghost small" data-sick="y" data-on="1">I was sick yesterday too</button>';
+  const ptl=their?`<p style="margin:8px 0 0;font-size:14px">${esc(nameOf(pid))} is on a sick day 🤒 Be extra gentle today 💗</p>`:'';
+  if(mine) return `<section class="card" aria-label="Sick day" style="margin-top:14px;border-left:4px solid #9cc3e6"><b>🤒 Sick day is on</b><p class="muted" style="margin:6px 0 10px;font-size:14px">Your streaks, scores and kitten health are paused for today. Nothing is expected of you. Drink water, rest, and tick off only what feels easy.</p><div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn small" data-sick="t" data-on="0">I’m feeling better</button>${yb}</div>${ptl}</section>`;
+  return `<section class="card" aria-label="Sick day" style="margin-top:14px"><div class="row" style="gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span><b>🤒 Not feeling well?</b><span class="muted" style="font-size:13px;display:block">A sick day pauses streaks and scores so nothing breaks.</span></span><span class="row" style="gap:8px;flex-wrap:wrap"><button class="btn small" data-sick="t" data-on="1">Start a sick day</button>${yb}</span></div>${ptl}</section>`;
+}
 /* ---------- Juju reacts to how you're doing ---------- */
 function jujuMood(){
   if(!couple||!me) return null;
   const d=todayStr(), pid=partnerId(), a=dayScore(me.uid,d), b=pid?dayScore(pid,d):null, hr=new Date().getHours();
   const full=v=>v!==null&&v>=0.999;
+  if(isSick(me.uid,d)) return {k:'sleepy',e:'🤒',t:'Rest up… I’ll curl up next to you. Nothing is expected today 🐾💗'};
+  if(pid&&isSick(pid,d)) return {k:'sleepy',e:'🥺',t:`${nameOf(pid)} isn’t feeling well. Let’s be extra sweet today 💗`};
   if(full(a)&&(!pid||b===null||full(b))) return {k:'party',e:'🎉',t:pid?'We did it! Everything is done today. I’m SO proud of you both! 🥳':'Everything done today! I’m so proud of you! 🥳'};
   if(pid&&full(a)&&b!==null) return {k:'wait',e:'👀',t:`You’re all done! Now I’m waiting for ${nameOf(pid)}… 🐾`};
   if(pid&&full(b)&&a!==null) return {k:'nudge',e:'🥺',t:`${nameOf(pid)} finished everything. Your turn! I believe in you 💗`};
@@ -2392,8 +2412,8 @@ function deltaBadge(uid){
 function heat(uid, color){
   return `<div class="heat" aria-label="Last 14 days">` + lastDays(14).map(d => {
     const v = dayScore(uid,d);
-    const style = v===null ? '' : `background:${color};opacity:${(0.2+0.8*v).toFixed(2)};border-color:transparent`;
-    return `<i title="${d}: ${pct(v)}" style="${style}"></i>`;
+    const style = isSick(uid,d) ? 'background:#9cc3e6;opacity:.55;border-color:transparent' : v===null ? '' : `background:${color};opacity:${(0.2+0.8*v).toFixed(2)};border-color:transparent`;
+    return `<i title="${d}: ${isSick(uid,d)?'sick day 🤒':pct(v)}" style="${style}"></i>`;
   }).join('') + `</div>`;
 }
 function personPanel(uid, color, soft){
@@ -2438,6 +2458,7 @@ function renderDash(pid){
     ${waiting}
     ${nudgeHTML(pid)}
     ${statusHTML(pid)}
+    ${sickCardHTML(pid)}
     ${duaBubbleHTML()}
     <section class="card road" aria-label="Getting ready for marriage progress">
       <div class="row" style="justify-content:space-between;align-items:flex-end">
@@ -2582,7 +2603,7 @@ function renderGoals(){
 }
 
 initP25({db,doc,getDoc,updateDoc,me:()=>me,habits:()=>hOf(me.uid),logs:()=>logs,goals:()=>goals,logKey,lastDays,todayStr,fmt,esc,toggle,bumpGoal,badge:updateBadge,prayers:d=>prayN(me.uid,d),ready:()=>couple?readiness():0,shareChar:sm=>{ if(!profile||!profile.coupleId||!me) return; const r=doc(cref(),'fun',`char_${me.uid}`); return sm ? setDoc(r,{kind:'char',uid:me.uid,...sm,at:Date.now()}) : deleteDoc(r); }});
-initStudy({openQuran:m=>{ quranRead=m; setQ(true); render(); },db,doc,setDoc,updateDoc,deleteDoc,collection,onSnapshot,status:u=>statusOf(u),todayStr,logged:id=>has('prayer_',id,me.uid,todayStr()),toast,me:()=>me,couple:()=>couple,cid:()=>profile&&profile.coupleId,pid:partnerId,nameOf,av:u=>avSm[u]&&avSm[u].av,esc,$,render,goTab,tab:()=>tab});
+initStudy({isSick:()=>isSick(me.uid,todayStr()),setSick:on=>setSick(todayStr(),on),openQuran:m=>{ quranRead=m; setQ(true); render(); },db,doc,setDoc,updateDoc,deleteDoc,collection,onSnapshot,status:u=>statusOf(u),todayStr,logged:id=>has('prayer_',id,me.uid,todayStr()),toast,me:()=>me,couple:()=>couple,cid:()=>profile&&profile.coupleId,pid:partnerId,nameOf,av:u=>avSm[u]&&avSm[u].av,esc,$,render,goTab,tab:()=>tab});
 setInterval(()=>{ if(couple&&me) render(); },60000);
   { const orig=renderKitBox;
   renderKitBox=function(){

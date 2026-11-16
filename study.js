@@ -1,5 +1,5 @@
 import { P25C } from "./p25.js?v=13";
-import { mkRooms } from "./rooms.js?v=8";
+import { mkRooms } from "./rooms.js?v=9";
 const {SK,HC,OC}=P25C; let C=null, sess=[], subCid=null, endOpen=false, endBrk=0, focus=0, pick='', pickK='study', tm=null;
 const LONG=['wolf','long','curly'], DEF={s:1,h:1,o:6,hs:'wolf'};
 const mins=ms=>Math.max(0,Math.round(ms/60000)), dur=m=>m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`;
@@ -132,6 +132,18 @@ const accRow=()=>`<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;
 const NQ=['love you 🤍','you got this ✨','proud of you 🥹','come cuddle? 🫶','tea time? 🍵','miss you 🥺','you’re my favorite 🧡','sending a hug 🤗','take it easy, baby 🌷','you’re doing amazing 💫','get well soon 🤍','rest up, I’m here 🫶','drink some water 💧','soup later? 🍲'];
 let noteOpen=false, ntKeep='';
 const noteOf=u=>{ const n=(C.couple().note||{})[u]; return n&&n.t&&Date.now()-n.at<18e5?n:null; };
+
+const dayKey=()=>new Date().toLocaleDateString('en-CA');
+function addKit(el){
+  const my=C.me().uid, w=el.querySelector('.lnw'); if(!w) return;
+  if(!document.getElementById('khst')) document.head.insertAdjacentHTML('beforeend','<style id="khst">.kh{position:absolute;pointer-events:none;font-size:18px;animation:khf 1.7s ease-out forwards;z-index:4}@keyframes khf{0%{opacity:0;transform:translate(0,0) scale(.5)}15%{opacity:1}100%{opacity:0;transform:translate(var(--dx),-70px) scale(1.2)}}.kp{position:absolute;pointer-events:none;font-size:12px;font-weight:700;color:#fff;background:#e98f3d;padding:2px 8px;border-radius:10px;animation:khf 1.7s ease-out forwards;z-index:4}</style>');
+  const burst=()=>{ const fx=['🧡','💗','🧡','✨'], d=[-18,6,22,-6]; fx.forEach((e,i)=>w.insertAdjacentHTML('beforeend',`<span class="kh" style="left:${40+i*2}%;top:${84-i*2}%;--dx:${d[i]}px;animation-delay:${i*.12}s">${e}</span>`)); w.insertAdjacentHTML('beforeend','<span class="kp" style="left:36%;top:76%">prrr…</span>'); };
+  const kit=C.couple().kit, today=dayKey(), n=kit&&kit.d===today?kit.n:0;
+  if(kit&&kit.at&&Date.now()-kit.at<1700) burst();
+  w.insertAdjacentHTML('afterend',`<div style="text-align:center;font-size:12.5px;margin-top:6px" class="muted">🐱 Kitten pets today: <b>${n}</b>${kit&&kit.d===today&&kit.by&&kit.by!==my?` · last by ${C.esc(C.nameOf(kit.by))}`:''} · <a href="#" id="kitvisit" style="color:inherit;text-decoration:underline">Visit our kitten</a></div>`);
+  const k=w.querySelector('[data-kit]'); if(k) k.onclick=()=>{ burst(); C.updateDoc(C.doc(C.db,'couples',C.cid()),{kit:{d:today,n:n+1,by:my,at:Date.now()}}); };
+  const v=el.querySelector('#kitvisit'); if(v) v.onclick=e=>{ e.preventDefault(); const b=document.getElementById('kitbtn'); if(b) b.click(); };
+}
 function addNotes(el,room){
   const my=C.me().uid, p=C.pid(), sv=el.querySelector('svg');
   if(!document.getElementById('lnst')) document.head.insertAdjacentHTML('beforeend','<style id="lnst">.lnote{position:absolute;transform:translate(-50%,-100%);max-width:44%;background:#fff6f8;color:#5a3345;border:1.5px solid #f2bccb;padding:5px 10px;border-radius:16px;font-size:12.5px;line-height:1.25;text-align:center;box-shadow:0 4px 12px rgba(120,40,70,.22);pointer-events:none;animation:lnf 3.2s ease-in-out infinite,lnp .35s ease-out;z-index:3}.lnote i{position:absolute;left:50%;bottom:-6px;width:9px;height:9px;background:#fff6f8;border-right:1.5px solid #f2bccb;border-bottom:1.5px solid #f2bccb;transform:translateX(-50%) rotate(45deg)}.lnote:before{content:"♡";position:absolute;top:-9px;right:-3px;font-size:12px;color:#e0698c}@keyframes lnf{0%,100%{margin-top:0}50%{margin-top:-4px}}@keyframes lnp{from{opacity:0;transform:translate(-50%,-80%) scale(.7)}to{opacity:1;transform:translate(-50%,-100%) scale(1)}}</style>');
@@ -233,7 +245,7 @@ export function renderStudy(){
     ctl=`<b>How did it go?</b>${FOCUSK.includes(kOf(me))?`<div style="margin:8px 0">${[1,2,3,4,5].map(n=>`<button class="btn small ${focus===n?'':'ghost'}" data-f="${n}" style="margin-right:6px">${n}</button>`).join('')}<span class="muted" style="font-size:13px"> focus</span></div>`:'<div style="height:8px"></div>'}<textarea id="srnote" rows="2" placeholder="A few words…" style="width:100%"></textarea><div class="row" style="margin-top:8px;align-items:center;gap:8px"><span class="muted" style="font-size:13px">Minutes</span><input id="srmin" type="number" min="1" value="${Math.max(1,el0)}" style="width:90px"><button class="btn small" id="srsave">Save</button><button class="btn ghost small" id="srcancel">Back</button></div>`;
   } else if((me.st==='studying'||me.st==='break')&&roomOf(kOf(me))!==mode) ctl=`<b>${KI[kOf(me)][0]} You’re in the ${ROOMN[roomOf(kOf(me))]}</b><p class="muted" style="margin:6px 0 10px">One place at a time. End that session first, or go back to it.</p><button class="btn small" id="srtoroom">Go to the ${ROOMN[roomOf(kOf(me))]}</button> <button class="btn ghost small" id="srend">End session</button>`;
   else if(mode==='chill'&&!acK(my)){ const cur=me.st==='studying'&&roomOf(kOf(me))==='chill'?kOf(me):'';
-    ctl=`<b>${cur?KI[cur][0]+' '+C.esc(what(me)):'What are you up to?'}</b><div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0 4px">${ROOMK.chill.map(k=>`<button class="btn small ${cur===k?'':'ghost'}" data-cs="${k}">${KI[k][0]} ${KI[k][1]}</button>`).join('')}</div><div class="muted" style="font-size:12px">Just tap, no start or end. Tap again to get up.</div>`; }
+    ctl=`<b>${cur?KI[cur][0]+' '+C.esc(what(me)):'What are you up to?'}</b><div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0 4px">${ROOMK.chill.map(k=>`<button class="btn small ${cur===k?'':'ghost'}" data-cs="${k}">${KI[k][0]} ${KI[k][1]}</button>`).join('')}</div><div class="muted" style="font-size:12px">Just tap, no start or end. Tap again to get up.</div>${cur==='sick'?(C.isSick&&C.isSick()?'<div class="muted" style="font-size:13px;margin-top:8px">🤒 Sick day is on, your streaks are paused 🤍</div>':'<button class="btn small" id="stpause" style="margin-top:8px">🤒 Pause my streaks today</button>'):''}`; }
   else if(me.st==='studying') ctl=`<b>${KI[kOf(me)][0]} ${C.esc(me.sub)}</b> <span class="muted">since ${hm(me.since)}</span><div class="row" style="margin-top:10px;gap:8px">${roomOf(kOf(me))==='chill'?'':`<button class="btn small" id="srbreak">${roomOf(kOf(me))==='gym'?'💧 Rest':'☕ Break'}</button>`}<button class="btn ghost small" id="srend">End session</button></div>`;
   else if(me.st==='break') ctl=`<b>${roomOf(kOf(me))==='gym'?'Resting':'On a break'}</b><div class="row" style="margin-top:10px;gap:8px"><button class="btn small" id="srback">I’m back</button><button class="btn ghost small" id="srend">End session</button></div>`;
   else if(acK(my)) ctl=`<b>${PK[acK(my)][0]} You’re ${PK[acK(my)][1]}</b><p class="muted" style="margin:6px 0 10px">Finish in the Pray corner first, then you can start here.</p><button class="btn small" id="srtopray">Go to the Pray corner</button>`;
@@ -268,7 +280,9 @@ export function renderStudy(){
     if(cur&&Date.now()-me.since>=60000) await C.setDoc(C.doc(C.db,'couples',C.cid(),'study',`${my}_${me.since}`),{uid:my,sub:me.sub||'',k:cur,start:me.since,end:Date.now(),brk:0,focus:0,note:''});
     if(cur===k){ await save({st:''}); await clearSt(); return; }
     const ns={st:'studying',k,sub:KI[k][2],since:Date.now(),brk:0}; await save(ns); await setSt(KI[k][0],what(ns),'workroom'); });
+  { const sp=el.querySelector('#stpause'); if(sp) sp.onclick=()=>C.setSick&&C.setSick(true); }
   addNotes(el,mode);
+  if(mode==='chill') addKit(el);
   on('#srbreak',async()=>{ await save({...me,st:'break',bs:Date.now()}); await setSt(...brkS(),'workroom',true); });
   on('#srjoin',async()=>{ await save({...me,st:'break',bs:Date.now()}); await setSt(...brkS(),'workroom',true); });
   on('#srback',async()=>{ if(acK(my)){ C.toast('Finish your prayer first'); return; } await save({...me,st:'studying',brk:(me.brk||0)+mins(Date.now()-me.bs)}); await setSt(KI[kOf(me)][0],what(me),'workroom',true); });
