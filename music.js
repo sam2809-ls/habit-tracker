@@ -1,0 +1,98 @@
+// Docked in-app music player (fixed spot on every tab) that shares "now playing" via Firestore.
+// Firestore: couples/{id}.np.{uid} = {t, a, on, ts}
+let C = null, upd = null, tgOpen = null, D = null, open = false, hb = null;
+const au = new Audio(); let Q = [], cur = -1;
+au.preload = 'metadata';
+
+export function initMusic(c, updFn, telegramFn) { C = c; upd = updFn; tgOpen = telegramFn; }
+
+const clean = n => n.replace(/\.[a-z0-9]{2,4}$/i, '').replace(/_+/g, ' ').trim();
+const meta = f => { const n = clean(f.name), m = n.split(/\s+[-–]\s+/); return m.length > 1 ? { a: m[0].trim(), t: m.slice(1).join(' - ').trim() } : { a: '', t: n }; };
+const fmt = s => isFinite(s) ? Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') : '0:00';
+const ago = ms => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; };
+const npOf = u => { const n = C && C.couple() && C.couple().np; return (n && u && n[u]) || null; };
+const live = n => !!(n && n.on && Date.now() - n.ts < 15e4);
+const label = n => (n.a ? n.a + ' – ' : '') + n.t;
+const $ = s => D && D.querySelector(s);
+
+export function npLine(uid) { const n = npOf(uid); return live(n) ? '🎵 ' + C.esc(label(n)) : ''; }
+export function musicTick() { ensure(); drawBar(); if (open) drawPart(); }
+export function openMusicModal() { ensure(); if (!D) return; open = !open; $('#mpanel').style.display = open ? 'block' : 'none'; $('#mex').textContent = open ? '▾' : '▴'; if (open) { drawPart(); drawPanel(); } }
+
+function share(on) {
+  if (!C || !C.couple() || cur < 0 || !Q[cur]) return;
+  const t = Q[cur]; upd({ [`np.${C.me().uid}`]: { t: t.t, a: t.a, on, ts: Date.now() } }).catch(() => {});
+}
+function setSession() {
+  if (!('mediaSession' in navigator) || cur < 0) return;
+  navigator.mediaSession.metadata = new MediaMetadata({ title: Q[cur].t, artist: Q[cur].a });
+  navigator.mediaSession.setActionHandler('play', () => au.play());
+  navigator.mediaSession.setActionHandler('pause', () => au.pause());
+  navigator.mediaSession.setActionHandler('nexttrack', () => go(1));
+  navigator.mediaSession.setActionHandler('previoustrack', () => go(-1));
+}
+function play(k) { if (!Q[k]) return; cur = k; au.src = Q[k].url; au.play().catch(() => {}); setSession(); drawBar(); drawPanel(); }
+function go(d) { if (Q.length) play((cur + d + Q.length) % Q.length); }
+
+au.onplay = () => { share(true); clearInterval(hb); hb = setInterval(() => share(true), 60000); drawBar(); drawPanel(); };
+au.onpause = () => { clearInterval(hb); share(false); drawBar(); drawPanel(); };
+au.onended = () => go(1);
+au.ontimeupdate = () => { if (!open || !D) return; const s = $('#mseek'); if (s && document.activeElement !== s) { s.max = au.duration || 0; s.value = au.currentTime; } $('#mtime').textContent = fmt(au.currentTime) + ' / ' + fmt(au.duration); };
+
+function drawBar() {
+  if (!D) return;
+  const p = C.pid(), n = npOf(p), who = p ? C.nameOf(p) : 'Partner';
+  $('#mbp').textContent = au.paused ? '▶' : '⏸';
+  $('#mtxt').innerHTML = `<div class="ml">${cur >= 0 ? '🎧 ' + C.esc(label(Q[cur])) : 'Tap ▶ to add your songs'}</div><div class="ml muted">${C.esc(who)}: ${live(n) ? '🎵 ' + C.esc(label(n)) : 'not playing'}</div>`;
+}
+function drawPart() {
+  const el = $('#mpart'); if (!el) return;
+  const p = C.pid(), n = npOf(p), who = p ? C.nameOf(p) : 'Partner';
+  el.innerHTML = `<small class="muted">${C.esc(who)}</small><div style="margin-top:2px">` + (!n ? '<span class="muted">Nothing shared yet</span>' :
+    `<b>${C.esc(n.t)}</b>${n.a ? `<div class="muted" style="font-size:13px">${C.esc(n.a)}</div>` : ''}<div style="font-size:12px;margin-top:2px;color:${live(n) ? '#1f9d8f' : 'var(--muted)'}">${live(n) ? '● Playing now' : 'Last played ' + ago(n.ts)}</div>`) + '</div>';
+}
+function drawPanel() {
+  if (!D || !open) return;
+  const t = Q[cur];
+  $('#mnow').innerHTML = t ? `<b>${C.esc(t.t)}</b><div class="muted" style="font-size:13px">${C.esc(t.a || 'You’re playing')}</div>` : '<span class="muted">Add songs from your phone to start</span>';
+  $('#mpp').textContent = au.paused ? '▶' : '⏸';
+  $('#mq').innerHTML = Q.map((s, k) => `<div data-q="${k}" style="padding:7px 8px;border-radius:10px;cursor:pointer;font-size:14px;${k === cur ? 'background:var(--bg);font-weight:700' : ''}">${C.esc(label(s))}</div>`).join('');
+}
+
+function ensure() {
+  if (D || !C || !C.couple()) return;
+  D = document.createElement('div'); D.id = 'mdock';
+  D.style.cssText = 'position:fixed;left:14px;bottom:96px;z-index:60;width:min(290px,calc(100vw - 100px));color:var(--ink)';
+  D.innerHTML = `<style>#mdock .ml{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#mdock .ml.muted{font-size:11px}</style>
+<div id="mpanel" style="display:none;background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:12px;margin-bottom:8px;max-height:60vh;overflow:auto;box-shadow:0 4px 14px rgba(0,0,0,.18)">
+<b style="font-size:15px">🎵 Our music</b><div id="mpart" style="padding:8px 0"></div>
+<div style="border-top:1px solid var(--line);padding-top:8px"><small class="muted">You</small><div id="mnow" style="margin:2px 0 6px"></div>
+<input type="range" id="mseek" min="0" max="0" step="1" value="0" style="width:100%"><div id="mtime" class="muted" style="font-size:12px;text-align:right">0:00 / 0:00</div>
+<div class="row" style="gap:10px;justify-content:center;margin:6px 0"><button class="btn ghost" id="mprev" aria-label="Previous">⏮</button><button class="btn" id="mpp" aria-label="Play or pause">▶</button><button class="btn ghost" id="mnext" aria-label="Next">⏭</button></div>
+<div id="mq" style="max-height:24vh;overflow:auto;margin:6px 0"></div>
+<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn small" id="madd">＋ Add songs</button><button class="btn ghost small" id="mclr">Clear</button><button class="btn ghost small" id="mtg">Telegram</button></div>
+<p class="muted" style="font-size:12px;margin:8px 0 0">Keep the app open so your partner can see what’s playing. After a refresh, add your songs again.</p></div></div>
+<div id="mbar" style="display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--line);border-radius:26px;padding:6px 8px;box-shadow:0 4px 14px rgba(0,0,0,.18)">
+<button id="mbp" class="btn small" aria-label="Play or pause" style="border-radius:50%;width:38px;height:38px;padding:0;flex:none">▶</button>
+<div id="mtxt" style="flex:1;min-width:0;font-size:12px;line-height:1.3"></div>
+<button id="mex" class="btn ghost small" aria-label="Open player" style="flex:none">▴</button></div>
+<input type="file" id="mf" accept="audio/*" multiple hidden>`;
+  document.body.appendChild(D);
+  D.onclick = e => {
+    const b = e.target.closest('button'), q = e.target.closest('[data-q]'), id = b ? b.id : '';
+    if (q) play(+q.dataset.q);
+    else if (id === 'mex') openMusicModal();
+    else if (id === 'mbp' || id === 'mpp') { if (cur < 0) $('#mf').click(); else au.paused ? au.play() : au.pause(); }
+    else if (id === 'mnext') go(1); else if (id === 'mprev') go(-1);
+    else if (id === 'madd') $('#mf').click();
+    else if (id === 'mclr') { au.pause(); au.removeAttribute('src'); Q.forEach(s => URL.revokeObjectURL(s.url)); Q = []; cur = -1; drawBar(); drawPanel(); }
+    else if (id === 'mtg') tgOpen && tgOpen();
+  };
+  $('#mf').onchange = e => {
+    const fs = [...e.target.files].filter(f => f.type.startsWith('audio') || /\.(mp3|m4a|aac|wav|ogg|flac|opus)$/i.test(f.name)), first = Q.length;
+    Q.push(...fs.map(f => ({ url: URL.createObjectURL(f), ...meta(f) }))); e.target.value = '';
+    if (cur < 0 && Q.length) play(first); else { drawBar(); drawPanel(); }
+  };
+  $('#mseek').oninput = e => { au.currentTime = +e.target.value; };
+  setInterval(() => { drawBar(); if (open) drawPart(); }, 30000);
+}

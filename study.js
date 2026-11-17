@@ -1,5 +1,6 @@
 import { P25C } from "./p25.js?v=13";
 import { mkRooms } from "./rooms.js?v=9";
+import { initMusic, openMusicModal, npLine, musicTick } from "./music.js?v=3";
 const {SK,HC,OC}=P25C; let C=null, sess=[], subCid=null, endOpen=false, endBrk=0, focus=0, pick='', pickK='study', tm=null;
 const LONG=['wolf','long','curly'], DEF={s:1,h:1,o:6,hs:'wolf'};
 const mins=ms=>Math.max(0,Math.round(ms/60000)), dur=m=>m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`;
@@ -30,7 +31,7 @@ async function setSt(emoji,text,src,keep){ const cur=C.status(C.me().uid); await
 async function clearSt(){ const cur=C.status(C.me().uid); if(cur&&cur.src) await C.deleteDoc(sref()); }
 const stOf=u=>(C.couple().study&&C.couple().study[u])||{st:''};
 
-export function initStudy(c){ C=c; }
+export function initStudy(c){ C=c; initMusic(c,upd,openTelegram); }
 
 function figure(a,mode,x,dir){
   a=a||DEF; const sk=SK[a.s]||SK[1], hr=HC[a.h]||HC[0], ot=OC[a.o]||OC[6], lg=LONG.includes(a.hs);
@@ -314,12 +315,13 @@ const actOf=u=>{ const f=C.status(u); if(f&&f.text&&(f.src||!f.at||Date.now()-f.
 const FEMH=['wolf','long','bun','curly','scarf','cap'];
 const pron=u=>{ const av=C.av(u); return av?(FEMH.includes(av.hs)?['she','her']:['he','him']):[C.nameOf(u),'them']; };
 export function openStudy(m,kind){ mode=m||'study'; if(kind&&KI[kind]){ pickK=kind; pick=''; mode=roomOf(kind); } else if(ROOMK[mode]&&!ROOMK[mode].includes(pickK)){ pickK=ROOMK[mode][0]; pick=''; } C.goTab('study'); }
-export async function openMusic(){ let tg=C.couple().tg; if(!tg){ tg=(prompt('Paste your private Telegram channel invite link (you both use the same one):')||'').trim(); if(!/^https?:\/\//.test(tg)) return; await upd({tg}); } window.open(tg,'_blank','noopener'); }
+async function openTelegram(){ let tg=C.couple().tg; if(!tg){ tg=(prompt('Paste your private Telegram channel invite link (you both use the same one):')||'').trim(); if(!/^https?:\/\//.test(tg)) return; await upd({tg}); } window.open(tg,'_blank','noopener'); }
+export function openMusic(){ openMusicModal(); }
 const say=t=>{ const k=C.$('sspk'); k.textContent=t; k.style.display='block'; clearTimeout(spkT); spkT=setTimeout(()=>k.style.display='none',7000); };
 function panel(){
   const my=C.me().uid, p=C.pid(), pa=p?actOf(p):['🤍',''], n=p?C.nameOf(p):'Partner', P=C.$('spnl');
   const B=(k,t)=>`<button class="btn ghost small" data-act="${k}" style="margin:0 6px 6px 0">${t}</button>`;
-  P.innerHTML=`<b>${C.esc(n)}</b> <span class="muted">${pa[1]?pa[0]+' '+C.esc(pa[1])+(JOIN.test(pa[1])?', wanna join?':''):'is around'}</span><div style="margin:10px 0 4px;font-size:13px" class="muted">What are you up to?</div>${B('studying','📚 Studying')}${B('working','💻 Working')}${B('gym','🏋️ Working out')}${B('chilling','🛋️ Chilling')}${B('praying','🕌 Praying')}${B('quran','📖 Reading Quran')}${B('','✨ Clear')}<div style="margin:6px 0 4px;font-size:13px" class="muted">Send a little message</div>${['you got this 🤍','proud of you','drink water 💧','missing you'].map(m=>`<button class="btn ghost small" data-msg="${m}" style="margin:0 6px 6px 0">${m}</button>`).join('')}<div class="row" style="gap:6px;margin-top:2px"><input id="nudgein" placeholder="Write your own" style="flex:1"><button class="btn small" id="nudgego">Send</button></div>`;
+  P.innerHTML=`<b>${C.esc(n)}</b> <span class="muted">${pa[1]?pa[0]+' '+C.esc(pa[1])+(JOIN.test(pa[1])?', wanna join?':''):'is around'}</span>${p&&npLine(p)?`<div style="font-size:13px;margin-top:4px">${npLine(p)}</div>`:''}<div style="margin:10px 0 4px;font-size:13px" class="muted">What are you up to?</div>${B('studying','📚 Studying')}${B('working','💻 Working')}${B('gym','🏋️ Working out')}${B('chilling','🛋️ Chilling')}${B('praying','🕌 Praying')}${B('quran','📖 Reading Quran')}${B('','✨ Clear')}<div style="margin:6px 0 4px;font-size:13px" class="muted">Send a little message</div>${['you got this 🤍','proud of you','drink water 💧','missing you'].map(m=>`<button class="btn ghost small" data-msg="${m}" style="margin:0 6px 6px 0">${m}</button>`).join('')}<div class="row" style="gap:6px;margin-top:2px"><input id="nudgein" placeholder="Write your own" style="flex:1"><button class="btn small" id="nudgego">Send</button></div>`;
   const send=async t=>{ if(!t) return; await upd({nudge:{from:my,text:t,at:Date.now()}}); P.style.display='none'; };
   P.querySelectorAll('[data-act]').forEach(b=>b.onclick=async()=>{ const k=b.dataset.act; P.style.display='none'; if(k==='studying'||k==='working'||k==='chilling'||k==='gym'){ openStudy('study',k==='working'?'work':k==='chilling'?'chill':k==='gym'?'lift':'study'); return; } if(k==='praying'||k==='quran'){ openStudy('pray'); return; } const cur=C.status(my); if(cur&&cur.src){ C.toast('End your Workroom or prayer first'); return; } if(cur) await C.deleteDoc(sref()); });
   P.querySelectorAll('[data-msg]').forEach(b=>b.onclick=()=>send(b.dataset.msg));
@@ -337,7 +339,7 @@ function ensureUI(){
   const mb=C.$('musicbtn'); if(mb) mb.onclick=openMusic;
 }
 export function renderBubble(){
-  if(!C||!C.couple()||!C.me()) return; ensureUI(); const p=C.pid(); if(!p) return;
+  if(!C||!C.couple()||!C.me()) return; ensureUI(); musicTick(); const p=C.pid(); if(!p) return;
   const a=actOf(p); C.$('sbub').textContent=a[0]; C.$('sbub').classList.toggle('live',!!a[1]);
   const key=a[1]; if(key&&key!==lastAct){ const kk=key.replace(/^([A-Z])([a-z])/,(m,x,y)=>x.toLowerCase()+y); say(`I’m ${kk}${JOIN.test(key)?' — wanna join?':''}`); } lastAct=key;
   const nu=C.couple().nudge; if(nu&&nu.from!==C.me().uid&&nu.at!==lastNudge){ lastNudge=nu.at; say(`${C.nameOf(p)}: ${nu.text}`); upd({nudge:null}); }
