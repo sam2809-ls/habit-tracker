@@ -460,7 +460,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
   onSnapshot, arrayUnion, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View, p25Look } from "./p25.js?v=13";
-import { initStudy, renderStudy, stopStudyAmb, renderBubble, openStudy, studyMode } from "./study.js?v=26";
+import { initStudy, renderStudy, stopStudyAmb, renderBubble, openStudy, studyMode } from "./study.js?v=27";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -1732,12 +1732,13 @@ const CARE=[
   ['workout','Workout','💪',h=>/workout|exercise|gym|fitness|run|jog|walk|yoga/i.test(h.name)||h.cat==='Fitness'],
   ['study','Study','📚',h=>/study|read|learn|homework|revis|assignment/i.test(h.name)||h.cat==='Growth']
 ];
-const CARE_ALL=[...CARE.map(c=>[c[0],c[1],c[2]]),['sleep','Sleep well','😴']];
+const CARE_ALL=[...CARE.slice(0,1).map(c=>[c[0],c[1],c[2]]),['meals','Eat 2+ meals','🍽️'],...CARE.slice(1).map(c=>[c[0],c[1],c[2]]),['sleep','Sleep well','😴']];
 const CARE_DEFAULTS={workout:['Workout','Fitness',3],study:['Study','Growth',2]};
 const PET_STAGES=[[0,'Newborn kitten'],[20,'Little kitten'],[60,'Playful kitten'],[120,'Young cat'],[220,'Grown cat'],[350,'Royal fluffball']];
 const careHabits=(uid,key)=>{ const c=CARE.find(x=>x[0]===key); return c?hOf(uid).filter(c[3]):[]; };
 function careDone(uid,key,d){
   if(key==='water'&&waterCount(uid,d)>=WATER_OK) return true;
+  if(key==='meals') return cnt('meal_',MEALS,uid,d)>=2;
   if(key==='sleep'){
     const x=sleepDoc(uid,d);
     if(x&&x.hours>=SLEEP_TARGET) return true;
@@ -1792,7 +1793,7 @@ function bankPetDays(){
 async function toggleCare(key){
   const d=todayStr();
   if(key==='sleep'){ tab='sleep'; $('kitmodal').classList.add('hidden'); render(); return; }
-  if(key==='water'){ tab='meals'; $('kitmodal').classList.add('hidden'); render(); return; }
+  if(key==='water'||key==='meals'){ tab='meals'; $('kitmodal').classList.add('hidden'); render(); return; }
   const hs=careHabits(me.uid,key).filter(h=>h.start<=d);
   if(!hs.length){ toast('Add a habit for this first'); return; }
   const done=hs.filter(h=>logs.has(logKey(h.id,me.uid,d)));
@@ -1977,9 +1978,9 @@ function renderKitten(pid){
       <p class="muted" style="margin:6px 0 0;font-size:14px">${xp} growth points · ${st.next?`${st.next[0]-xp} points until ${esc(st.next[1])}`:'Fully grown. Look at that fluff 👑'}</p>
     </div>
     <div class="card" style="margin-top:14px"><h3>Today’s care</h3>
-      <p class="muted" style="margin:4px 0 8px">Care makes ${esc(name)} grow. 1 point each, 2 when you both do one, up to 8 a day. Today: <b>${today}/8</b></p>
+      <p class="muted" style="margin:4px 0 8px">Care makes ${esc(name)} grow. 1 point each, 2 when you both do one, up to 10 a day. Today: <b>${today}/10</b></p>
       ${theadRow(pid)}${careRows(pid)}
-      <p class="muted" style="margin:12px 0 0;font-size:14px">Water comes from the tracker on your Meals tab (8 or more glasses counts) and sleep from your Sleep tab (7 hours or more). Workout and study use your habits.</p>
+      <p class="muted" style="margin:12px 0 0;font-size:14px">Water and meals come from your Meals tab (8 or more glasses, and 2 or more meals, count) and sleep from your Sleep tab (7 hours or more). Workout and study use your habits.</p>
       ${chips?`<p class="muted" style="margin:14px 0 0">Add the habits ${esc(name)} is waiting for:</p><div class="chips">${chips}</div>`:''}
     </div>
     <div class="card" style="margin-top:14px"><h3>Rename</h3>

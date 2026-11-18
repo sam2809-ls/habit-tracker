@@ -1,6 +1,6 @@
 import { P25C } from "./p25.js?v=13";
 import { mkRooms } from "./rooms.js?v=9";
-import { initMusic, openMusicModal, npLine, musicTick } from "./music.js?v=3";
+import { initMusic, openMusicModal, npLine, musicTick } from "./music.js?v=4";
 const {SK,HC,OC}=P25C; let C=null, sess=[], subCid=null, endOpen=false, endBrk=0, focus=0, pick='', pickK='study', tm=null;
 const LONG=['wolf','long','curly'], DEF={s:1,h:1,o:6,hs:'wolf'};
 const mins=ms=>Math.max(0,Math.round(ms/60000)), dur=m=>m>=60?`${Math.floor(m/60)}h ${m%60}m`:`${m}m`;

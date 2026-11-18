@@ -4,6 +4,19 @@ let C = null, upd = null, tgOpen = null, D = null, open = false, hb = null;
 const au = new Audio(); let Q = [], cur = -1;
 au.preload = 'metadata';
 
+// Songs are kept in IndexedDB (a copy of each file) so the queue survives refreshes.
+let db = null;
+const idb = () => db ? Promise.resolve(db) : new Promise((res, rej) => { const r = indexedDB.open('mplayer', 1); r.onupgradeneeded = () => r.result.createObjectStore('songs', { keyPath: 'id', autoIncrement: true }); r.onsuccess = () => res(db = r.result); r.onerror = () => rej(r.error); });
+const tx = (mode, fn) => idb().then(d => new Promise((res, rej) => { const t = d.transaction('songs', mode); const out = fn(t.objectStore('songs')); t.oncomplete = () => res(out && out.result); t.onerror = t.onabort = () => rej(t.error); }));
+const ready = (async () => {
+  try {
+    const rows = await tx('readonly', s => s.getAll());
+    Q = (rows || []).map(r => ({ id: r.id, url: URL.createObjectURL(r.blob), t: r.t, a: r.a }));
+    const k = +localStorage.getItem('m_cur'); if (Q[k]) { cur = k; au.src = Q[k].url; }
+  } catch (e) { /* no storage available: player still works for this session */ }
+  drawBar(); drawPanel();
+})();
+
 export function initMusic(c, updFn, telegramFn) { C = c; upd = updFn; tgOpen = telegramFn; }
 
 const clean = n => n.replace(/\.[a-z0-9]{2,4}$/i, '').replace(/_+/g, ' ').trim();
@@ -31,7 +44,21 @@ function setSession() {
   navigator.mediaSession.setActionHandler('nexttrack', () => go(1));
   navigator.mediaSession.setActionHandler('previoustrack', () => go(-1));
 }
-function play(k) { if (!Q[k]) return; cur = k; au.src = Q[k].url; au.play().catch(() => {}); setSession(); drawBar(); drawPanel(); }
+function play(k) { if (!Q[k]) return; cur = k; try { localStorage.setItem('m_cur', k); } catch (e) {} au.src = Q[k].url; au.play().catch(() => {}); setSession(); drawBar(); drawPanel(); }
+async function rm(k) {
+  const s = Q[k]; if (!s) return;
+  if (k === cur) { share(false); au.pause(); au.removeAttribute('src'); cur = -1; } else if (k < cur) cur--;
+  URL.revokeObjectURL(s.url); Q.splice(k, 1);
+  try { localStorage.setItem('m_cur', cur); } catch (e) {}
+  if (s.id != null) try { await tx('readwrite', st => st.delete(s.id)); } catch (e) {}
+  drawBar(); drawPanel();
+}
+async function clearAll() {
+  share(false); au.pause(); au.removeAttribute('src'); Q.forEach(s => URL.revokeObjectURL(s.url)); Q = []; cur = -1;
+  try { localStorage.setItem('m_cur', -1); } catch (e) {}
+  try { await tx('readwrite', st => st.clear()); } catch (e) {}
+  drawBar(); drawPanel();
+}
 function go(d) { if (Q.length) play((cur + d + Q.length) % Q.length); }
 
 au.onplay = () => { share(true); clearInterval(hb); hb = setInterval(() => share(true), 60000); drawBar(); drawPanel(); };
@@ -43,7 +70,7 @@ function drawBar() {
   if (!D) return;
   const p = C.pid(), n = npOf(p), who = p ? C.nameOf(p) : 'Partner';
   $('#mbp').textContent = au.paused ? '▶' : '⏸';
-  $('#mtxt').innerHTML = `<div class="ml">${cur >= 0 ? '🎧 ' + C.esc(label(Q[cur])) : 'Tap ▶ to add your songs'}</div><div class="ml muted">${C.esc(who)}: ${live(n) ? '🎵 ' + C.esc(label(n)) : 'not playing'}</div>`;
+  $('#mtxt').innerHTML = `<div class="ml">${cur >= 0 ? '🎧 ' + C.esc(label(Q[cur])) : (Q.length ? 'Tap ▶ to play your songs' : 'Tap ▶ to add your songs')}</div><div class="ml muted">${C.esc(who)}: ${live(n) ? '🎵 ' + C.esc(label(n)) : 'not playing'}</div>`;
 }
 function drawPart() {
   const el = $('#mpart'); if (!el) return;
@@ -56,7 +83,7 @@ function drawPanel() {
   const t = Q[cur];
   $('#mnow').innerHTML = t ? `<b>${C.esc(t.t)}</b><div class="muted" style="font-size:13px">${C.esc(t.a || 'You’re playing')}</div>` : '<span class="muted">Add songs from your phone to start</span>';
   $('#mpp').textContent = au.paused ? '▶' : '⏸';
-  $('#mq').innerHTML = Q.map((s, k) => `<div data-q="${k}" style="padding:7px 8px;border-radius:10px;cursor:pointer;font-size:14px;${k === cur ? 'background:var(--bg);font-weight:700' : ''}">${C.esc(label(s))}</div>`).join('');
+  $('#mq').innerHTML = Q.map((s, k) => `<div data-q="${k}" style="display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:10px;cursor:pointer;font-size:14px;${k === cur ? 'background:var(--bg);font-weight:700' : ''}"><span class="ml" style="flex:1;min-width:0">${C.esc(label(s))}</span><button data-rm="${k}" class="btn ghost small" aria-label="Remove song" style="flex:none;padding:2px 8px">✕</button></div>`).join('');
 }
 
 function ensure() {
@@ -71,7 +98,7 @@ function ensure() {
 <div class="row" style="gap:10px;justify-content:center;margin:6px 0"><button class="btn ghost" id="mprev" aria-label="Previous">⏮</button><button class="btn" id="mpp" aria-label="Play or pause">▶</button><button class="btn ghost" id="mnext" aria-label="Next">⏭</button></div>
 <div id="mq" style="max-height:24vh;overflow:auto;margin:6px 0"></div>
 <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn small" id="madd">＋ Add songs</button><button class="btn ghost small" id="mclr">Clear</button><button class="btn ghost small" id="mtg">Telegram</button></div>
-<p class="muted" style="font-size:12px;margin:8px 0 0">Keep the app open so your partner can see what’s playing. After a refresh, add your songs again.</p></div></div>
+<p class="muted" style="font-size:12px;margin:8px 0 0">Keep the app open so your partner can see what’s playing. Your songs are saved on this phone, so they’re still here after a refresh.</p></div></div>
 <div id="mbar" style="display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--line);border-radius:26px;padding:6px 8px;box-shadow:0 4px 14px rgba(0,0,0,.18)">
 <button id="mbp" class="btn small" aria-label="Play or pause" style="border-radius:50%;width:38px;height:38px;padding:0;flex:none">▶</button>
 <div id="mtxt" style="flex:1;min-width:0;font-size:12px;line-height:1.3"></div>
@@ -80,18 +107,27 @@ function ensure() {
   document.body.appendChild(D);
   D.onclick = e => {
     const b = e.target.closest('button'), q = e.target.closest('[data-q]'), id = b ? b.id : '';
-    if (q) play(+q.dataset.q);
+    const r = e.target.closest('[data-rm]');
+    if (r) rm(+r.dataset.rm);
+    else if (q) play(+q.dataset.q);
     else if (id === 'mex') openMusicModal();
-    else if (id === 'mbp' || id === 'mpp') { if (cur < 0) $('#mf').click(); else au.paused ? au.play() : au.pause(); }
+    else if (id === 'mbp' || id === 'mpp') { if (cur < 0) { Q.length ? play(0) : $('#mf').click(); } else au.paused ? au.play() : au.pause(); }
     else if (id === 'mnext') go(1); else if (id === 'mprev') go(-1);
     else if (id === 'madd') $('#mf').click();
-    else if (id === 'mclr') { au.pause(); au.removeAttribute('src'); Q.forEach(s => URL.revokeObjectURL(s.url)); Q = []; cur = -1; drawBar(); drawPanel(); }
+    else if (id === 'mclr') clearAll();
     else if (id === 'mtg') tgOpen && tgOpen();
   };
-  $('#mf').onchange = e => {
-    const fs = [...e.target.files].filter(f => f.type.startsWith('audio') || /\.(mp3|m4a|aac|wav|ogg|flac|opus)$/i.test(f.name)), first = Q.length;
-    Q.push(...fs.map(f => ({ url: URL.createObjectURL(f), ...meta(f) }))); e.target.value = '';
-    if (cur < 0 && Q.length) play(first); else { drawBar(); drawPanel(); }
+  $('#mf').onchange = async e => {
+    const fs = [...e.target.files].filter(f => f.type.startsWith('audio') || /\.(mp3|m4a|aac|wav|ogg|flac|opus)$/i.test(f.name)); e.target.value = '';
+    await ready; const first = Q.length; let failed = false;
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    for (const f of fs) {
+      const m = meta(f); let id = null;
+      try { id = await tx('readwrite', st => st.add({ t: m.t, a: m.a, blob: f })); } catch (err) { failed = true; }
+      Q.push({ id, url: URL.createObjectURL(f), ...m });
+    }
+    if (failed) C.toast && C.toast('Couldn’t save some songs for next time (storage full?)');
+    if (cur < 0 && Q.length > first) play(first); else { drawBar(); drawPanel(); }
   };
   $('#mseek').oninput = e => { au.currentTime = +e.target.value; };
   setInterval(() => { drawBar(); if (open) drawPart(); }, 30000);
