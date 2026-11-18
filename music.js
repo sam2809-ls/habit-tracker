@@ -2,6 +2,12 @@
 // Firestore: couples/{id}.np.{uid} = {t, a, on, ts}
 let C = null, upd = null, tgOpen = null, D = null, open = false, hb = null;
 const au = new Audio(); let Q = [], cur = -1;
+const jget = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v === null || v === undefined ? d : v; } catch (e) { return d; } };
+const jset = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+// Playlists live on this phone: [{n: name, ids: [song ids]}]. sel = open playlist ('' = all songs).
+let PL = jget('m_pl', []), sel = jget('m_sel', ''), mode = jget('m_mode', 'all'), shuf = jget('m_shuf', false), editing = false;
+const curPL = () => PL.find(p => p.n === sel) || null;
+const act = () => { const p = curPL(); return p ? p.ids.map(id => Q.findIndex(s => s.id === id)).filter(i => i >= 0) : Q.map((_, i) => i); };
 au.preload = 'metadata';
 
 // Songs are kept in IndexedDB (a copy of each file) so the queue survives refreshes.
@@ -48,22 +54,30 @@ function play(k) { if (!Q[k]) return; cur = k; try { localStorage.setItem('m_cur
 async function rm(k) {
   const s = Q[k]; if (!s) return;
   if (k === cur) { share(false); au.pause(); au.removeAttribute('src'); cur = -1; } else if (k < cur) cur--;
-  URL.revokeObjectURL(s.url); Q.splice(k, 1);
+  URL.revokeObjectURL(s.url); Q.splice(k, 1); PL.forEach(p => p.ids = p.ids.filter(i => i !== s.id)); jset('m_pl', PL);
   try { localStorage.setItem('m_cur', cur); } catch (e) {}
   if (s.id != null) try { await tx('readwrite', st => st.delete(s.id)); } catch (e) {}
   drawBar(); drawPanel();
 }
 async function clearAll() {
-  share(false); au.pause(); au.removeAttribute('src'); Q.forEach(s => URL.revokeObjectURL(s.url)); Q = []; cur = -1;
+  share(false); au.pause(); au.removeAttribute('src'); Q.forEach(s => URL.revokeObjectURL(s.url)); Q = []; cur = -1; PL = []; sel = ''; jset('m_pl', PL); jset('m_sel', sel);
   try { localStorage.setItem('m_cur', -1); } catch (e) {}
   try { await tx('readwrite', st => st.clear()); } catch (e) {}
   drawBar(); drawPanel();
 }
-function go(d) { if (Q.length) play((cur + d + Q.length) % Q.length); }
+function go(d) {
+  const a = act(); if (!a.length) return;
+  if (shuf && d > 0 && a.length > 1) { let n; do { n = a[Math.floor(Math.random() * a.length)]; } while (n === cur); return play(n); }
+  const p = a.indexOf(cur); play(a[p < 0 ? 0 : (p + d + a.length) % a.length]);
+}
+function newPL() { const n = (prompt('Playlist name:') || '').trim().slice(0, 30); if (!n) return; if (!PL.some(p => p.n === n)) { PL.push({ n, ids: [] }); jset('m_pl', PL); } sel = n; jset('m_sel', sel); editing = true; drawPanel(); }
+function delPL() { const p = curPL(); if (!p || !confirm('Delete playlist “' + p.n + '”? Your songs stay.')) return; PL = PL.filter(x => x !== p); sel = ''; editing = false; jset('m_pl', PL); jset('m_sel', sel); drawPanel(); }
+function toggleIn(k) { const p = curPL(), s = Q[k]; if (!p || !s) return; if (s.id == null) { C.toast && C.toast('That song wasn’t saved, so it can’t go in a playlist'); return; } p.ids = p.ids.includes(s.id) ? p.ids.filter(i => i !== s.id) : [...p.ids, s.id]; jset('m_pl', PL); drawPanel(); }
+function outPL(k) { const p = curPL(), s = Q[k]; if (!p || !s) return; p.ids = p.ids.filter(i => i !== s.id); jset('m_pl', PL); drawPanel(); }
 
 au.onplay = () => { share(true); clearInterval(hb); hb = setInterval(() => share(true), 60000); drawBar(); drawPanel(); };
 au.onpause = () => { clearInterval(hb); share(false); drawBar(); drawPanel(); };
-au.onended = () => go(1);
+au.onended = () => { if (mode === 'one') { au.currentTime = 0; au.play(); return; } const a = act(); if (mode === 'off' && !shuf && a.indexOf(cur) === a.length - 1) return; go(1); };
 au.ontimeupdate = () => { if (!open || !D) return; const s = $('#mseek'); if (s && document.activeElement !== s) { s.max = au.duration || 0; s.value = au.currentTime; } $('#mtime').textContent = fmt(au.currentTime) + ' / ' + fmt(au.duration); };
 
 function drawBar() {
@@ -83,7 +97,12 @@ function drawPanel() {
   const t = Q[cur];
   $('#mnow').innerHTML = t ? `<b>${C.esc(t.t)}</b><div class="muted" style="font-size:13px">${C.esc(t.a || 'You’re playing')}</div>` : '<span class="muted">Add songs from your phone to start</span>';
   $('#mpp').textContent = au.paused ? '▶' : '⏸';
-  $('#mq').innerHTML = Q.map((s, k) => `<div data-q="${k}" style="display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:10px;cursor:pointer;font-size:14px;${k === cur ? 'background:var(--bg);font-weight:700' : ''}"><span class="ml" style="flex:1;min-width:0">${C.esc(label(s))}</span><button data-rm="${k}" class="btn ghost small" aria-label="Remove song" style="flex:none;padding:2px 8px">✕</button></div>`).join('');
+  const p = curPL();
+  $('#msel').innerHTML = '<option value="">All songs</option>' + PL.map(x => `<option value="${C.esc(x.n)}"${x.n === sel ? ' selected' : ''}>${C.esc(x.n)}</option>`).join('');
+  $('#mdel').style.display = $('#med').style.display = p ? '' : 'none'; $('#med').textContent = editing ? '✔ Done' : '✎ Edit';
+  $('#mshuf').style.opacity = shuf ? 1 : .4; $('#mrep').textContent = mode === 'one' ? '🔂' : '🔁'; $('#mrep').style.opacity = mode === 'off' ? .4 : 1;
+  const rows = act().map(k => { const s = Q[k]; return `<div data-q="${k}" style="display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:10px;cursor:pointer;font-size:14px;${k === cur ? 'background:var(--bg);font-weight:700' : ''}"><span class="ml" style="flex:1;min-width:0">${C.esc(label(s))}</span><button data-rm="${k}" class="btn ghost small" aria-label="${p ? 'Remove from playlist' : 'Remove song'}" style="flex:none;padding:2px 8px">✕</button></div>`; }).join('');
+  $('#mq').innerHTML = editing && p ? Q.map((s, k) => `<div data-tg="${k}" style="padding:7px 8px;cursor:pointer;font-size:14px">${p.ids.includes(s.id) ? '✅' : '⬜'} ${C.esc(label(s))}</div>`).join('') : (rows || `<p class="muted" style="font-size:13px;margin:4px 0">${p ? 'Empty playlist. Tap ✎ Edit to add songs.' : ''}</p>`);
 }
 
 function ensure() {
@@ -95,9 +114,10 @@ function ensure() {
 <b style="font-size:15px">🎵 Our music</b><div id="mpart" style="padding:8px 0"></div>
 <div style="border-top:1px solid var(--line);padding-top:8px"><small class="muted">You</small><div id="mnow" style="margin:2px 0 6px"></div>
 <input type="range" id="mseek" min="0" max="0" step="1" value="0" style="width:100%"><div id="mtime" class="muted" style="font-size:12px;text-align:right">0:00 / 0:00</div>
-<div class="row" style="gap:10px;justify-content:center;margin:6px 0"><button class="btn ghost" id="mprev" aria-label="Previous">⏮</button><button class="btn" id="mpp" aria-label="Play or pause">▶</button><button class="btn ghost" id="mnext" aria-label="Next">⏭</button></div>
+<div class="row" style="gap:6px;justify-content:center;align-items:center;margin:6px 0"><button class="btn ghost small" id="mshuf" aria-label="Shuffle">🔀</button><button class="btn ghost" id="mprev" aria-label="Previous">⏮</button><button class="btn" id="mpp" aria-label="Play or pause">▶</button><button class="btn ghost" id="mnext" aria-label="Next">⏭</button><button class="btn ghost small" id="mrep" aria-label="Repeat mode">🔁</button></div>
+<div class="row" style="gap:6px;margin:6px 0"><select id="msel" aria-label="Playlist" style="flex:1;min-width:0"></select><button class="btn ghost small" id="mnew" aria-label="New playlist">＋</button><button class="btn ghost small" id="med">✎ Edit</button><button class="btn ghost small" id="mdel" aria-label="Delete playlist">🗑</button></div>
 <div id="mq" style="max-height:24vh;overflow:auto;margin:6px 0"></div>
-<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn small" id="madd">＋ Add songs</button><button class="btn ghost small" id="mclr">Clear</button><button class="btn ghost small" id="mtg">Telegram</button></div>
+<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn small" id="madd">＋ Add songs</button><button class="btn small" id="mpl">▶ Play list</button><button class="btn ghost small" id="mclr">Clear</button><button class="btn ghost small" id="mtg">Telegram</button></div>
 <p class="muted" style="font-size:12px;margin:8px 0 0">Keep the app open so your partner can see what’s playing. Your songs are saved on this phone, so they’re still here after a refresh.</p></div></div>
 <div id="mbar" style="display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--line);border-radius:26px;padding:6px 8px;box-shadow:0 4px 14px rgba(0,0,0,.18)">
 <button id="mbp" class="btn small" aria-label="Play or pause" style="border-radius:50%;width:38px;height:38px;padding:0;flex:none">▶</button>
@@ -108,13 +128,21 @@ function ensure() {
   D.onclick = e => {
     const b = e.target.closest('button'), q = e.target.closest('[data-q]'), id = b ? b.id : '';
     const r = e.target.closest('[data-rm]');
-    if (r) rm(+r.dataset.rm);
+    const tg = e.target.closest('[data-tg]');
+    if (r) { curPL() ? outPL(+r.dataset.rm) : rm(+r.dataset.rm); }
+    else if (tg) toggleIn(+tg.dataset.tg);
     else if (q) play(+q.dataset.q);
     else if (id === 'mex') openMusicModal();
-    else if (id === 'mbp' || id === 'mpp') { if (cur < 0) { Q.length ? play(0) : $('#mf').click(); } else au.paused ? au.play() : au.pause(); }
+    else if (id === 'mbp' || id === 'mpp') { if (cur < 0) { const a = act(); a.length ? play(a[0]) : $('#mf').click(); } else au.paused ? au.play() : au.pause(); }
     else if (id === 'mnext') go(1); else if (id === 'mprev') go(-1);
     else if (id === 'madd') $('#mf').click();
     else if (id === 'mclr') clearAll();
+    else if (id === 'mshuf') { shuf = !shuf; jset('m_shuf', shuf); drawPanel(); }
+    else if (id === 'mrep') { mode = mode === 'all' ? 'one' : mode === 'one' ? 'off' : 'all'; jset('m_mode', mode); drawPanel(); C.toast && C.toast({ all: 'Repeat all', one: 'Repeat one', off: 'No repeat' }[mode]); }
+    else if (id === 'mnew') newPL();
+    else if (id === 'mdel') delPL();
+    else if (id === 'med') { editing = !editing; drawPanel(); }
+    else if (id === 'mpl') { const a = act(); if (a.length) play(shuf ? a[Math.floor(Math.random() * a.length)] : a[0]); }
     else if (id === 'mtg') tgOpen && tgOpen();
   };
   $('#mf').onchange = async e => {
@@ -126,9 +154,11 @@ function ensure() {
       try { id = await tx('readwrite', st => st.add({ t: m.t, a: m.a, blob: f })); } catch (err) { failed = true; }
       Q.push({ id, url: URL.createObjectURL(f), ...m });
     }
+    { const p = curPL(); if (p) { p.ids.push(...Q.slice(first).map(s => s.id).filter(i => i != null)); jset('m_pl', PL); } }
     if (failed) C.toast && C.toast('Couldn’t save some songs for next time (storage full?)');
     if (cur < 0 && Q.length > first) play(first); else { drawBar(); drawPanel(); }
   };
   $('#mseek').oninput = e => { au.currentTime = +e.target.value; };
+  $('#msel').onchange = e => { sel = e.target.value; editing = false; jset('m_sel', sel); drawPanel(); };
   setInterval(() => { drawBar(); if (open) drawPart(); }, 30000);
 }
