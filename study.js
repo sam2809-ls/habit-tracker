@@ -226,11 +226,12 @@ export function renderStudy(){
   { const k0=el.querySelector('#ntin'); if(k0) ntKeep=k0.value; }
   const my=C.me().uid, p=C.pid(), cid=C.cid();
   if(cid&&subCid!==cid){ subCid=cid; C.onSnapshot(C.collection(C.db,'couples',cid,'study'),s=>{ sess=s.docs.map(d=>d.data()); if(C.tab()==='study') C.render(); }); }
-  if(!tm) tm=setInterval(()=>{ if(C.tab()==='study'&&!endOpen) C.render(); },30000);
+  if(!tm) tm=setInterval(()=>{ if(C.tab()==='study'&&!endOpen&&mode!=='hunt') C.render(); },30000);
   const me=stOf(my), pt=p?stOf(p):{st:''}, S=subs(pickK);
   const chip=(s,on)=>`<button class="btn small ${on?'':'ghost'}" data-sub="${C.esc(s)}" style="margin:0 6px 6px 0">${C.esc(s)}</button>`;
-  const head=`<div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">${[['study','🪑 Workroom'],['gym','🏋️ Gym'],['chill','🛋️ Chill room'],['pray','🕌 Pray corner']].map(([m,n])=>`<button class="btn small ${mode===m?'':'ghost'}" data-m="${m}">${n}</button>`).join('')}</div>`;
+  const head=`<div class="row" style="gap:6px;margin-bottom:10px;flex-wrap:wrap">${[['study','🪑 Workroom'],['gym','🏋️ Gym'],['chill','🛋️ Chill room'],['pray','🕌 Pray corner'],['hunt','🎨 Colours']].map(([m,n])=>`<button class="btn small ${mode===m?'':'ghost'}" data-m="${m}">${n}</button>`).join('')}</div>`;
   const bindM=()=>el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+  if(mode==='hunt'){ el.innerHTML=`${head}${C.huntHTML(p)}`; bindM(); C.huntBind(); return; }
   const meLeft=!p||my<p;
   if(mode==='pray'){ const ac=acK, mk=ac(my), pk=p?ac(p):'', pn=p?C.nameOf(p):'Partner', lb=k=>PK[k]?PK[k][1]:'away';
     el.innerHTML=`${head}${meLeft?pray(C.av(my),p&&C.av(p),mk,pk,plOf(my),p&&plOf(p),ppGet()):pray(p&&C.av(p),C.av(my),pk,mk,p&&plOf(p),plOf(my),ppGet())}<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;text-align:center;font-size:13px"><span class="card" style="padding:8px">You · ${lb(mk)}</span><span class="card" style="padding:8px">${C.esc(pn)} · ${lb(pk)}</span></div><div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center"><span class="muted" style="font-size:13px">Sitting</span>${[['apart','Apart'],['side','Side by side'],['lean','Leaning 🤍']].map(([k,n])=>`<button class="btn small ${ppGet()===k?'':'ghost'}" data-pp="${k}">${n}</button>`).join('')}</div><div class="card" style="margin-top:12px">${prPick&&mk==='praying'?`<b>Which prayer did you perform?</b><div class="row" style="gap:6px;flex-wrap:wrap;margin:10px 0">${PR.map(([id,n])=>{ const dn=C.logged(id); return `<button class="btn small ${dn?'ghost':''}" data-lp="${id}" ${dn?'disabled style="opacity:.55"':''}>${dn?'✓ ':''}${n}</button>`; }).join('')}</div><button class="btn ghost small" id="prskip">Skip, just a prayer 🤲</button>`:mk?'<button class="btn" id="prdone">Done</button>':me.st==='studying'?`<b>${KI[kOf(me)][0]} You’re in the ${ROOMN[roomOf(kOf(me))]}</b><p class="muted" style="margin:6px 0 10px">End your session or take a break first, then you can pray.</p><button class="btn small" id="prtowork">Go to the ${ROOMN[roomOf(kOf(me))]}</button>`:'<button class="btn" id="prgo">I’m praying 🕌</button> <button class="btn ghost" id="prq">Read Quran 📖</button> <button class="btn ghost" id="prsit">Sit together 📿</button>'}${pk&&!mk?`<div class="muted" style="margin-top:8px">${C.esc(pn)} is ${lb(pk)}. Join?</div>`:''}</div>${look(my)}<div id="prlog" style="margin-top:12px"></div>`;
@@ -335,7 +336,7 @@ function ensureUI(){
   C.$('sbub').onclick=()=>{ const P=C.$('spnl'); if(P.style.display==='block'){ P.style.display='none'; } else { panel(); P.style.display='block'; } };
   const tg=o=>{ C.$('tgp').classList.toggle('open',o); C.$('tgbg').style.display=o?'block':'none'; C.$('tge').setAttribute('aria-expanded',o); };
   C.$('tge').onclick=()=>tg(!C.$('tgp').classList.contains('open')); C.$('tgbg').onclick=()=>tg(false);
-  C.$('tgp').onclick=e=>{ const b=e.target.closest('[data-g]'); if(!b) return; const g=b.dataset.g; tg(false); if(g==='study') openStudy('study'); else if(g==='gym') openStudy('gym'); else if(g==='chill') openStudy('chill'); else if(g==='pray') openStudy('pray'); else if(g==='hunt') C.goTab('fun'); else openMusic(); };
+  C.$('tgp').onclick=e=>{ const b=e.target.closest('[data-g]'); if(!b) return; const g=b.dataset.g; tg(false); if(g==='study') openStudy('study'); else if(g==='gym') openStudy('gym'); else if(g==='chill') openStudy('chill'); else if(g==='pray') openStudy('pray'); else if(g==='hunt') openStudy('hunt'); else openMusic(); };
   const mb=C.$('musicbtn'); if(mb) mb.onclick=openMusic;
 }
 export function renderBubble(){
