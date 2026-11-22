@@ -135,6 +135,16 @@
   .dua{padding:12px;border-radius:12px;background:var(--bg);margin-top:10px}
   .dua p{margin:6px 0;white-space:pre-wrap}
   .swatch{width:64px;height:64px;border-radius:50%;border:3px solid var(--line);flex:none}
+  .plate{color:#e0457b;font-weight:600}
+  .calbox{display:block;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:14px;margin-bottom:14px;color:var(--ink);cursor:pointer;font:inherit}
+  .calg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+  .calh{font-size:12px;color:var(--muted);padding-bottom:2px}
+  .cald{position:relative;height:40px;border:0;border-radius:10px;background:var(--bg);color:var(--ink);cursor:pointer;font:inherit;font-size:14px}
+  .cald.today{outline:2px solid var(--me)}
+  .cald.sel{background:var(--me);color:#fff}
+  .cald b{position:absolute;left:50%;bottom:4px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--you)}
+  .cald b.late{background:#e0457b}
+  .cald b.ok{background:#9aa0a6}
   .ptask{display:flex;align-items:center;gap:6px;padding:6px 2px;border-bottom:1px solid var(--line)}
   .ptask.done .ptxt{text-decoration:line-through;color:var(--muted)}
   .ptxt{flex:1;min-width:0;overflow-wrap:anywhere}
@@ -1699,12 +1709,24 @@ function colourStatsHTML(pid){
 }
 /* ===== PLANNER: start ===== */
 /* Personal day/week checklist + errands. Stored in the 'fun' collection as kind:'task' (date=null means errand). */
-let planWk=0, planSig='';
+let planWk=0, planSig='', planTab='plan', calOff=0, calOpen=false, calSel='', PD={dt:'',dc:'',dd:'',ct:'',ce:'7'};
 const pdate=(d,n)=>{ const x=new Date(d+'T12:00'); x.setDate(x.getDate()+n); return fmt(x); };
 const pDay=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short'});
 const pShort=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{day:'numeric',month:'short'});
 const myTasks=()=>fun.filter(f=>f.kind==='task'&&f.by===me.uid).sort((a,b)=>(a.at||0)-(b.at||0));
 const pRef=id=>doc(cref(),'fun',id);
+const myDocs=k=>fun.filter(f=>f.kind===k&&f.by===me.uid);
+const byDate=(a,b)=>a.date<b.date?-1:a.date>b.date?1:0;
+const dueDiff=d=>Math.round((new Date(d+'T12:00')-new Date(todayStr()+'T12:00'))/864e5);
+const dueLabel=d=>{ const n=dueDiff(d); return (n===0?'Due today':n===1?'Due tomorrow':n>1?`Due in ${n} days`:`${-n} day${n<-1?'s':''} overdue`)+' · '+pShort(d); };
+const choreDiff=f=>f.last?dueDiff(pdate(f.last,f.every||7)):0;
+const PRE={home:[['Clean the bathroom',7],['Change bedsheets',14],['Take out the bins',3],['Clean the fridge',30],['Deep-clean the kitchen',30],['Wash the curtains',90],['Descale kettle & taps',60],['Check smoke alarm',180]],
+  care:[['Face mask',7],['Hair mask',7],['Hair oiling',3],['Exfoliate',7],['Trim nails',10],['Skincare check-in',30],['Dental check-up',180]]};
+async function addDeadline(){ const t=PD.dt.trim(); if(!t||!PD.dd){ toast('Add a title and a date'); return; }
+  const d={kind:'deadline',by:me.uid,title:t.slice(0,120),course:PD.dc.trim().slice(0,60),date:PD.dd,done:false,doneOn:null,at:Date.now()}; PD.dt=PD.dc=PD.dd=''; calSel='';
+  await addDoc(collection(cref(),'fun'),d); }
+async function addChore(area,title,every){ title=(title||'').trim(); if(!title) return; every=Math.max(1,Math.min(365,Math.round(+every)||7));
+  await addDoc(collection(cref(),'fun'),{kind:'chore',by:me.uid,area,title:title.slice(0,80),every,last:null,at:Date.now()}); }
 async function addTask(text,date){ text=(text||'').trim(); if(!text) return;
   await addDoc(collection(cref(),'fun'),{kind:'task',by:me.uid,text:text.slice(0,200),date:date||null,done:false,doneOn:null,at:Date.now()}); }
 const pTaskRow=f=>`<div class="ptask${f.done?' done':''}"><button class="pchk" data-ptog="${f.id}" aria-label="${f.done?'Mark as not done':'Mark as done'}">${f.done?'☑':'☐'}</button><span class="ptxt">${esc(f.text)}</span>${f.date?'':`<button class="pmv" data-ptoday="${f.id}" aria-label="Move to today" title="Move to today">📅</button>`}<button class="pdel" data-pdel="${f.id}" aria-label="Delete">✕</button></div>`;
@@ -1717,37 +1739,91 @@ function planBind(root){
   root.querySelectorAll('[data-pcarry]').forEach(b=>b.onclick=()=>{ const t=todayStr(); myTasks().filter(f=>f.date&&f.date<t&&!f.done&&f.date>=pdate(t,-14)).forEach(f=>updateDoc(pRef(f.id),{date:t})); });
   root.querySelectorAll('[data-pclear]').forEach(b=>b.onclick=()=>myTasks().filter(f=>!f.date&&f.done).forEach(f=>deleteDoc(pRef(f.id))));
   root.querySelectorAll('[data-pwk]').forEach(b=>b.onclick=()=>{ planWk=b.dataset.pwk==='0'?0:planWk+(+b.dataset.pwk); renderPlan(); });
-  root.querySelectorAll('[data-popen]').forEach(b=>b.onclick=()=>goTab('plan'));
+  root.querySelectorAll('[data-popen]').forEach(b=>b.onclick=()=>{ planTab=b.dataset.popen||'plan'; goTab('plan'); });
+  root.querySelectorAll('[data-ptab]').forEach(b=>b.onclick=()=>{ planTab=b.dataset.ptab; renderPlan(); });
+  root.querySelectorAll('[data-calopen]').forEach(b=>b.onclick=()=>{ calOpen=!calOpen; renderPlan(); });
+  root.querySelectorAll('[data-cal]').forEach(b=>b.onclick=()=>{ calOff=b.dataset.cal==='0'?0:calOff+(+b.dataset.cal); renderPlan(); });
+  root.querySelectorAll('[data-cald]').forEach(b=>b.onclick=()=>{ calSel=calSel===b.dataset.cald?'':b.dataset.cald; renderPlan(); });
+  root.querySelectorAll('[data-dtog]').forEach(b=>b.onclick=()=>{ const f=fun.find(x=>x.id===b.dataset.dtog); if(f) updateDoc(pRef(f.id),{done:!f.done,doneOn:f.done?null:todayStr()}); });
+  root.querySelectorAll('[data-ddel]').forEach(b=>b.onclick=()=>deleteDoc(pRef(b.dataset.ddel)));
+  root.querySelectorAll('[data-cdone]').forEach(b=>b.onclick=()=>updateDoc(pRef(b.dataset.cdone),{last:todayStr()}));
+  root.querySelectorAll('[data-cdel]').forEach(b=>b.onclick=()=>{ const f=fun.find(x=>x.id===b.dataset.cdel); if(f&&confirm('Delete “'+f.title+'”?')) deleteDoc(pRef(f.id)); });
+  root.querySelectorAll('[data-cpre]').forEach(b=>b.onclick=()=>{ const [a,i]=b.dataset.cpre.split(':'), p=PRE[a][+i]; addChore(a,p[0],p[1]); });
+  root.querySelectorAll('[data-dadd]').forEach(b=>b.onclick=addDeadline);
+  root.querySelectorAll('[data-cadd]').forEach(b=>b.onclick=()=>{ const t=PD.ct; if(!t.trim()) return; PD.ct=''; addChore(b.dataset.cadd,t,PD.ce); });
+  root.querySelectorAll('[data-draft]').forEach(i=>{ i.oninput=()=>{ PD[i.dataset.draft]=i.value; }; i.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); const b=root.querySelector(i.dataset.draft[0]==='d'?'[data-dadd]':'[data-cadd]'); if(b) b.click(); } }; });
   root.querySelectorAll('[data-pback]').forEach(b=>b.onclick=()=>goTab('dash'));
+}
+function planSummary(){
+  const t=todayStr(), D=myDocs('deadline').filter(f=>!f.done).sort(byDate), nx=D.find(f=>f.date>=t)||D[0];
+  const cnt=a=>myDocs('chore').filter(f=>f.area===a&&choreDiff(f)<=0).length, hc=cnt('home'), cc=cnt('care');
+  const b=(k,x)=>`<button class="btn ghost small" data-popen="${k}">${x}</button>`;
+  const P=[nx?b('college','🎓 '+esc(nx.title)+' · '+esc(dueLabel(nx.date))):'',hc?b('home','🏠 '+hc+' due'):'',cc?b('care','🧴 '+cc+' due'):''].filter(Boolean);
+  return P.length?`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">${P.join('')}</div>`:'';
 }
 function renderPlanBox(){
   const el=$('planbox'); if(!el||!me) return;
   const t=todayStr(), T=myTasks(), L=T.filter(f=>f.date===t), dn=L.filter(f=>f.done).length;
   const late=T.filter(f=>f.date&&f.date<t&&!f.done&&f.date>=pdate(t,-14)).length, er=T.filter(f=>!f.date&&!f.done).length;
-  el.innerHTML=`<section class="card" style="margin-bottom:14px" aria-label="My plan for today"><div class="row" style="justify-content:space-between;align-items:center"><h2>📝 My day</h2><span class="muted">${L.length?`${dn}/${L.length} done`:'Nothing planned yet'}</span></div>${L.map(pTaskRow).join('')}${late?`<button class="btn ghost small" data-pcarry style="margin-top:8px">↪ Move ${late} unfinished from earlier to today</button>`:''}${pAddRow('d',t,'Add something for today…')}${er?`<p class="muted" style="margin:8px 0 0">🛒 ${er} errand${er>1?'s':''} waiting</p>`:''}<button class="btn ghost small" data-popen style="margin-top:8px">Plan the week &amp; errands ›</button></section>`;
+  const sm=planSummary();
+  el.innerHTML=`<section class="card" style="margin-bottom:14px" aria-label="My plan for today"><div class="row" style="justify-content:space-between;align-items:center"><h2>📝 My day</h2><span class="muted">${L.length?`${dn}/${L.length} done`:'Nothing planned yet'}</span></div>${L.map(pTaskRow).join('')}${late?`<button class="btn ghost small" data-pcarry style="margin-top:8px">↪ Move ${late} unfinished from earlier to today</button>`:''}${pAddRow('d',t,'Add something for today…')}${er?`<p class="muted" style="margin:8px 0 0">🛒 ${er} errand${er>1?'s':''} waiting</p>`:''}${sm}<button class="btn ghost small" data-popen="plan" style="margin-top:8px">Plan the week &amp; errands ›</button></section>`;
   planBind(el);
 }
-function renderPlan(){
-  const el=$('v-plan'); if(!el||!me) return;
+function planWeekHTML(){
   const t0=todayStr(), now=new Date(); now.setDate(now.getDate()-((now.getDay()+6)%7)+planWk*7);
   const days=[0,1,2,3,4,5,6].map(i=>pdate(fmt(now),i)), T=myTasks();
   const wk=T.filter(f=>days.includes(f.date)), wd=wk.filter(f=>f.done).length, E=T.filter(f=>!f.date);
-  el.innerHTML=`<section class="card" style="margin-bottom:14px"><button class="btn ghost small" data-pback style="margin-bottom:8px">‹ Home</button><div class="row" style="justify-content:space-between;align-items:center"><button class="btn ghost small" data-pwk="-1" aria-label="Previous week">‹</button><div style="text-align:center"><b>${pShort(days[0])} – ${pShort(days[6])}</b><div class="muted" style="font-size:13px">${planWk===0?'This week · ':''}${wd}/${wk.length} done</div></div><button class="btn ghost small" data-pwk="1" aria-label="Next week">›</button></div>${planWk?`<button class="btn ghost small" data-pwk="0" style="margin-top:8px">Back to this week</button>`:''}</section>`+
+  return `<section class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between;align-items:center"><button class="btn ghost small" data-pwk="-1" aria-label="Previous week">‹</button><div style="text-align:center"><b>${pShort(days[0])} – ${pShort(days[6])}</b><div class="muted" style="font-size:13px">${planWk===0?'This week · ':''}${wd}/${wk.length} done</div></div><button class="btn ghost small" data-pwk="1" aria-label="Next week">›</button></div>${planWk?`<button class="btn ghost small" data-pwk="0" style="margin-top:8px">Back to this week</button>`:''}</section>`+
   days.map(d=>{ const L=T.filter(f=>f.date===d), dn=L.filter(f=>f.done).length; return `<section class="card" style="margin-bottom:14px;${d===t0?'border-color:var(--me)':''}"><div class="row" style="justify-content:space-between"><b>${pDay(d)}${d===t0?' · today':''}</b><span class="muted">${L.length?`${dn}/${L.length}`:''}</span></div>${L.map(pTaskRow).join('')}${pAddRow('p',d,'Add for this day…')}</section>`; }).join('')+
   `<section class="card" style="margin-bottom:14px"><h2>🛒 Errands</h2><p class="muted" style="margin:4px 0">No date needed. Tap 📅 to move one to today.</p>${E.map(pTaskRow).join('')||'<p class="muted">No errands waiting.</p>'}${pAddRow('p','','Add an errand…')}${E.some(f=>f.done)?'<button class="btn ghost small" data-pclear style="margin-top:8px">Clear done errands</button>':''}</section>`;
+}
+function calHTML(D,row){
+  const b=new Date(); b.setDate(1); b.setMonth(b.getMonth()+calOff);
+  const y=b.getFullYear(), m=b.getMonth(), lead=(new Date(y,m,1).getDay()+6)%7, nd=new Date(y,m+1,0).getDate(), t0=todayStr(), by={};
+  D.forEach(f=>{ (by[f.date]=by[f.date]||[]).push(f); });
+  let cells='<i></i>'.repeat(lead);
+  for(let d=1;d<=nd;d++){ const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, L=by[ds]||[], op=L.filter(f=>!f.done).length;
+    cells+=`<button class="cald${ds===t0?' today':''}${ds===calSel?' sel':''}" data-cald="${ds}" aria-label="${ds}${L.length?', '+L.length+' deadline'+(L.length>1?'s':''):''}">${d}${L.length?`<b class="${op?(ds<t0?'late':''):'ok'}"></b>`:''}</button>`; }
+  const sl=calSel?D.filter(f=>f.date===calSel):[];
+  return `<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><button class="btn ghost small" data-cal="-1" aria-label="Previous month">‹</button><b>${b.toLocaleDateString(undefined,{month:'long',year:'numeric'})}</b><button class="btn ghost small" data-cal="1" aria-label="Next month">›</button></div>`+
+  `<div class="calg">${['M','T','W','T','F','S','S'].map(x=>`<span class="calh">${x}</span>`).join('')}${cells}</div>${calOff?'<button class="btn ghost small" data-cal="0" style="margin-top:8px">Back to this month</button>':''}`+
+  `<div style="margin-top:10px">${calSel?`<b>${pDay(calSel)}</b>${sl.length?sl.map(row).join(''):'<p class="muted" style="margin:4px 0">No deadlines.</p>'}`:'<p class="muted" style="margin:4px 0">Tap a day to see its deadlines.</p>'}</div>`;
+}
+function collegeHTML(){
+  const t0=todayStr(), D=myDocs('deadline').sort(byDate), op=D.filter(f=>!f.done), nx=op.find(f=>f.date>=t0)||op[0];
+  const row=f=>{ const late=!f.done&&f.date<t0; return `<div class="ptask${f.done?' done':''}"><button class="pchk" data-dtog="${f.id}" aria-label="${f.done?'Mark as not done':'Mark as done'}">${f.done?'☑':'☐'}</button><span class="ptxt"><b>${esc(f.title)}</b>${f.course?` <span class="muted">· ${esc(f.course)}</span>`:''}<br><small class="${late?'plate':'muted'}">${esc(dueLabel(f.date))}</small></span><button class="pdel" data-ddel="${f.id}" aria-label="Delete">✕</button></div>`; };
+  const sec=(h,L)=>L.length?`<h3 class="muted" style="margin:12px 0 2px;font-size:14px">${h}</h3>${L.map(row).join('')}`:'';
+  const over=op.filter(f=>f.date<t0), soon=op.filter(f=>f.date>=t0), dn=D.filter(f=>f.done);
+  return `<button class="calbox" data-calopen aria-expanded="${calOpen}"><span style="float:right">${calOpen?'▾':'▸'}</span>📅 <b>Deadlines calendar</b><div class="muted" style="font-size:13px;margin-top:2px">${nx?'Next: '+esc(nx.title)+' · '+esc(dueLabel(nx.date)):'No deadlines yet'}</div></button>`+
+  (calOpen?`<section class="card" style="margin-bottom:14px">${calHTML(D,row)}</section>`:'')+
+  `<section class="card" style="margin-bottom:14px"><h2>🎓 Add a deadline</h2><div style="display:grid;gap:6px;margin-top:6px"><input id="drdt" data-pin="1" data-draft="dt" value="${esc(PD.dt)}" maxlength="120" placeholder="What’s due? (e.g. Essay draft)"><input id="drdc" data-pin="1" data-draft="dc" value="${esc(PD.dc)}" maxlength="60" placeholder="Course (optional)"><input id="drdd" type="date" data-pin="1" data-draft="dd" value="${esc(PD.dd)}" aria-label="Due date"><button class="btn small" data-dadd>Add deadline</button></div></section>`+
+  `<section class="card" style="margin-bottom:14px"><h2>Coming up</h2>${op.length?sec('Overdue',over)+sec('Upcoming',soon):'<p class="muted">No open deadlines. 🎉</p>'}${sec('Done (cleared after a week)',dn)}</section>`;
+}
+function choreHTML(area){
+  const home=area==='home', L=myDocs('chore').filter(f=>f.area===area).sort((a,b)=>choreDiff(a)-choreDiff(b)), have=new Set(L.map(f=>f.title.toLowerCase()));
+  const chips=PRE[area].map(([n],i)=>have.has(n.toLowerCase())?'':`<button class="btn ghost small" data-cpre="${area}:${i}" style="margin:0 6px 6px 0">＋ ${esc(n)}</button>`).join('');
+  const row=f=>{ const d=choreDiff(f), st=!f.last?'New · due now':d<0?`${-d} day${d<-1?'s':''} overdue`:d===0?'Due today':d===1?'Due tomorrow':`Due in ${d} days`;
+    return `<div class="ptask"><span class="ptxt"><b>${esc(f.title)}</b> <span class="muted">· every ${f.every} day${f.every>1?'s':''}</span><br><small class="${d<=0?'plate':'muted'}">${st}${f.last?' · last done '+esc(pShort(f.last)):''}</small></span><button class="btn small ${d<=0?'':'ghost'}" data-cdone="${f.id}">✓ Done</button><button class="pdel" data-cdel="${f.id}" aria-label="Delete">✕</button></div>`; };
+  return `<section class="card" style="margin-bottom:14px"><h2>${home?'🏠 Home maintenance':'🧴 Self-care'}</h2><p class="muted" style="margin:4px 0 6px">${home?'Jobs that come round every so often.':'Little routines to look after yourself.'} Tap ✓ Done and the next due date resets.</p>${L.map(row).join('')||'<p class="muted">Nothing here yet. Add one below.</p>'}</section>`+
+  `<section class="card" style="margin-bottom:14px"><h2>Add one</h2><div style="display:grid;gap:6px;margin-top:6px"><input id="drct" data-pin="1" data-draft="ct" value="${esc(PD.ct)}" maxlength="80" placeholder="${home?'e.g. Clean the oven':'e.g. Moisturise hands'}"><div class="row" style="gap:6px;align-items:center"><span class="muted">Every</span><input id="drce" type="number" min="1" max="365" inputmode="numeric" data-pin="1" data-draft="ce" value="${esc(PD.ce)}" style="width:76px" aria-label="Repeat every N days"><span class="muted">days</span><button class="btn small" data-cadd="${area}" style="margin-left:auto">Add</button></div></div>${chips?`<p class="muted" style="margin:10px 0 4px">Quick adds</p>${chips}`:''}</section>`;
+}
+function renderPlan(){
+  const el=$('v-plan'); if(!el||!me) return;
+  const tabs=[['plan','📝 Plan'],['college','🎓 College'],['home','🏠 Home'],['care','🧴 Self-care']];
+  el.innerHTML=`<section class="card" style="margin-bottom:14px"><div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><button class="btn ghost small" data-pback aria-label="Back to home">‹</button>${tabs.map(([k,n])=>`<button class="btn small ${planTab===k?'':'ghost'}" data-ptab="${k}">${n}</button>`).join('')}</div></section>`+
+    (planTab==='college'?collegeHTML():planTab==='home'||planTab==='care'?choreHTML(planTab):planWeekHTML());
   planBind(el);
 }
-/* redraw in place when tasks change, keeping the cursor in the box you are typing in */
 /* finished tasks are deleted 7 days after you ticked them (checked once per day, mine only) */
 let planCleanDay='';
 function planClean(){
   const t=todayStr(); if(planCleanDay===t||!funLoaded) return; planCleanDay=t; const cut=pdate(t,-7);
-  myTasks().filter(f=>f.done&&(f.doneOn||f.date||t)<=cut).forEach(f=>deleteDoc(pRef(f.id)).catch(()=>{}));
+  [...myTasks(),...myDocs('deadline')].filter(f=>f.done&&(f.doneOn||f.date||t)<=cut).forEach(f=>deleteDoc(pRef(f.id)).catch(()=>{}));
 }
 function planLive(){
   if(!me) return;
   planClean();
-  const sig=JSON.stringify(myTasks().map(f=>[f.id,f.text,f.date,f.done]))+tab+planWk; if(sig===planSig) return; planSig=sig;
+  const sig=JSON.stringify(fun.filter(f=>f.by===me.uid&&(f.kind==='task'||f.kind==='deadline'||f.kind==='chore')).map(f=>[f.id,f.text||f.title,f.date,f.done,f.last,f.every,f.course]))+tab+planWk+planTab+calOff+calOpen+calSel; if(sig===planSig) return; planSig=sig;
   const ae=document.activeElement, fid=ae&&ae.dataset&&ae.dataset.pin?ae.id:'', fv=fid?ae.value:'', ss=fid?ae.selectionStart:0;
   renderPlanBox(); if(tab==='plan') renderPlan();
   if(fid){ const n=$(fid); if(n){ n.value=fv; n.focus(); try{ n.setSelectionRange(ss,ss); }catch(e){} } }
