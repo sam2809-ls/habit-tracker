@@ -135,6 +135,11 @@
   .dua{padding:12px;border-radius:12px;background:var(--bg);margin-top:10px}
   .dua p{margin:6px 0;white-space:pre-wrap}
   .swatch{width:64px;height:64px;border-radius:50%;border:3px solid var(--line);flex:none}
+  .ptask{display:flex;align-items:center;gap:6px;padding:6px 2px;border-bottom:1px solid var(--line)}
+  .ptask.done .ptxt{text-decoration:line-through;color:var(--muted)}
+  .ptxt{flex:1;min-width:0;overflow-wrap:anywhere}
+  .pchk,.pdel,.pmv{background:none;border:0;cursor:pointer;color:var(--ink);padding:4px 6px;font-size:22px;line-height:1}
+  .pdel,.pmv{font-size:15px;color:var(--muted)}
   .find{padding:10px 12px;border-radius:12px;background:var(--bg);margin-top:8px}
   .together{margin-top:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .together .big{font-size:44px}
@@ -402,6 +407,7 @@
       <button class="tab rl" data-tab="problems" style="--t:#f2b134"><span class="ic">🧩</span>Problems</button>
       <button class="tab rl" data-tab="fun" style="--t:#3b82f6"><span class="ic">🎈</span>Fun together</button>
       <button class="tab rl" data-tab="jar" style="--t:#ff7a90"><span class="ic">💌</span>Love jar</button>
+      <button class="tab rl" data-tab="plan" style="--t:#10b981"><span class="ic">📝</span>Planner</button>
     </aside>
 
     <button class="edge edge-r hidden" id="qedge" aria-label="Open Quran and duas"><span>📖</span><span class="vt">Quran &amp; duas</span></button>
@@ -419,6 +425,7 @@
     <div id="v-fun" class="hidden"></div>
     <div id="v-jar" class="hidden"></div>
     <div id="v-study" class="hidden"></div>
+    <div id="v-plan" class="hidden"></div>
   </main>
 </div>
 
@@ -680,7 +687,7 @@ function start(){
   const cutoff = lastDays(70)[0];
   unsubs.push(onSnapshot(base, s => { couple = s.data(); couple && couple.id===undefined && (couple.id=cid); checkAlerts(); render(); if(!$('nickmodal').classList.contains('hidden')) renderNicks(); if(!$('notifmodal').classList.contains('hidden')) renderNotif(); }));
   unsubs.push(onSnapshot(collection(base,'habits'), s => { habits = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
-  unsubs.push(onSnapshot(collection(base,'fun'), s => { fun = s.docs.map(d=>({id:d.id,...d.data()})); funLoaded=true; checkAlerts(); render(); }));
+  unsubs.push(onSnapshot(collection(base,'fun'), s => { fun = s.docs.map(d=>({id:d.id,...d.data()})); funLoaded=true; try{ planLive(); }catch(e){} checkAlerts(); render(); }));
   unsubs.push(onSnapshot(collection(base,'goals'), s => { goals = s.docs.map(d=>({id:d.id,...d.data()})); render(); }));
   unsubs.push(onSnapshot(query(collection(base,'logs'), where('date','>=',cutoff)), s => {
     logs = new Map(s.docs.map(d=>[d.id, d.data()])); render();
@@ -1223,6 +1230,7 @@ async function pollNow(){
   try{
     const s=await getDocs(collection(cref(),'fun'));
     fun=s.docs.map(d=>({id:d.id,...d.data()}));
+    try{ planLive(); }catch(e){}
     checkAlerts(); render();
   }catch(e){}
 }
@@ -1689,6 +1697,56 @@ function colourStatsHTML(pid){
     <div class="heat" style="grid-template-columns:repeat(7,1fr)">${strip}</div>
     <p class="muted" style="margin:10px 0 0;font-size:14px">1 point for each find (up to 3 a day each), plus 2 bonus points on days you both find at least one. The streak counts days in a row when you both did.</p></div>`;
 }
+/* ===== PLANNER: start ===== */
+/* Personal day/week checklist + errands. Stored in the 'fun' collection as kind:'task' (date=null means errand). */
+let planWk=0, planSig='';
+const pdate=(d,n)=>{ const x=new Date(d+'T12:00'); x.setDate(x.getDate()+n); return fmt(x); };
+const pDay=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short'});
+const pShort=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{day:'numeric',month:'short'});
+const myTasks=()=>fun.filter(f=>f.kind==='task'&&f.by===me.uid).sort((a,b)=>(a.at||0)-(b.at||0));
+const pRef=id=>doc(cref(),'fun',id);
+async function addTask(text,date){ text=(text||'').trim(); if(!text) return;
+  await addDoc(collection(cref(),'fun'),{kind:'task',by:me.uid,text:text.slice(0,200),date:date||null,done:false,doneOn:null,at:Date.now()}); }
+const pTaskRow=f=>`<div class="ptask${f.done?' done':''}"><button class="pchk" data-ptog="${f.id}" aria-label="${f.done?'Mark as not done':'Mark as done'}">${f.done?'☑':'☐'}</button><span class="ptxt">${esc(f.text)}</span>${f.date?'':`<button class="pmv" data-ptoday="${f.id}" aria-label="Move to today" title="Move to today">📅</button>`}<button class="pdel" data-pdel="${f.id}" aria-label="Delete">✕</button></div>`;
+const pAddRow=(sc,date,ph)=>`<div class="row" style="gap:6px;margin-top:8px"><input id="pin${sc}-${date||'errand'}" data-pin="1" maxlength="200" placeholder="${ph}" aria-label="${ph}" style="flex:1;min-width:0"><button class="btn small" data-padd="${date}">Add</button></div>`;
+function planBind(root){
+  root.querySelectorAll('[data-ptog]').forEach(b=>b.onclick=()=>{ const f=fun.find(x=>x.id===b.dataset.ptog); if(f) updateDoc(pRef(f.id),{done:!f.done,doneOn:f.done?null:todayStr()}); });
+  root.querySelectorAll('[data-pdel]').forEach(b=>b.onclick=()=>deleteDoc(pRef(b.dataset.pdel)));
+  root.querySelectorAll('[data-ptoday]').forEach(b=>b.onclick=()=>updateDoc(pRef(b.dataset.ptoday),{date:todayStr()}));
+  root.querySelectorAll('[data-padd]').forEach(b=>{ const inp=b.parentElement.querySelector('input'); const go=()=>{ const v=inp.value.trim(); if(!v) return; inp.value=''; addTask(v,b.dataset.padd||null); }; b.onclick=go; inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); go(); } }; });
+  root.querySelectorAll('[data-pcarry]').forEach(b=>b.onclick=()=>{ const t=todayStr(); myTasks().filter(f=>f.date&&f.date<t&&!f.done&&f.date>=pdate(t,-14)).forEach(f=>updateDoc(pRef(f.id),{date:t})); });
+  root.querySelectorAll('[data-pclear]').forEach(b=>b.onclick=()=>myTasks().filter(f=>!f.date&&f.done).forEach(f=>deleteDoc(pRef(f.id))));
+  root.querySelectorAll('[data-pwk]').forEach(b=>b.onclick=()=>{ planWk=b.dataset.pwk==='0'?0:planWk+(+b.dataset.pwk); renderPlan(); });
+  root.querySelectorAll('[data-popen]').forEach(b=>b.onclick=()=>goTab('plan'));
+  root.querySelectorAll('[data-pback]').forEach(b=>b.onclick=()=>goTab('dash'));
+}
+function renderPlanBox(){
+  const el=$('planbox'); if(!el||!me) return;
+  const t=todayStr(), T=myTasks(), L=T.filter(f=>f.date===t), dn=L.filter(f=>f.done).length;
+  const late=T.filter(f=>f.date&&f.date<t&&!f.done&&f.date>=pdate(t,-14)).length, er=T.filter(f=>!f.date&&!f.done).length;
+  el.innerHTML=`<section class="card" style="margin-bottom:14px" aria-label="My plan for today"><div class="row" style="justify-content:space-between;align-items:center"><h2>📝 My day</h2><span class="muted">${L.length?`${dn}/${L.length} done`:'Nothing planned yet'}</span></div>${L.map(pTaskRow).join('')}${late?`<button class="btn ghost small" data-pcarry style="margin-top:8px">↪ Move ${late} unfinished from earlier to today</button>`:''}${pAddRow('d',t,'Add something for today…')}${er?`<p class="muted" style="margin:8px 0 0">🛒 ${er} errand${er>1?'s':''} waiting</p>`:''}<button class="btn ghost small" data-popen style="margin-top:8px">Plan the week &amp; errands ›</button></section>`;
+  planBind(el);
+}
+function renderPlan(){
+  const el=$('v-plan'); if(!el||!me) return;
+  const t0=todayStr(), now=new Date(); now.setDate(now.getDate()-((now.getDay()+6)%7)+planWk*7);
+  const days=[0,1,2,3,4,5,6].map(i=>pdate(fmt(now),i)), T=myTasks();
+  const wk=T.filter(f=>days.includes(f.date)), wd=wk.filter(f=>f.done).length, E=T.filter(f=>!f.date);
+  el.innerHTML=`<section class="card" style="margin-bottom:14px"><button class="btn ghost small" data-pback style="margin-bottom:8px">‹ Home</button><div class="row" style="justify-content:space-between;align-items:center"><button class="btn ghost small" data-pwk="-1" aria-label="Previous week">‹</button><div style="text-align:center"><b>${pShort(days[0])} – ${pShort(days[6])}</b><div class="muted" style="font-size:13px">${planWk===0?'This week · ':''}${wd}/${wk.length} done</div></div><button class="btn ghost small" data-pwk="1" aria-label="Next week">›</button></div>${planWk?`<button class="btn ghost small" data-pwk="0" style="margin-top:8px">Back to this week</button>`:''}</section>`+
+  days.map(d=>{ const L=T.filter(f=>f.date===d), dn=L.filter(f=>f.done).length; return `<section class="card" style="margin-bottom:14px;${d===t0?'border-color:var(--me)':''}"><div class="row" style="justify-content:space-between"><b>${pDay(d)}${d===t0?' · today':''}</b><span class="muted">${L.length?`${dn}/${L.length}`:''}</span></div>${L.map(pTaskRow).join('')}${pAddRow('p',d,'Add for this day…')}</section>`; }).join('')+
+  `<section class="card" style="margin-bottom:14px"><h2>🛒 Errands</h2><p class="muted" style="margin:4px 0">No date needed. Tap 📅 to move one to today.</p>${E.map(pTaskRow).join('')||'<p class="muted">No errands waiting.</p>'}${pAddRow('p','','Add an errand…')}${E.some(f=>f.done)?'<button class="btn ghost small" data-pclear style="margin-top:8px">Clear done errands</button>':''}</section>`;
+  planBind(el);
+}
+/* redraw in place when tasks change, keeping the cursor in the box you are typing in */
+function planLive(){
+  if(!me) return;
+  const sig=JSON.stringify(myTasks().map(f=>[f.id,f.text,f.date,f.done]))+tab+planWk; if(sig===planSig) return; planSig=sig;
+  const ae=document.activeElement, fid=ae&&ae.dataset&&ae.dataset.pin?ae.id:'', fv=fid?ae.value:'', ss=fid?ae.selectionStart:0;
+  renderPlanBox(); if(tab==='plan') renderPlan();
+  if(fid){ const n=$(fid); if(n){ n.value=fv; n.focus(); try{ n.setSelectionRange(ss,ss); }catch(e){} } }
+}
+/* ===== PLANNER: end ===== */
+
 async function addIdea(title){ if(!title.trim()) return;
   await addDoc(collection(cref(),'fun'),{kind:'idea',title:title.trim(),by:me.uid,done:false,doneOn:null}); }
 async function toggleIdea(f){ await updateDoc(doc(cref(),'fun',f.id), f.done?{done:false,doneOn:null}:{done:true,doneOn:todayStr()}); }
@@ -2323,7 +2381,7 @@ railBg.onclick=()=>setRail(false);
 $('qedge').onclick=()=>setQ(true);
 $('qbg').onclick=()=>setQ(false);
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ $('avmodal').classList.add('hidden'); if(!$('moodmodal').classList.contains('hidden')) closeMood(); setRail(false); if(qopen) setQ(false); } });
-const RAIL_INFO={goals:['🎯','Goals'],problems:['🧩','Problems'],fun:['🎈','Fun'],jar:['💌','Love jar']};
+const RAIL_INFO={goals:['🎯','Goals'],problems:['🧩','Problems'],fun:['🎈','Fun'],jar:['💌','Love jar'],plan:['📝','Planner']};
 const avSm={}; let avU=null;
 function renderAv(){
   const sm=avSm[avU]; if(!sm){ $('avmodal').classList.add('hidden'); return; }
@@ -2368,14 +2426,15 @@ function render(){
   const ae=document.activeElement;
   if(ae && (ae.tagName==='TEXTAREA'||ae.tagName==='INPUT') && $('app').contains(ae)){ pendingRender=true; return; }
   updateNav();
-  ['p25','dash','habits','goals','problems','pray','meals','sleep','fun','jar','study'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
+  ['p25','dash','habits','goals','problems','pray','meals','sleep','fun','jar','study','plan'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
   const pid = partnerId();
   updateBell();
   { const hr=new Date().getHours(); $('today').textContent = (hr<5?'🌙':hr<12?'☀️':hr<18?'🌤️':'🌙')+' '+new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
   $('title').textContent = pid ? `${nameOf(me.uid)} & ${nameOf(pid)}` : 'Our road to ready';
   renderP25();
   if(tab==='p25'){ const w=p25Week(); $('title').textContent='Who I’m becoming'; $('today').textContent=`Week ${w.n} of ${w.total} · ${w.left} left`; }
-  if(tab==='dash') renderDash(pid);
+  if(tab==='dash'){ renderDash(pid); renderPlanBox(); }
+  if(tab==='plan') renderPlan();
   if(tab==='habits') renderHabits(pid);
   if(tab==='goals') renderGoals();
   if(tab==='problems') renderProblems(pid);
@@ -2454,6 +2513,7 @@ function renderDash(pid){
     ${statusHTML(pid)}
     ${sickCardHTML(pid)}
     ${duaBubbleHTML()}
+    <div id="planbox"></div>
     <section class="card road" aria-label="Getting ready for marriage progress">
       <div class="row" style="justify-content:space-between;align-items:flex-end">
         <h2>Getting ready for marriage</h2>
