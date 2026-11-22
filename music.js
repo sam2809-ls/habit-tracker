@@ -36,7 +36,10 @@ const $ = s => D && D.querySelector(s);
 
 export function npLine(uid) { const n = npOf(uid); return live(n) ? '🎵 ' + C.esc(label(n)) : ''; }
 export function musicTick() { ensure(); drawBar(); if (open) drawPart(); }
-export function openMusicModal() { ensure(); if (!D) return; open = !open; $('#mpanel').style.display = open ? 'block' : 'none'; $('#mex').textContent = open ? '▾' : '▴'; if (open) { drawPart(); drawPanel(); } }
+let wrapOpen = false;
+function showWrap(v) { wrapOpen = v; $('#mwrap').style.display = v ? 'block' : 'none'; $('#mfab').setAttribute('aria-expanded', String(v)); }
+function showPanel(v) { open = v; $('#mpanel').style.display = v ? 'block' : 'none'; $('#mex').textContent = v ? '▾' : '▴'; if (v) { drawPart(); drawPanel(); } }
+export function openMusicModal() { ensure(); if (!D) return; if (wrapOpen && open) { showPanel(false); showWrap(false); } else { showWrap(true); showPanel(true); } }
 
 function share(on) {
   if (!C || !C.couple() || cur < 0 || !Q[cur]) return;
@@ -83,7 +86,7 @@ au.ontimeupdate = () => { if (!open || !D) return; const s = $('#mseek'); if (s 
 function drawBar() {
   if (!D) return;
   const p = C.pid(), n = npOf(p), who = p ? C.nameOf(p) : 'Partner';
-  $('#mbp').textContent = au.paused ? '▶' : '⏸';
+  $('#mbp').textContent = au.paused ? '▶' : '⏸'; { const f = $('#mfab'); if (f) f.classList.toggle('on', !au.paused); }
   $('#mtxt').innerHTML = `<div class="ml">${cur >= 0 ? '🎧 ' + C.esc(label(Q[cur])) : (Q.length ? 'Tap ▶ to play your songs' : 'Tap ▶ to add your songs')}</div><div class="ml muted">${C.esc(who)}: ${live(n) ? '🎵 ' + C.esc(label(n)) : 'not playing'}</div>`;
 }
 function drawPart() {
@@ -108,9 +111,9 @@ function drawPanel() {
 function ensure() {
   if (D || !C || !C.couple()) return;
   D = document.createElement('div'); D.id = 'mdock';
-  D.style.cssText = 'position:fixed;left:14px;bottom:96px;z-index:60;width:min(290px,calc(100vw - 100px));color:var(--ink)';
-  D.innerHTML = `<style>#mdock .ml{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#mdock .ml.muted{font-size:11px}</style>
-<div id="mpanel" style="display:none;background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:12px;margin-bottom:8px;max-height:60vh;overflow:auto;box-shadow:0 4px 14px rgba(0,0,0,.18)">
+  D.style.cssText = 'position:fixed;left:12px;bottom:96px;z-index:60;color:var(--ink)';
+  D.innerHTML = `<style>#mdock .ml{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#mdock .ml.muted{font-size:11px}#mfab{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:18px;cursor:pointer;padding:0;opacity:.85;position:relative;display:block}#mfab.on::after{content:"";position:absolute;top:3px;right:3px;width:9px;height:9px;border-radius:50%;background:#1f9d8f}body:has(.modal:not(.hidden)) #mdock,body:has(.planapp:not(.hidden)) #mdock{display:none}</style>
+<div id="mwrap" style="display:none;width:min(290px,calc(100vw - 100px));margin-bottom:8px"><div id="mpanel" style="display:none;background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:12px;margin-bottom:8px;max-height:60vh;overflow:auto;box-shadow:0 4px 14px rgba(0,0,0,.18)">
 <b style="font-size:15px">🎵 Our music</b><div id="mpart" style="padding:8px 0"></div>
 <div style="border-top:1px solid var(--line);padding-top:8px"><small class="muted">You</small><div id="mnow" style="margin:2px 0 6px"></div>
 <input type="range" id="mseek" min="0" max="0" step="1" value="0" style="width:100%"><div id="mtime" class="muted" style="font-size:12px;text-align:right">0:00 / 0:00</div>
@@ -123,6 +126,7 @@ function ensure() {
 <button id="mbp" class="btn small" aria-label="Play or pause" style="border-radius:50%;width:38px;height:38px;padding:0;flex:none">▶</button>
 <div id="mtxt" style="flex:1;min-width:0;font-size:12px;line-height:1.3"></div>
 <button id="mex" class="btn ghost small" aria-label="Open player" style="flex:none">▴</button></div>
+</div><button id="mfab" aria-label="Music" aria-expanded="false">🎵</button>
 <input type="file" id="mf" accept="audio/*" multiple hidden>`;
   document.body.appendChild(D);
   D.onclick = e => {
@@ -132,7 +136,8 @@ function ensure() {
     if (r) { curPL() ? outPL(+r.dataset.rm) : rm(+r.dataset.rm); }
     else if (tg) toggleIn(+tg.dataset.tg);
     else if (q) play(+q.dataset.q);
-    else if (id === 'mex') openMusicModal();
+    else if (id === 'mex') showPanel(!open);
+    else if (id === 'mfab') { if (wrapOpen) { showPanel(false); showWrap(false); } else showWrap(true); }
     else if (id === 'mbp' || id === 'mpp') { if (cur < 0) { const a = act(); a.length ? play(a[0]) : $('#mf').click(); } else au.paused ? au.play() : au.pause(); }
     else if (id === 'mnext') go(1); else if (id === 'mprev') go(-1);
     else if (id === 'madd') $('#mf').click();
