@@ -16,7 +16,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, query, where,
   onSnapshot, arrayUnion, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { initP25, renderP25, p25Progress, p25Week, p25Summary, p25View, p25Look } from "./p25.js?v=13";
-import { initStudy, renderStudy, stopStudyAmb, renderBubble, openStudy, studyMode } from "./study.js?v=30";
+import { initStudy, renderStudy, stopStudyAmb, renderBubble, openStudy, studyMode } from "./study.js?v=31";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -1430,6 +1430,7 @@ function enHTML(){ const t0=todayStr(), ds=enDay(), isT=ds===t0, sl=sleepDoc(me.
   const X=h=>22+h/24*310, Y=v=>10+(5-v)/4*116, f1=n=>n.toFixed(1), pts=R.map(f=>[X(hrs(f.ts)),Y(f.v),f]);
   const svg=`<svg viewBox="0 0 340 152" style="width:100%;height:auto" role="img" aria-label="Energy through the day">${[1,2,3,4,5].map(v=>`<line x1="22" x2="332" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="16" y="${Y(v)+3}" font-size="9" text-anchor="end" fill="currentColor" opacity=".6">${v}</text>`).join('')}${[0,4,8,12,16,20,24].map(h=>`<text x="${X(h)}" y="150" font-size="9" text-anchor="middle" fill="currentColor" opacity=".6">${h}</text>`).join('')}${pts.length>1?`<polyline points="${pts.map(q=>f1(q[0])+','+f1(q[1])).join(' ')}" fill="none" stroke="var(--me)" stroke-width="2"/>`:''}${pts.map(([x,y,f])=>`<circle cx="${f1(x)}" cy="${f1(y)}" r="4" fill="var(--me)"/>${f.t?`<text x="${f1(x)}" y="${f1(y-7)}" font-size="10" font-weight="700" text-anchor="middle" fill="#e0457b">T</text>`:''}`).join('')}${E.filter(f=>(f.lv||[]).length).map(f=>`<text x="${f1(X(hrs(f.ts)))}" y="140" font-size="9" text-anchor="middle" fill="currentColor">${f.lv[0]}</text>`).join('')}</svg>`;
   return `<section class="card" style="margin-bottom:14px"><div class="row" style="justify-content:space-between;align-items:center"><button class="btn ghost small" data-emo="-1" aria-label="Previous day">‹</button><div style="text-align:center"><b>${isT?'Today':pDay(ds)}</b>${isT?'':`<div><button class="btn ghost small" data-emo="0" style="margin-top:4px">Back to today</button></div>`}</div><button class="btn ghost small" data-emo="1" aria-label="Next day"${isT?' disabled':''}>›</button></div></section>`+
+  (isT?enStatusHTML():'')+
   (isT?`<section class="card" style="margin-bottom:14px"><h2>⚡ How’s your energy right now?</h2><div class="dchips" style="grid-template-columns:repeat(5,1fr);margin-top:8px">${[1,2,3,4,5].map(n=>`<button class="dchip" data-env="${n}" aria-label="Energy ${n}, ${ENL[n]}" style="height:48px;font-size:18px">${n}</button>`).join('')}</div><div class="dchips" style="grid-template-columns:repeat(5,1fr);margin-top:4px">${[1,2,3,4,5].map(n=>`<small class="muted" style="text-align:center;font-size:11px">${ENL[n]}</small>`).join('')}</div><button class="btn ${PK.et?'':'ghost '}small" data-etog style="margin-top:10px">T · tense or anxious${PK.et?' ✓':''}</button><p class="muted" style="margin:6px 0 0;font-size:13px">Turn T on first if you feel tense, then tap your number.</p>
   <details style="margin-top:10px"><summary class="muted">Not sure? Quick body check</summary><div style="margin-top:6px">${['eyes heavy or dry','yawning or slumping','brain foggy','hard to start a boring task'].map((x,i)=>`<div class="ptask"><button class="pchk" data-ebody="${i}" aria-label="${x}">${PK.eb.includes(i)?'☑':'☐'}</button><span class="ptxt">${x}</span></div>`).join('')}<p style="margin:6px 0 0">More ticks means a lower number. Suggests about <b>${sug}</b>. Sad but wide awake is still a 4.</p></div></details></section>`+
   `<section class="card" style="margin-bottom:14px"><h2>🧪 Log a lever</h2><p class="muted" style="margin:4px 0 8px">Tap when you do one. It’s stamped with the time.</p><div class="row" style="gap:6px;flex-wrap:wrap">${LV.map(([c,n])=>`<button class="btn ghost small" data-elv="${c}" aria-label="Log ${n}">${n}</button>`).join('')}</div></section>`:'')+
@@ -1497,6 +1498,8 @@ function planBind(root){
   root.querySelectorAll('[data-badd]').forEach(b=>b.onclick=addBill);
   root.querySelectorAll('[data-eadd]').forEach(b=>b.onclick=addExam);
   root.querySelectorAll('[data-bren]').forEach(b=>b.onclick=()=>{ const f=fun.find(x=>x.id===b.dataset.bren); if(!f||!f.date) return; let d=new Date(f.date+'T12:00'), n=0; do{ f.freq==='year'?d.setFullYear(d.getFullYear()+1):d.setMonth(d.getMonth()+1); n++; }while(fmt(d)<todayStr()&&n<36); updateDoc(pRef(f.id),{date:fmt(d)}); });
+  root.querySelectorAll('[data-pne]').forEach(b=>b.onclick=()=>setNow(b.dataset.pne,b.dataset.pnt));
+  root.querySelectorAll('[data-pnclr]').forEach(b=>b.onclick=()=>clearNow());
   root.querySelectorAll('[data-env]').forEach(b=>b.onclick=()=>logEn(+b.dataset.env,''));
   root.querySelectorAll('[data-elv]').forEach(b=>b.onclick=()=>logEn(0,b.dataset.elv));
   root.querySelectorAll('[data-etog]').forEach(b=>b.onclick=()=>{ PK.et=PK.et?'':'1'; renderPlanBox(); if(!$('planmodal').classList.contains('hidden')) renderPlan(); });
@@ -1575,8 +1578,15 @@ function tileSub(k){ try{ const t=todayStr();
  }catch(e){} return ''; }
 function planGrid(){ const tile=k=>{ const [ic,nm,c]=PT[k], big=k==='plan'; return `<button class="ptile" data-ptab="${k}" style="--c:${c};${big?'grid-column:1/-1;min-height:92px':''}"><span class="pe" style="font-size:${big?34:28}px">${ic}</span><b>${nm}</b><small class="muted">${esc(tileSub(k))}</small></button>`; };
   return `<p class="muted" style="margin:0 2px 12px">More of your planner ✨</p><div class="ptiles">${['plan','college','home','care','grow','class','fin'].map(tile).join('')}</div>`; }
+const energyNow=u=>u?fun.filter(f=>f.kind==='en'&&f.by===u&&f.date===todayStr()&&f.v).sort((a,b)=>a.ts-b.ts).pop()||null:null;
 /* partner's latest energy today (level + time only, nothing else from their check-ins is shown) */
 const partnerEn=()=>{ const pid=couple&&me?partnerId():null; return pid?fun.filter(f=>f.kind==='en'&&f.by===pid&&f.date===todayStr()&&f.v).sort((a,b)=>a.ts-b.ts).pop()||null:null; };
+function enStatusHTML(){
+  const pid=partnerId(), mine=statusOf(me.uid), theirs=pid?statusOf(pid):null, quick=fun.filter(f=>f.kind==='quick'&&f.uid===me.uid);
+  const line=(u,x)=>`<div style="font-size:14px;margin-top:4px"><b>${esc(nickOf(u))}</b>: ${x?`${esc(x.emoji)} ${esc(x.text)} <small class="muted">· ${ago(x.at)}</small>`:'<span class="muted">not sharing right now</span>'}</div>`;
+  const chips=STATUS_PRESETS.concat(quick.map(q=>[q.emoji,q.text])).map(([e,t])=>`<button class="chip" data-pne="${esc(e)}" data-pnt="${esc(t)}">${esc(e)} ${esc(t)}</button>`).join('');
+  return `<section class="card" style="margin-bottom:14px"><h2>💬 What we’re up to</h2>${pid?line(pid,theirs):''}${line(me.uid,mine)}<div class="chips" style="margin-top:8px">${chips}</div>${mine?'<button class="btn ghost small" data-pnclr style="margin-top:8px">Clear mine</button>':''}</section>`;
+}
 function energyBox(){ const L=enEntries(todayStr()).filter(f=>f.v).pop(), PE=partnerEn(), pid=couple&&me?partnerId():null;
   const pline=pid?`<div class="muted" style="font-size:13px;margin-top:2px">💗 ${esc(nameOf(pid))}: ${PE?`${PE.v} (${ENL[PE.v]}) at ${tm(PE.ts)}`:'no check-in yet today'}</div>`:'';
   return `<button class="calbox" data-eopen aria-expanded="${enOpen}"><span style="float:right">${enOpen?'▾':'▸'}</span>⚡ <b>Energy</b><div class="muted" style="font-size:13px;margin-top:2px">${L?`You: ${L.v} (${ENL[L.v]}) at ${tm(L.ts)}`:'Log how you feel, levers and your day graph'}</div>${pline}</button>${enOpen?enHTML():''}`; }
@@ -1596,7 +1606,7 @@ function planClean(){
 function planLive(){
   if(!me) return;
   planClean(); bkNudge();
-  const sig=JSON.stringify(fun.filter(f=>f.by===me.uid&&(f.kind==='task'||f.kind==='deadline'||f.kind==='chore'||f.kind==='class'||f.kind==='acad'||f.kind==='buy'||f.kind==='mon'||f.kind==='fset')).map(f=>[f.id,f.text||f.title,f.date,f.done,f.sched,f.ld,f.course,f.time,f.topics,f.student,f.amt,f.type,f.save,f.invest,f.mo]))+JSON.stringify(fun.filter(f=>f.by===me.uid&&['bud','spd','goal','quest','bill','exam','en','enday'].includes(f.kind)))+JSON.stringify((partnerEn()||{}).ts||0)+tab+planWk+planTab+calOff+Object.values(calOpen).join()+calSel; if(sig===planSig) return; planSig=sig;
+  const sig=JSON.stringify(fun.filter(f=>f.by===me.uid&&(f.kind==='task'||f.kind==='deadline'||f.kind==='chore'||f.kind==='class'||f.kind==='acad'||f.kind==='buy'||f.kind==='mon'||f.kind==='fset')).map(f=>[f.id,f.text||f.title,f.date,f.done,f.sched,f.ld,f.course,f.time,f.topics,f.student,f.amt,f.type,f.save,f.invest,f.mo]))+JSON.stringify(fun.filter(f=>f.by===me.uid&&['bud','spd','goal','quest','bill','exam','en','enday'].includes(f.kind)))+JSON.stringify([(partnerEn()||{}).ts||0,fun.filter(f=>f.kind==='status'||f.kind==='quick').map(f=>[f.id,f.emoji,f.text,f.at])])+tab+planWk+planTab+calOff+Object.values(calOpen).join()+calSel; if(sig===planSig) return; planSig=sig;
   const ae=document.activeElement, fid=ae&&ae.dataset&&ae.dataset.pin?ae.id:'', fv=fid?ae.value:'', ss=fid?ae.selectionStart:0;
   renderPlanBox(); renderPlanChip(); if(!$('planmodal').classList.contains('hidden')) renderPlan();
   if(fid){ const n=$(fid); if(n){ n.value=fv; n.focus(); try{ n.setSelectionRange(ss,ss); }catch(e){} } }
@@ -2098,6 +2108,7 @@ async function deleteMood(id){
 const closeMood=()=>{ $('moodmodal').classList.add('hidden'); flReset(); };
 $('moodbtn').onclick=()=>{ flReset(); flWr('rr_mood_seen_'+me.uid,String(Date.now())); renderMood(); $('moodmodal').classList.remove('hidden'); renderMoodChip(); };
 $('moodmodal').onclick=e=>{ if(e.target===$('moodmodal')) closeMood(); };
+const openEnergy=()=>{ planTab='plan'; enOpen=true; renderPlan(); $('planmodal').classList.remove('hidden'); document.body.style.overflow='hidden'; $('planmodal').scrollTop=0; };
 const openPlan=()=>{ planTab=''; renderPlan(); $('planmodal').classList.remove('hidden'); document.body.style.overflow='hidden'; $('planmodal').scrollTop=0; };
 const closePlan=()=>{ $('planmodal').classList.add('hidden'); document.body.style.overflow=''; };
 $('planbtn').onclick=openPlan;
@@ -2539,7 +2550,7 @@ function renderGoals(){
 }
 
 initP25({db,doc,getDoc,updateDoc,me:()=>me,habits:()=>hOf(me.uid),logs:()=>logs,goals:()=>goals,logKey,lastDays,todayStr,fmt,esc,toggle,bumpGoal,badge:updateBadge,prayers:d=>prayN(me.uid,d),ready:()=>couple?readiness():0,shareChar:sm=>{ if(!profile||!profile.coupleId||!me) return; const r=doc(cref(),'fun',`char_${me.uid}`); return sm ? setDoc(r,{kind:'char',uid:me.uid,...sm,at:Date.now()}) : deleteDoc(r); }});
-initStudy({huntHTML:p=>{ const [cname,chex]=colourOfDay(); return colourTodayHTML(p,cname,chex)+colourStatsHTML(p)+colourHistoryHTML(p)+colourCollageHTML(); }, huntBind:()=>{ bindColour(colourOfDay()[0]); loadPhotos(); }, isSick:()=>isSick(me.uid,todayStr()),setSick:on=>setSick(todayStr(),on),openQuran:m=>{ quranRead=m; setQ(true); render(); },db,doc,setDoc,updateDoc,deleteDoc,collection,onSnapshot,status:u=>statusOf(u),todayStr,logged:id=>has('prayer_',id,me.uid,todayStr()),toast,me:()=>me,couple:()=>couple,cid:()=>profile&&profile.coupleId,pid:partnerId,nameOf,av:u=>avSm[u]&&avSm[u].av,esc,$,render,goTab,tab:()=>tab});
+initStudy({energyOf:energyNow,ENL:()=>ENL,openEnergy,huntHTML:p=>{ const [cname,chex]=colourOfDay(); return colourTodayHTML(p,cname,chex)+colourStatsHTML(p)+colourHistoryHTML(p)+colourCollageHTML(); }, huntBind:()=>{ bindColour(colourOfDay()[0]); loadPhotos(); }, isSick:()=>isSick(me.uid,todayStr()),setSick:on=>setSick(todayStr(),on),openQuran:m=>{ quranRead=m; setQ(true); render(); },db,doc,setDoc,updateDoc,deleteDoc,collection,onSnapshot,status:u=>statusOf(u),todayStr,logged:id=>has('prayer_',id,me.uid,todayStr()),toast,me:()=>me,couple:()=>couple,cid:()=>profile&&profile.coupleId,pid:partnerId,nameOf,av:u=>avSm[u]&&avSm[u].av,esc,$,render,goTab,tab:()=>tab});
 setInterval(()=>{ if(couple&&me) render(); },60000);
   { const orig=renderKitBox;
   renderKitBox=function(){
