@@ -1738,8 +1738,15 @@ function renderPlan(){
   planBind(el);
 }
 /* redraw in place when tasks change, keeping the cursor in the box you are typing in */
+/* finished tasks are deleted 7 days after you ticked them (checked once per day, mine only) */
+let planCleanDay='';
+function planClean(){
+  const t=todayStr(); if(planCleanDay===t||!funLoaded) return; planCleanDay=t; const cut=pdate(t,-7);
+  myTasks().filter(f=>f.done&&(f.doneOn||f.date||t)<=cut).forEach(f=>deleteDoc(pRef(f.id)).catch(()=>{}));
+}
 function planLive(){
   if(!me) return;
+  planClean();
   const sig=JSON.stringify(myTasks().map(f=>[f.id,f.text,f.date,f.done]))+tab+planWk; if(sig===planSig) return; planSig=sig;
   const ae=document.activeElement, fid=ae&&ae.dataset&&ae.dataset.pin?ae.id:'', fv=fid?ae.value:'', ss=fid?ae.selectionStart:0;
   renderPlanBox(); if(tab==='plan') renderPlan();
