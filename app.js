@@ -236,7 +236,7 @@ function start(){
   const cid = profile.coupleId;
   const base = doc(db,'couples',cid);
   const cutoff = lastDays(70)[0];
-  unsubs.push(onSnapshot(base, s => { couple = s.data(); couple && couple.id===undefined && (couple.id=cid); checkAlerts(); snapRender(); if(!$('nickmodal').classList.contains('hidden')) renderNicks(); if(!$('notifmodal').classList.contains('hidden')) renderNotif(); }));
+  unsubs.push(onSnapshot(base, s => { couple = s.data(); couple && couple.id===undefined && (couple.id=cid); checkAlerts(); snapRender(); if(!$('nickmodal').classList.contains('hidden')&&!isTyping()) renderNicks(); if(!$('notifmodal').classList.contains('hidden')) renderNotif(); }));
   unsubs.push(onSnapshot(collection(base,'habits'), s => { habits = s.docs.map(d=>({id:d.id,...d.data()})); snapRender(); }));
   unsubs.push(onSnapshot(collection(base,'fun'), s => { fun = s.docs.map(d=>({id:d.id,...d.data()})); funLoaded=true; try{ planLive(); }catch(e){} checkAlerts(); snapRender(); }));
   unsubs.push(onSnapshot(collection(base,'goals'), s => { goals = s.docs.map(d=>({id:d.id,...d.data()})); snapRender(); }));
@@ -1523,7 +1523,7 @@ function planTodayHTML(sc){
 }
 function renderPlanBox(){
   const el=$('planbox'); if(!el||!me) return;
-  el.innerHTML=planTodayHTML('d'); planBind(el);
+  setPlanHTML(el,planTodayHTML('d'));
 }
 /* the small 📝 chip in the header shows how many of today's tasks are left */
 function renderPlanChip(){
@@ -1603,9 +1603,9 @@ function energyBox(){ const L=enEntries(todayStr()).filter(f=>f.v).pop(), PE=par
 function renderPlan(){
   const el=$('planbody'); if(!el||!me) return;
   const pt=PT[planTab], head=pt?`<button class="btn ghost small" data-ptab="" aria-label="Back to planner">‹</button><b style="flex:1;font-size:17px">${pt[0]} ${pt[1]}</b>`:`<b style="flex:1;font-size:19px">✨ Planner</b>`;
-  el.innerHTML=`<section class="card" style="margin-bottom:14px;position:sticky;top:0;z-index:2"><div class="row" style="gap:8px;flex-wrap:nowrap;align-items:center">${head}<button class="btn ghost small" data-pback aria-label="Close planner">✕</button></div></section>`+
+  const html=`<section class="card" style="margin-bottom:14px;position:sticky;top:0;z-index:2"><div class="row" style="gap:8px;flex-wrap:nowrap;align-items:center">${head}<button class="btn ghost small" data-pback aria-label="Close planner">✕</button></div></section>`+
     (!pt?planTodayHTML('m')+errandsHTML()+planGrid():planTab==='college'?acadHTML()+collegeHTML():planTab==='class'?classHTML():planTab==='fin'?finPage():['home','care','grow'].includes(planTab)?choreHTML(planTab):energyBox()+dailyHTML()+planWeekHTML());
-  planBind(el);
+  setPlanHTML(el,html);
 }
 /* finished tasks are deleted 7 days after you ticked them (checked once per day, mine only) */
 let planCleanDay='';
@@ -1613,8 +1613,13 @@ function planClean(){
   const t=todayStr(); if(planCleanDay===t||!funLoaded) return; planCleanDay=t; const cut=pdate(t,-7);
   [...myTasks(),...myDocs('deadline')].filter(f=>f.done&&(f.doneOn||f.date||t)<=cut).forEach(f=>deleteDoc(pRef(f.id)).catch(()=>{}));
 }
+/* Redraw only when the markup actually changed, and never lose half-typed text in the add boxes. */
+function draftsOf(el){ const v={}; if(el) el.querySelectorAll('input[data-pin]').forEach(i=>{ if(i.id&&i.value) v[i.id]=i.value; }); return v; }
+function restoreDrafts(el,v){ if(!el) return; Object.keys(v).forEach(id=>{ const n=el.querySelector('#'+CSS.escape(id)); if(n&&!n.value) n.value=v[id]; }); }
+function setPlanHTML(el,html){ if(el.__h===html) return; const dr=draftsOf(el); el.innerHTML=html; el.__h=html; restoreDrafts(el,dr); planBind(el); }
 function planLive(){
   if(!me) return;
+  { const a=document.activeElement; if(isTyping()&&!(a.dataset&&a.dataset.pin)){ planSig=''; pendingRender=true; return; } }
   planClean(); bkNudge();
   const sig=JSON.stringify(fun.filter(f=>f.by===me.uid&&(f.kind==='task'||f.kind==='deadline'||f.kind==='chore'||f.kind==='class'||f.kind==='acad'||f.kind==='buy'||f.kind==='mon'||f.kind==='fset')).map(f=>[f.id,f.text||f.title,f.date,f.done,f.sched,f.ld,f.course,f.time,f.topics,f.student,f.amt,f.type,f.save,f.invest,f.mo]))+JSON.stringify(fun.filter(f=>f.by===me.uid&&['bud','spd','goal','quest','bill','exam','en','enday'].includes(f.kind)))+JSON.stringify([(partnerEn()||{}).ts||0,fun.filter(f=>f.kind==='status'||f.kind==='quick').map(f=>[f.id,f.emoji,f.text,f.at])])+tab+planWk+planTab+calOff+Object.values(calOpen).join()+calSel; if(sig===planSig) return; planSig=sig;
   const ae=document.activeElement, fid=ae&&ae.dataset&&ae.dataset.pin?ae.id:'', fv=fid?ae.value:'', ss=fid?ae.selectionStart:0;
@@ -2322,12 +2327,17 @@ function snapRender(){
   if(snapT) return;
   snapT=setTimeout(()=>{ snapT=0; if(document.hidden) return; const sg=snapSigOf(); if(sg===snapSig) return; snapSig=sg; render(); },300);
 }
+/* True while a text box, textarea or dropdown has focus ANYWHERE (including the planner, kitten and nickname screens). */
+function isTyping(){
+  const a=document.activeElement; if(!a||a===document.body) return false; const t=a.tagName;
+  return t==='TEXTAREA'||t==='SELECT'||!!a.isContentEditable||(t==='INPUT'&&!/^(checkbox|radio|range|button|submit|reset|file|color)$/i.test(a.type));
+}
 let pendingRender=false;
 document.addEventListener('focusout',()=>{ if(pendingRender){ pendingRender=false; setTimeout(render,400); } });
 function render(){
   if(!couple || !me) return;
   const ae=document.activeElement;
-  if(ae && (ae.tagName==='TEXTAREA'||ae.tagName==='INPUT') && $('app').contains(ae)){ pendingRender=true; return; }
+  if(isTyping()){ pendingRender=true; return; }
   updateNav(); updateSickMenu();
   ['p25','dash','habits','goals','problems','pray','meals','sleep','fun','jar','study'].forEach(k => $('v-'+k).classList.toggle('hidden', k!==tab));
   const pid = partnerId();
@@ -2336,7 +2346,7 @@ function render(){
   $('title').textContent = pid ? `${nameOf(me.uid)} & ${nameOf(pid)}` : 'Our road to ready';
   renderP25();
   if(tab==='p25'){ const w=p25Week(); $('title').textContent='Who I’m becoming'; $('today').textContent=`Week ${w.n} of ${w.total} · ${w.left} left`; }
-  if(tab==='dash'){ renderDash(pid); renderPlanBox(); }
+  if(tab==='dash'){ const dr=draftsOf($('planbox')); renderDash(pid); renderPlanBox(); restoreDrafts($('planbox'),dr); }
   if(!$('planmodal').classList.contains('hidden')) renderPlan();
   if(tab==='habits') renderHabits(pid);
   if(tab==='goals') renderGoals();
@@ -2561,7 +2571,7 @@ function renderGoals(){
 
 initP25({db,doc,getDoc,updateDoc,me:()=>me,habits:()=>hOf(me.uid),logs:()=>logs,goals:()=>goals,logKey,lastDays,todayStr,fmt,esc,toggle,bumpGoal,badge:updateBadge,prayers:d=>prayN(me.uid,d),ready:()=>couple?readiness():0,shareChar:sm=>{ if(!profile||!profile.coupleId||!me) return; const r=doc(cref(),'fun',`char_${me.uid}`); return sm ? setDoc(r,{kind:'char',uid:me.uid,...sm,at:Date.now()}) : deleteDoc(r); }});
 initStudy({energyOf:energyNow,ENL:()=>ENL,openEnergy,huntHTML:p=>{ const [cname,chex]=colourOfDay(); return colourTodayHTML(p,cname,chex)+colourStatsHTML(p)+colourHistoryHTML(p)+colourCollageHTML(); }, huntBind:()=>{ bindColour(colourOfDay()[0]); loadPhotos(); }, isSick:()=>isSick(me.uid,todayStr()),setSick:on=>setSick(todayStr(),on),openQuran:m=>{ quranRead=m; setQ(true); render(); },db,doc,setDoc,updateDoc,deleteDoc,collection,onSnapshot,status:u=>statusOf(u),todayStr,logged:id=>has('prayer_',id,me.uid,todayStr()),toast,me:()=>me,couple:()=>couple,cid:()=>profile&&profile.coupleId,pid:partnerId,nameOf,av:u=>avSm[u]&&avSm[u].av,esc,$,render,goTab,tab:()=>tab});
-setInterval(()=>{ if(couple&&me) render(); },60000);
+setInterval(()=>{ if(couple&&me&&!document.hidden) render(); },60000);
   { const orig=renderKitBox;
   renderKitBox=function(){
     try{ orig(); }
