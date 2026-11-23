@@ -1285,8 +1285,14 @@ let planWk=0, planSig='', planTab='plan', calOff=0, calOpen={college:false,home:
 const pdate=(d,n)=>{ const x=new Date(d+'T12:00'); x.setDate(x.getDate()+n); return fmt(x); };
 const pDay=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'short'});
 const pShort=d=>new Date(d+'T12:00').toLocaleDateString(undefined,{day:'numeric',month:'short'});
+let chOpen='', chAll={home:false,care:false,grow:false};
 const myTasks=()=>fun.filter(f=>f.kind==='task'&&f.by===me.uid).sort((a,b)=>(a.at||0)-(b.at||0));
 const pRef=id=>doc(cref(),'fun',id);
+async function addTask(text,date){
+  text=(text||'').trim(); if(!text) return;
+  try{ await addDoc(collection(cref(),'fun'),{kind:'task',by:me.uid,text:text.slice(0,200),date:(date&&date!=='undefined')?date:null,done:false,at:Date.now()}); }
+  catch(e){ console.error(e); toast('Couldn’t add that. Check your connection and try again.'); }
+}
 const myDocs=k=>fun.filter(f=>f.kind===k&&f.by===me.uid);
 const byDate=(a,b)=>a.date<b.date?-1:a.date>b.date?1:0;
 const dueDiff=d=>Math.round((new Date(d+'T12:00')-new Date(todayStr()+'T12:00'))/864e5);
@@ -1440,7 +1446,7 @@ async function addDeadline(){ const t=PD.dt.trim(); if(!t||!PD.dd){ toast('Add a
   const d={kind:'deadline',by:me.uid,title:t.slice(0,120),course:PD.dc.trim().slice(0,60),date:PD.dd,done:false,doneOn:null,at:Date.now()}; PD.dt=PD.dc=PD.dd=''; calSel='';
   await addDoc(collection(cref(),'fun'),d); }
 async function addChore(area,title){ title=(title||'').trim(); if(!title) return;
-  await addDoc(collection(cref(),'fun'),{kind:'chore',by:me.uid,area,title:title.slice(0,80),sched:[],ld:[],at:Date.now()}); }
+  const r=await addDoc(collection(cref(),'fun'),{kind:'chore',by:me.uid,area,title:title.slice(0,80),sched:[],ld:[],at:Date.now()}); chOpen=r.id; }
 const pTaskRow=f=>`<div class="ptask${f.done?' done':''}"><button class="pchk" data-ptog="${f.id}" aria-label="${f.done?'Mark as not done':'Mark as done'}">${f.done?'☑':'☐'}</button><span class="ptxt">${esc(f.text)}</span>${f.date?'':`<button class="pmv" data-ptoday="${f.id}" aria-label="Move to today" title="Move to today">📅</button>`}<button class="pdel" data-pdel="${f.id}" aria-label="Delete">✕</button></div>`;
 const pAddRow=(sc,date,ph)=>`<div class="row" style="gap:6px;margin-top:8px"><input id="pin${sc}-${date||'errand'}" data-pin="1" maxlength="200" placeholder="${ph}" aria-label="${ph}" style="flex:1;min-width:0"><button class="btn small" data-padd="${date}">Add</button></div>`;
 function planBind(root){
@@ -1498,6 +1504,8 @@ function planBind(root){
   root.querySelectorAll('[data-badd]').forEach(b=>b.onclick=addBill);
   root.querySelectorAll('[data-eadd]').forEach(b=>b.onclick=addExam);
   root.querySelectorAll('[data-bren]').forEach(b=>b.onclick=()=>{ const f=fun.find(x=>x.id===b.dataset.bren); if(!f||!f.date) return; let d=new Date(f.date+'T12:00'), n=0; do{ f.freq==='year'?d.setFullYear(d.getFullYear()+1):d.setMonth(d.getMonth()+1); n++; }while(fmt(d)<todayStr()&&n<36); updateDoc(pRef(f.id),{date:fmt(d)}); });
+  root.querySelectorAll('[data-cexp]').forEach(b=>b.onclick=()=>{ chOpen=chOpen===b.dataset.cexp?'':b.dataset.cexp; renderPlan(); });
+  root.querySelectorAll('[data-call]').forEach(b=>b.onclick=()=>{ chAll[b.dataset.call]=!chAll[b.dataset.call]; renderPlan(); });
   root.querySelectorAll('[data-pne]').forEach(b=>b.onclick=()=>setNow(b.dataset.pne,b.dataset.pnt));
   root.querySelectorAll('[data-pnclr]').forEach(b=>b.onclick=()=>clearNow());
   root.querySelectorAll('[data-env]').forEach(b=>b.onclick=()=>logEn(+b.dataset.env,''));
@@ -1561,10 +1569,12 @@ function choreHTML(area){
   const td=choresOn(area,t0), left=td.filter(f=>!choreDone(f,t0)).length;
   const dot=ds=>{ const X=choresOn(area,ds); return {n:X.length,open:X.filter(f=>!choreDone(f,ds)).length}; }, list=ds=>choresOn(area,ds).map(f=>chRow(f,ds)).join('')+pickHTML(ds,area);
   const chips=PRE[area].map((n,i)=>have.has(n.toLowerCase())?'':`<button class="btn ghost small" data-cpre="${area}:${i}" style="margin:0 6px 6px 0">＋ ${esc(n)}</button>`).join('');
-  const cr=f=>`<div style="padding:8px 0;border-bottom:1px solid var(--line)"><div class="row" style="justify-content:space-between;align-items:center"><b class="ptxt">${esc(f.title)}${choreDone(f,t0)?' ✓':''}</b><button class="pdel" data-cdel="${f.id}" aria-label="Delete task" title="Delete task">🗑</button></div><div class="dchips sm">${W.map((ds,i)=>`<button class="dchip${(f.sched||[]).includes(ds)?' on':''}" data-csch="${f.id}|${ds}" aria-label="${pDay(ds)}">${DN[i]}</button>`).join('')}</div></div>`;
+  const planned=f=>W.some(ds=>(f.sched||[]).includes(ds)), dayTxt=f=>{ const d=W.map((ds,i)=>(f.sched||[]).includes(ds)?DN[i]:'').filter(Boolean); return d.length?d.join(' '):'not planned'; };
+  const cr=f=>{ const open=chOpen===f.id; return `<div style="padding:4px 0;border-bottom:1px solid var(--line)"><div class="row" style="justify-content:space-between;align-items:center;gap:6px"><button data-cexp="${f.id}" aria-expanded="${open}" style="flex:1;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;background:none;border:0;padding:6px 2px;font:inherit;color:inherit;cursor:pointer"><b class="ptxt" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.title)}${choreDone(f,t0)?' ✓':''}</b><span class="muted" style="font-size:12px;white-space:nowrap">${dayTxt(f)} ${open?'▾':'▸'}</span></button><button class="pdel" data-cdel="${f.id}" aria-label="Delete task" title="Delete task">🗑</button></div>${open?`<div class="dchips sm">${W.map((ds,i)=>`<button class="dchip${(f.sched||[]).includes(ds)?' on':''}" data-csch="${f.id}|${ds}" aria-label="${pDay(ds)}">${DN[i]}</button>`).join('')}</div>`:''}</div>`; };
+  const S1=L.filter(planned), S2=L.filter(f=>!planned(f)).reverse(), S=[...S1,...S2], show=chAll[area]?S:[...S1,...S2.slice(0,3)];
   return calBox(area,td.length?(left?`Today: ${left} to do`:'Today: all done ✓'):'Nothing planned today')+
   (calOpen[area]?`<section class="card" style="margin-bottom:14px">${calHTML(dot,list)}</section>`:'')+
-  `<section class="card" style="margin-bottom:14px"><h2>${AREA[area][0]} ${AREA[area][1]}</h2><div class="row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><button class="btn ghost small" data-pwk="-1" aria-label="Previous week">‹</button><div style="text-align:center"><b>${pShort(W[0])} – ${pShort(W[6])}</b><div class="muted" style="font-size:13px">${planWk===0?'This week':'Planning ahead'}</div></div><button class="btn ghost small" data-pwk="1" aria-label="Next week">›</button></div>${planWk?`<button class="btn ghost small" data-pwk="0" style="margin-bottom:4px">Back to this week</button>`:''}<p class="muted" style="margin:4px 0 6px">Tap the days you’ll do each one this week. It then shows on those days in your weekly plan.</p>${L.map(cr).join('')||'<p class="muted">Nothing here yet. Add your tasks below.</p>'}</section>`+
+  `<section class="card" style="margin-bottom:14px"><h2>${AREA[area][0]} ${AREA[area][1]}</h2><div class="row" style="justify-content:space-between;align-items:center;margin:8px 0 4px"><button class="btn ghost small" data-pwk="-1" aria-label="Previous week">‹</button><div style="text-align:center"><b>${pShort(W[0])} – ${pShort(W[6])}</b><div class="muted" style="font-size:13px">${planWk===0?'This week':'Planning ahead'}</div></div><button class="btn ghost small" data-pwk="1" aria-label="Next week">›</button></div>${planWk?`<button class="btn ghost small" data-pwk="0" style="margin-bottom:4px">Back to this week</button>`:''}<p class="muted" style="margin:4px 0 6px">Tap a task to pick the days you’ll do it this week. It then shows on those days in your weekly plan.</p>${show.map(cr).join('')||'<p class="muted">Nothing here yet. Add your tasks below.</p>'}${S.length>S1.length+3?`<button class="btn ghost small" data-call="${area}" style="margin-top:8px">${chAll[area]?'Show less ▴':`Show all ${S.length} ▾`}</button>`:''}</section>`+
   `<section class="card" style="margin-bottom:14px"><h2>Add a task</h2><div class="row" style="gap:6px;margin-top:6px"><input id="drct" data-pin="1" data-draft="ct" value="${esc(PD.ct)}" maxlength="80" placeholder="${home?'e.g. Clean the oven':area==='care'?'e.g. Moisturise hands':'e.g. 🧠 Read an article'}" style="flex:1;min-width:0"><button class="btn small" data-cadd="${area}">Add</button></div>${chips?`<p class="muted" style="margin:10px 0 4px">Quick adds</p>${chips}`:''}</section>`;
 }
 let enOpen=false;
